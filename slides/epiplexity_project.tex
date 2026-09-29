@@ -1,5 +1,4 @@
 \documentclass[19pt,aspectratio=43]{beamer}
-
 \usetheme{default}
 \usefonttheme{professionalfonts}
 \setbeamersize{text margin left=7mm,text margin right=7mm}
@@ -12,29 +11,22 @@
 \usepackage{amsmath,amssymb,mathtools,booktabs}
 \usepackage{microtype}
 \usepackage{natbib}
-
 \definecolor{myblue}{RGB}{25,75,130}
 \setbeamercolor{structure}{fg=myblue}
 \setbeamercolor{frametitle}{fg=myblue}
 \setbeamerfont{frametitle}{size=\large,series=\bfseries}
 \setbeamerfont{normal text}{size=\normalsize}
-
 \newcommand{\KL}{\mathrm{KL}}
 \newcommand{\MDL}{\mathrm{MDL}}
 \newcommand{\E}{\mathbb{E}}
-
 \title{Epiplexity with lightweight learning algorithms}
-\subtitle{Experimental design for MLP and CNN observers}
+\subtitle{Experimental design for MLP, CNN and DiT setups}
 \author{}
 \date{September 2026}
-
 \begin{document}
-
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity: information accessible to a bounded learner}\vspace{-2mm}\small\begin{center}\small\textbf{Epiplexity with lightweight learning algorithms}\end{center}
-
 Shannon entropy and Kolmogorov complexity do not explicitly restrict the computational resources of the observer. Finzi et al.~\citep{finzi2026} introduce \emph{epiplexity} as the structural information in a distribution that can be extracted by a computationally bounded observer.
-
 For a $T$-time probabilistic model $P$ with program length $|P|$, define
 \[
 P^* = \arg\min_{P\in\mathcal P_T}
@@ -48,149 +40,116 @@ The corresponding decomposition is
 +
 \underbrace{\E[-\log P^*(X)]}_{H_T(X)\;\text{-- time-bounded entropy}}.
 \]
-
 Thus, epiplexity is not simply a property of the dataset: it is defined relative to a computational budget and an admissible class of observers. In practice, neural training procedures provide tractable approximations to this program optimization.
-
 \vspace{1mm}
 \footnotesize
 \textbf{Key reference:} Finzi et al., ``From Entropy to Epiplexity'', 2026. The paper's definition is compute-bounded; practical estimators approximate the optimal program through training trajectories.
 \end{frame}
-
 % ------------------------------------------------------------
-\begin{frame}{What we want to test: the observer may matter}
-\small
 
-The original empirical study demonstrates epiplexity using neural observers and computational sweeps over model size and training duration, including synthetic cellular automata and natural-data experiments \citep{finzi2026}.
-
-Our question is narrower and experimentally controllable:
-
-\begin{center}
-\large
-\textbf{How does the estimated structural information change when the observer is replaced by a lightweight architecture?}
-\end{center}
-
-We will keep the data-generating process fixed and vary the observer
-\[
-X \xrightarrow{\text{learning algorithm}} P_T
-\qquad\text{with}\qquad
-\text{MLP}\;\;\text{vs.}\;\;\text{CNN}.
-\]
-
-The comparison is motivated by the compute-bounded definition itself: changing the hypothesis class and its inductive bias changes the set of programs that can be practically realized within a fixed budget. CNNs additionally encode locality, whereas MLPs provide a substantially weaker architectural prior.
-
-This lets us separate two questions that are often conflated: \emph{how much structure is present} and \emph{how much structure is accessible to a particular learner}.
+\begin{frame}
+\includegraphics[scale = 0.36]{epiplexity.jpeg}
 \end{frame}
-
+% ------------------------------------------------------------
+\begin{frame}{What we want to test: the estimators, not the architectures}
+\small
+The original empirical study demonstrates epiplexity with neural observers and sweeps over model size and training duration, including synthetic cellular automata and natural-data experiments \citep{finzi2026}.
+Our question is not which architecture is better. We treat MLP, CNN and DiT as three different \emph{setups} in which the same estimators are evaluated, and ask whether the estimated structural information remains comparable when the setup, the manipulations applied inside it, and the compute budget change:
+\[
+X \xrightarrow{\ \text{setup } a\ } P_T,
+\qquad
+a \in \{\text{MLP},\ \text{CNN},\ \text{DiT}+\text{sampler}\}.
+\]
+Two things are varied at once and have to be told apart:
+\begin{itemize}
+\item the \emph{manipulations} applied inside a setup (data ordering, pixel permutation, sampler schedule, budget);
+\item the \emph{observer family} itself --- hypothesis class and inductive bias.
+\end{itemize}
+The target is a statement of the form: this part of the estimate is a property of the data, and this part is produced by the setup in which we happened to measure it.
+\end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Estimators: one learning trajectory, several codes}
 \footnotesize
-
 We will evaluate several measures on the same training trajectories rather than introducing separate experimental setups for each metric.
-
+\\
 \textbf{Prequential coding.} The description length is accumulated from predictions made by successive checkpoints before the corresponding training information is available. In the implementation of Finzi et al., the model-code contribution is estimated from the area of the training-loss curve above the final loss \citep{finzi2026}:
 \[
 K_{\mathrm{preq}} \;\approx\; \sum_t \ell_t\,\Delta t
 \quad\text{relative to the final-loss baseline.}
 \]
-
 \textbf{Requential coding.} Qiu et al.~\citep{qiu2026} replace coding of the exact observed samples by coding synthetic samples on which teacher and student disagree. The central quantity is the cumulative divergence
 \[
 K_{\mathrm{req}} \;\propto\; \sum_t \KL\!\left(P_t^{\mathrm{teacher}}\,\middle\|\,P_t^{\mathrm{student}}\right).
 \]
 This removes much of the cost associated with the entropy of the particular dataset sequence.
-
 \textbf{EDL.} Donoway et al.~\citep{donoway2026} define Excess Description Length as the gap between sequential training-code length and the residual code length under the final predictor. It is closely related to learning dynamics, but is a measure for a specified learning algorithm rather than the optimization over all admissible programs defining epiplexity.
 \end{frame}
-
 % ------------------------------------------------------------
-\begin{frame}{Experimental design: lightweight observers}
-\small
-
-We will use a controlled grid: the dataset and compute budget are fixed, while the observer architecture and its scale are varied.
-
+\begin{frame}{Experimental design: setups and the knobs attached to them}
+\footnotesize
+The dataset and the compute budget are fixed. What varies is the setup, its scale, and the manipulation applied inside it.
 \vspace{1mm}
 \begin{center}
 \renewcommand{\arraystretch}{1.12}
-\begin{tabular}{lcc}
+\begin{tabular}{lccc}
 \toprule
- & MLP & CNN \\
+& MLP & CNN & DiT \\
 \midrule
-Parameters & $10^3$--$10^6$ & $10^3$--$10^6$ \\
-Capacity & shallow $\rightarrow$ deep & shallow $\rightarrow$ deep \\
-Optimizer & SGD / Adam(W) & SGD / Adam(W) \\
-Seeds & \multicolumn{2}{c}{5--10 per configuration} \\
-Compute & \multicolumn{2}{c}{matched budgets} \\
+Scale & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
+Prior & weakest & locality & generative, iterative \\
+Optimizer & SGD / Adam(W) & SGD / Adam(W) & Adam(W) \\
+Extra knob & input order & pixel permutation & sampler, \#steps \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-The primary synthetic benchmark will be elementary cellular automata, following the controlled setting of Finzi et al.~\citep{finzi2026}. Their local transition rules provide tasks with different degrees of learnable structure while keeping the data-generating mechanism explicit.
-
-For image data, we will additionally apply a fixed random permutation of pixels. Labels are unchanged, but the spatial arrangement exploited by a CNN is destroyed. The comparison therefore probes the interaction between data structure and architectural inductive bias.
-
-\footnotesize
-The main control is matched compute rather than matched epochs.
+The primary synthetic benchmark is elementary cellular automata, following the controlled setting of Finzi et al.~\citep{finzi2026}: their local transition rules give tasks with different degrees of learnable structure while keeping the data-generating mechanism explicit.
+Each setup carries its own manipulation, and the three are deliberately of a different kind:
+\begin{itemize}
+\item MLP: no built-in spatial prior, so the order in which inputs are presented is itself part of the observer;
+\item CNN: a fixed random permutation of pixels is applied to image data. Labels are unchanged, but the spatial arrangement the architecture exploits is destroyed;
+\item DiT: the sampler is part of the observer. Different schedules use different numbers of model evaluations and follow different trajectories through the learned score field.
+\end{itemize}
 \end{frame}
-
 % ------------------------------------------------------------
-\begin{frame}{Validation and potential application}
+\begin{frame}{Validation and readout}
 \footnotesize
-
-For every task $d$, observer $a$, compute budget $T$, and seed $s$, we record the learning trajectory and derive
+For every task $d$, setup $a$, compute budget $T$ and seed $s$ we record the learning trajectory and derive
 \[
 S_{\mathrm{preq}},\qquad S_{\mathrm{req}},\qquad \mathrm{EDL}.
 \]
-
-Different estimators will be compared by the ordering they assign to the same tasks, using Spearman correlation and Kendall's $\tau$. Observer dependence will be quantified by
+Three checks are applied to the resulting table:
+\begin{itemize}
+\item \textbf{Agreement between estimators.} The orderings they assign to the same tasks are compared by Spearman correlation and Kendall's $\tau$, both within and across setups.
+\item \textbf{Setup dependence.} For each pair of setups we report
 \[
-\Delta_{\mathrm{arch}}(d,T)
-=
-S(d,\mathrm{CNN},T)-S(d,\mathrm{MLP},T).
+\Delta_{ab}(d,T) = S(d,a,T) - S(d,b,T),
+\qquad a,b \in \{\text{MLP},\ \text{CNN},\ \text{DiT}\}.
 \]
-Seed-to-seed variation will be reported explicitly; final test loss and sample efficiency will serve as external baselines.
-
-\vspace{2mm}
-\textbf{Potential application: DiT with a sampler.}
-
-A natural extension is to study Diffusion Transformers together with their sampling procedures. The relevant computational object becomes
-\[
-\text{noise}
-\;\longrightarrow\;
-\text{DiT}
-\;\longrightarrow\;
-\text{sampler}
-\;\longrightarrow\;
-\text{generated distribution}.
-\]
-
-Different samplers use different numbers of model evaluations and follow different trajectories through the learned score field. After validating the methodology on lightweight observers, we can ask whether this compute-bounded perspective distinguishes sampling strategies beyond final sample quality alone.
+A large $\Delta$ with a stable task ordering means the estimator is partly re-measuring the setup rather than the data.
+\item \textbf{Seed variance.} Reported explicitly and compared against the spread across setups; final test loss and sample efficiency serve as external baselines.
+\end{itemize}
+The DiT setup is the sharpest case, because there the observer is not a single function but a compute schedule: we can ask whether this compute-bounded view separates sampling strategies from one another when final sample quality does not.
+\vspace{1mm}
+The deliverable is a map of where these estimators are setup-invariant and where they are not --- not a ranking of architectures.
 \end{frame}
-
 % ------------------------------------------------------------
 \begin{frame}{Literature}
 \small
-
 \begin{thebibliography}{99}
-
 \bibitem[Finzi et al.(2026)]{finzi2026}
 M.~Finzi, S.~Qiu, Y.~Jiang, P.~Izmailov, J.~Zico Kolter, A.~G.~Wilson.
 \newblock \emph{From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence}.
 \newblock arXiv:2601.03220, 2026.
-
 \bibitem[Qiu et al.(2026)]{qiu2026}
 S.~Qiu, M.~Finzi, Y.~Zheng, K.~Zhang, A.~G.~Wilson.
 \newblock \emph{Requential Coding: Pushing the Limits of Model Compression with Self-Generated Training Data}.
 \newblock arXiv:2607.11883, 2026.
-
 \bibitem[Donoway et al.(2026)]{donoway2026}
 E.~Donoway, H.~Joren, F.~Roger, J.~Leike.
 \newblock \emph{Excess Description Length of Learning Generalizable Predictors}.
 \newblock arXiv:2601.04728, 2026.
-
 \end{thebibliography}
-
 \footnotesize
 The project studies computationally bounded structural information through a controlled change of observer architecture, estimator, and compute budget.
 \end{frame}
-
 \end{document}
