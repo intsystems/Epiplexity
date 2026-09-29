@@ -31,77 +31,132 @@
 \titlepage
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Epiplexity: information accessible to a bounded learner}
-Epiplexity is the structural information in data that an observer limited to time $T$ can extract \citep{finzi2026}.
-
-\medskip
-Minimise a two-part code over models $P\in\mathcal P_T$ that run in time $T$:
-\[
-P^* = \arg\min_{P\in\mathcal P_T}\bigl\{|P| + \E[-\log P(X)]\bigr\}.
-\]
-The minimum splits into structure and randomness:
-\[
-\underbrace{\MDL_T(X)}_{\text{total}}
-=
-\underbrace{|P^*|}_{S_T(X):\ \text{epiplexity}}
-+
-\underbrace{\E[-\log P^*(X)]}_{H_T(X):\ \text{time-bounded entropy}}
-\]
+\begin{frame}{Bounded observers}
+Shannon entropy and Kolmogorov complexity place no limit on the computation of the observer. Epiplexity measures information relative to a time bound \citep[Def.~7--8]{finzi2026}.
+\begin{definition}[$T$-time probabilistic model]
+Fix a prefix-free universal Turing machine $\mathcal U$ and a time bound $T:\mathbb N\to\mathbb N$. A program $P$ is a \emph{$T$-time probabilistic model} over $\{0,1\}^n$ if, within $T(n)$ steps of $\mathcal U$, it
 \begin{itemize}
-\item $S_T$ depends on the bound $T$ and on the class $\mathcal P_T$.
-\item Neural training approximates the minimisation over $P$.
+\item outputs the probability $P(x)$ of any $x\in\{0,1\}^n$;
+\item outputs a sample $x\sim P$ from a string of random bits.
+\end{itemize}
+$\mathcal P_T$ is the set of such programs; $|P|$ is the length of $P$ in bits.
+\end{definition}
+Logarithms are base 2.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Epiplexity and time-bounded entropy}
+\begin{definition}
+For a random variable $X$ on $\{0,1\}^n$, let
+\[
+P^* = \arg\min_{P\in\mathcal P_T}\bigl\{|P| + \E[-\log P(X)]\bigr\},
+\]
+with ties broken by the shortest program. Then
+\begin{align*}
+S_T(X) &:= |P^*| && \text{epiplexity: structure,}\\
+H_T(X) &:= \E[-\log P^*(X)] && \text{time-bounded entropy: randomness,}\\
+\MDL_T(X) &:= S_T(X) + H_T(X) && \text{total description length.}
+\end{align*}
+\end{definition}
+\begin{itemize}
+\item Uniform random bits: $S_T=O(1)$ and $H_T\ge n-O(1)$.
+\item $S_T$ depends on $T$ and on $\mathcal P_T$; it need not grow with $T$.
 \end{itemize}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Random and structural information}
 \centering
-\includegraphics[width=\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
+\includegraphics[width=0.9\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
 
 \medskip
-\footnotesize Source: Fig.~1 of \citet{finzi2026}.
+\raggedright\footnotesize
+\textbf{Left:} a network trained on three kinds of data. The final loss approximates $H_T$ (dashed); the area above it approximates $S_T$ (green).\\
+\textbf{Right:} computation can create both kinds of information; learned structure transfers out of distribution (OOD).\\
+Source: Fig.~1 of \citet{finzi2026}.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{From the definition to a measurement}
+A \emph{setup} $a$ fixes an architecture, an optimiser, a training schedule and, for a diffusion transformer (DiT), a sampler.
+\begin{itemize}
+\item Compute is in FLOPs. A network with $N$ parameters, trained on $D$ examples and evaluated on the $D_X$ examples of $X$, needs $6ND+2ND_X\le T$.
+\item $\mathcal P^a_T$ is the set of models that setup $a$ reaches within $T$.
+\item The code length $K(P)$ of a trained model $P$ replaces $|P|$.
+\end{itemize}
+\medskip
+The measured epiplexity is $S^a_T(X) := K(\hat P)$, where
+\[
+\hat P = \arg\min_{P\in\mathcal P^a_T}\bigl\{K(P) + \E[-\log P(X)]\bigr\}.
+\]
+We sweep $N$ and $D$. Each checkpoint gives the point $(\text{FLOPs},\ K + D_X\cdot\text{held-out loss})$; $S^a_T$ is the model part on the lower convex hull at $T$ \citep{finzi2026}.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Estimators I: prequential code and EDL}
+A training run sees examples $z_0,\dots,z_{M-1}$, sampled i.i.d. Model $P_i$ is trained on $z_0,\dots,z_{i-1}$; its loss is $\ell_i(z)=-\log P_i(z)$.
+
+\medskip
+\textbf{Prequential code} \citep{finzi2026}: send $z_i$ in $\ell_i(z_i)$ bits, then train on it. The model part is the area of the loss curve above the final loss:
+\[
+K_{\mathrm{preq}} \approx \sum_{i<M}\bigl[\ell_i(z_i)-\ell_M(z_i)\bigr].
+\]
+\textbf{Excess description length} \citep{donoway2026}: the floor is the population loss $L(P)=\E_z[-\log P(z)]$ of the model $P_{\mathrm{fin}}$ at the end of training with compute $T$:
+\[
+\mathrm{EDL}_T = \E\sum_{i<M}\ell_i(z_i) - M\,L(P_{\mathrm{fin}}).
+\]
+The expectation is over the sample and its order. EDL is defined for one fixed training algorithm.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Estimator II: requential code}
+Requential coding transmits a student model \citep{qiu2026}.
+\begin{itemize}
+\item A teacher $P^{\mathrm t}_i$ trains on real data. A student $P^{\mathrm s}_i$ trains only on samples of the teacher.
+\item Encoder and decoder share the student initialisation, update rule and random seed.
+\item Relative entropy coding sends one sample of $P^{\mathrm t}_i$ to a decoder that knows $P^{\mathrm s}_i$ in about $\KL_i=\KL(P^{\mathrm t}_i\,\|\,P^{\mathrm s}_i)$ bits (Kullback--Leibler divergence).
+\end{itemize}
+Over student steps $i$ the code length is
+\[
+K_{\mathrm{req}} \le \sum_i\bigl[\KL_i + 2\log(1+\KL_i) + \kappa\bigr],\qquad \kappa<5.21.
+\]
+Both papers report $\sum_i\KL_i$. The code contains only the disagreement of teacher and student; the entropy of the data does not enter.
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{What we test: the estimators, not the architectures}
-The same estimators run in three setups (DiT: diffusion transformer):
+The measured value depends on the data $X$, the bound $T$ and the setup
 \[
-X \xrightarrow{\ \text{setup } a\ } P_T,
-\qquad
 a \in \{\text{MLP},\ \text{CNN},\ \text{DiT}+\text{sampler}\}.
 \]
-\medskip
 Two sources of change have to be told apart:
 \begin{itemize}
-\item \emph{manipulations} inside a setup: data order, pixel permutation, sampler schedule, bound $T$;
+\item \emph{manipulations} inside a setup: example order, input permutation, sampler, bound $T$;
 \item the \emph{observer family}: hypothesis class and inductive bias.
+\end{itemize}
+The setup dependence is
+\[
+\Delta_{ab}(X,T) = S^a_T(X) - S^b_T(X).
+\]
+\textbf{Goal:} which part of $S^a_T(X)$ comes from $X$, which from $a$.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Benchmark: elementary cellular automata (ECA)}
+\begin{itemize}
+\item A row of $n$ cells takes values in $\{0,1\}$. A rule $r\in\{0,\dots,255\}$ sets each cell from itself and its two neighbours; $F_r$ updates all cells at once.
+\item Task $d=(r,t)$: the input $x$ is uniform on $\{0,1\}^n$; the label is $y=F_r^t(x)$.
+\item The codes cover labels only. Every estimate is then a conditional epiplexity $S_T(Y\mid X)$: the definition with $-\log P(Y\mid X)$ in place of $-\log P(X)$.
 \end{itemize}
 
 \medskip
-\textbf{Goal:} which part of each estimate comes from the data, which from the setup.
+\citet{finzi2026} report, for transformers on 64 cells and $t=48$:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Rule & 54 & 15 & 30 \\
+\midrule
+$S_T$, bits & $\approx5\times10^6$ & $\approx2\times10^5$ & $\approx0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Rule 30 looks random to a bounded observer: its information is almost all $H_T$.
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Estimators: one learning trajectory, several codes}
-\small
-Model $P_i$ is trained on $z_0,\dots,z_{i-1}$ out of $M$ examples; $\ell_i(z)=-\log P_i(z)$.
-
-\medskip
-\textbf{Prequential} \citep{finzi2026}: area of the loss curve above the final loss.
-\[
-S_{\mathrm{preq}} \approx \sum_{i<M}\bigl[\ell_i(z_i)-\ell_M(z_i)\bigr]
-\]
-\textbf{Requential} \citep{qiu2026}: student s trained on samples of teacher t.
-\[
-S_{\mathrm{req}} \approx \sum_i \KL\bigl(P_i^{\mathrm{t}}\,\big\|\,P_i^{\mathrm{s}}\bigr)
-\]
-\textbf{EDL} \citep{donoway2026}: floor is the population loss $L$ of the final $P_T$.
-\[
-\mathrm{EDL} = \E\sum_{i<M}\ell_i(z_i) - M\,L(P_T)
-\]
-\medskip
-EDL fixes the training algorithm; epiplexity minimises over $\mathcal P_T$.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Experimental design: three setups, one manipulation each}
-Benchmark: elementary cellular automata (ECA), as in \citet{finzi2026}. The rule sets how much learnable structure the data holds.
+\begin{frame}{Setups and manipulations}
 \begin{center}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -110,28 +165,27 @@ Benchmark: elementary cellular automata (ECA), as in \citet{finzi2026}. The rule
 \toprule
 & MLP & CNN & DiT \\
 \midrule
-Parameters & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
+Parameters $N$ & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
 Prior & weakest & locality & generative, iterative \\
-Optimizer & SGD / Adam(W) & SGD / Adam(W) & Adam(W) \\
-Manipulation & example order & pixel permutation & sampler, \#steps \\
+Optimiser & SGD / Adam(W) & SGD / Adam(W) & Adam(W) \\
+Manipulation & example order & input permutation & sampler, \#steps \\
 \bottomrule
 \end{tabular}
 \end{center}
 \begin{itemize}
-\item MLP: no spatial prior; example order is part of the observer.
-\item CNN: fixed pixel permutation; labels kept, locality removed.
-\item DiT: the sampler is part of the observer.
+\item \emph{Example order:} the order of $z_0,\dots,z_{M-1}$. An MLP has no spatial prior.
+\item \emph{Input permutation:} one fixed permutation of cells or pixels. Labels are unchanged; locality is removed.
+\item \emph{Sampler:} the denoising schedule of the DiT; \#steps is the number of network evaluations per sample.
 \end{itemize}
 Within one comparison the task and $T$ are fixed.
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Validation}
-For each task $d$, setup $a$, bound $T$ and seed $s$ we record the training run and compute $S_{\mathrm{preq}}$, $S_{\mathrm{req}}$ and EDL.
+For each task $d$, setup $a$, bound $T$ and seed $s$ we compute $S_{\mathrm{preq}}$ and $S_{\mathrm{req}}$ (the value $S^a_T$ with $K=K_{\mathrm{preq}}$ or $K_{\mathrm{req}}$) and $\mathrm{EDL}_T$.
 \begin{itemize}
-\item \textbf{Agreement:} Spearman and Kendall $\tau$ between task orderings, within and across setups.
-\item \textbf{Setup dependence:} $\Delta_{ab}(d,T) = S(d,a,T) - S(d,b,T)$.\
-Large $\Delta$ with a stable task order: the estimate partly measures the setup.
-\item \textbf{Seed variance}, compared with the spread across setups.
+\item \textbf{Agreement:} Spearman $\rho$ and Kendall $\tau$ between the task orderings of two estimators, within and across setups.
+\item \textbf{Setup dependence:} $\Delta_{ab}$ per task, averaged over seeds. A large $\Delta$ with a stable task order means the estimate partly measures the setup.
+\item \textbf{Seed variance:} the standard deviation over $s$, compared with the spread across setups.
 \item \textbf{Baselines:} final test loss, sample efficiency.
 \end{itemize}
 
