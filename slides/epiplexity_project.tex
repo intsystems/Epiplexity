@@ -1,4 +1,5 @@
-\documentclass[19pt,aspectratio=43]{beamer}
+% Build (twice): pdflatex -jobname=Epiplexity_with_lightweight_learning_algorithms epiplexity_project.tex
+\documentclass[aspectratio=43]{beamer}
 \usetheme{default}
 \usefonttheme{professionalfonts}
 \setbeamersize{text margin left=7mm,text margin right=7mm}
@@ -11,6 +12,7 @@
 \usepackage{amsmath,amssymb,mathtools,booktabs}
 \usepackage{microtype}
 \usepackage{natbib}
+\renewcommand{\bibsection}{}
 \definecolor{myblue}{RGB}{25,75,130}
 \setbeamercolor{structure}{fg=myblue}
 \setbeamercolor{frametitle}{fg=myblue}
@@ -25,115 +27,119 @@
 \date{September 2026}
 \begin{document}
 % ------------------------------------------------------------
-\begin{frame}{Epiplexity: information accessible to a bounded learner}\vspace{-2mm}\small\begin{center}\small\textbf{Epiplexity with lightweight learning algorithms}\end{center}
-Shannon entropy and Kolmogorov complexity do not explicitly restrict the computational resources of the observer. Finzi et al.~\citep{finzi2026} introduce \emph{epiplexity} as the structural information in a distribution that can be extracted by a computationally bounded observer.
-For a $T$-time probabilistic model $P$ with program length $|P|$, define
-\[
-P^* = \arg\min_{P\in\mathcal P_T}
-\left\{|P| + \E_{X}\left[-\log P(X)\right]\right\}.
-\]
-The corresponding decomposition is
-\[
-\underbrace{\MDL_T(X)}_{\text{total time-bounded information}}
-=
-\underbrace{|P^*|}_{S_T(X)\;\text{-- epiplexity}}
-+
-\underbrace{\E[-\log P^*(X)]}_{H_T(X)\;\text{-- time-bounded entropy}}.
-\]
-Thus, epiplexity is not simply a property of the dataset: it is defined relative to a computational budget and an admissible class of observers. In practice, neural training procedures provide tractable approximations to this program optimization.
-\vspace{1mm}
-\footnotesize
-\textbf{Key reference:} Finzi et al., ``From Entropy to Epiplexity'', 2026. The paper's definition is compute-bounded; practical estimators approximate the optimal program through training trajectories.
-\end{frame}
-% ------------------------------------------------------------
-
 \begin{frame}
-\includegraphics[scale = 0.36]{epiplexity.jpeg}
+\titlepage
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{What we want to test: the estimators, not the architectures}
-\small
-The original empirical study demonstrates epiplexity with neural observers and sweeps over model size and training duration, including synthetic cellular automata and natural-data experiments \citep{finzi2026}.
-Our question is not which architecture is better. We treat MLP, CNN and DiT as three different \emph{setups} in which the same estimators are evaluated, and ask whether the estimated structural information remains comparable when the setup, the manipulations applied inside it, and the compute budget change:
+\begin{frame}{Epiplexity: information accessible to a bounded learner}
+Epiplexity is the structural information in data that an observer limited to time $T$ can extract \citep{finzi2026}.
+
+\medskip
+Minimise a two-part code over models $P\in\mathcal P_T$ that run in time $T$:
+\[
+P^* = \arg\min_{P\in\mathcal P_T}\bigl\{|P| + \E[-\log P(X)]\bigr\}.
+\]
+The minimum splits into structure and randomness:
+\[
+\underbrace{\MDL_T(X)}_{\text{total}}
+=
+\underbrace{|P^*|}_{S_T(X):\ \text{epiplexity}}
++
+\underbrace{\E[-\log P^*(X)]}_{H_T(X):\ \text{time-bounded entropy}}
+\]
+\begin{itemize}
+\item $S_T$ depends on the bound $T$ and on the class $\mathcal P_T$.
+\item Neural training approximates the minimisation over $P$.
+\end{itemize}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Random and structural information}
+\centering
+\includegraphics[width=\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
+
+\medskip
+\footnotesize Source: Fig.~1 of \citet{finzi2026}.
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{What we test: the estimators, not the architectures}
+The same estimators run in three setups (DiT: diffusion transformer):
 \[
 X \xrightarrow{\ \text{setup } a\ } P_T,
 \qquad
 a \in \{\text{MLP},\ \text{CNN},\ \text{DiT}+\text{sampler}\}.
 \]
-Two things are varied at once and have to be told apart:
+\medskip
+Two sources of change have to be told apart:
 \begin{itemize}
-\item the \emph{manipulations} applied inside a setup (data ordering, pixel permutation, sampler schedule, budget);
-\item the \emph{observer family} itself --- hypothesis class and inductive bias.
+\item \emph{manipulations} inside a setup: data order, pixel permutation, sampler schedule, bound $T$;
+\item the \emph{observer family}: hypothesis class and inductive bias.
 \end{itemize}
-The target is a statement of the form: this part of the estimate is a property of the data, and this part is produced by the setup in which we happened to measure it.
+
+\medskip
+\textbf{Goal:} which part of each estimate comes from the data, which from the setup.
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Estimators: one learning trajectory, several codes}
-\footnotesize
-We will evaluate several measures on the same training trajectories rather than introducing separate experimental setups for each metric.
-\\
-\textbf{Prequential coding.} The description length is accumulated from predictions made by successive checkpoints before the corresponding training information is available. In the implementation of Finzi et al., the model-code contribution is estimated from the area of the training-loss curve above the final loss \citep{finzi2026}:
+\small
+Model $P_i$ is trained on $z_0,\dots,z_{i-1}$ out of $M$ examples; $\ell_i(z)=-\log P_i(z)$.
+
+\medskip
+\textbf{Prequential} \citep{finzi2026}: area of the loss curve above the final loss.
 \[
-K_{\mathrm{preq}} \;\approx\; \sum_t \ell_t\,\Delta t
-\quad\text{relative to the final-loss baseline.}
+S_{\mathrm{preq}} \approx \sum_{i<M}\bigl[\ell_i(z_i)-\ell_M(z_i)\bigr]
 \]
-\textbf{Requential coding.} Qiu et al.~\citep{qiu2026} replace coding of the exact observed samples by coding synthetic samples on which teacher and student disagree. The central quantity is the cumulative divergence
+\textbf{Requential} \citep{qiu2026}: student s trained on samples of teacher t.
 \[
-K_{\mathrm{req}} \;\propto\; \sum_t \KL\!\left(P_t^{\mathrm{teacher}}\,\middle\|\,P_t^{\mathrm{student}}\right).
+S_{\mathrm{req}} \approx \sum_i \KL\bigl(P_i^{\mathrm{t}}\,\big\|\,P_i^{\mathrm{s}}\bigr)
 \]
-This removes much of the cost associated with the entropy of the particular dataset sequence.
-\textbf{EDL.} Donoway et al.~\citep{donoway2026} define Excess Description Length as the gap between sequential training-code length and the residual code length under the final predictor. It is closely related to learning dynamics, but is a measure for a specified learning algorithm rather than the optimization over all admissible programs defining epiplexity.
+\textbf{EDL} \citep{donoway2026}: floor is the population loss $L$ of the final $P_T$.
+\[
+\mathrm{EDL} = \E\sum_{i<M}\ell_i(z_i) - M\,L(P_T)
+\]
+\medskip
+EDL fixes the training algorithm; epiplexity minimises over $\mathcal P_T$.
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Experimental design: setups and the knobs attached to them}
-\footnotesize
-The dataset and the compute budget are fixed. What varies is the setup, its scale, and the manipulation applied inside it.
-\vspace{1mm}
+\begin{frame}{Experimental design: three setups, one manipulation each}
+Benchmark: elementary cellular automata (ECA), as in \citet{finzi2026}. The rule sets how much learnable structure the data holds.
 \begin{center}
+\small
+\setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.12}
 \begin{tabular}{lccc}
 \toprule
 & MLP & CNN & DiT \\
 \midrule
-Scale & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
+Parameters & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
 Prior & weakest & locality & generative, iterative \\
 Optimizer & SGD / Adam(W) & SGD / Adam(W) & Adam(W) \\
-Extra knob & input order & pixel permutation & sampler, \#steps \\
+Manipulation & example order & pixel permutation & sampler, \#steps \\
 \bottomrule
 \end{tabular}
 \end{center}
-The primary synthetic benchmark is elementary cellular automata, following the controlled setting of Finzi et al.~\citep{finzi2026}: their local transition rules give tasks with different degrees of learnable structure while keeping the data-generating mechanism explicit.
-Each setup carries its own manipulation, and the three are deliberately of a different kind:
 \begin{itemize}
-\item MLP: no built-in spatial prior, so the order in which inputs are presented is itself part of the observer;
-\item CNN: a fixed random permutation of pixels is applied to image data. Labels are unchanged, but the spatial arrangement the architecture exploits is destroyed;
-\item DiT: the sampler is part of the observer. Different schedules use different numbers of model evaluations and follow different trajectories through the learned score field.
+\item MLP: no spatial prior; example order is part of the observer.
+\item CNN: fixed pixel permutation; labels kept, locality removed.
+\item DiT: the sampler is part of the observer.
 \end{itemize}
+Within one comparison the task and $T$ are fixed.
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Validation and readout}
-\footnotesize
-For every task $d$, setup $a$, compute budget $T$ and seed $s$ we record the learning trajectory and derive
-\[
-S_{\mathrm{preq}},\qquad S_{\mathrm{req}},\qquad \mathrm{EDL}.
-\]
-Three checks are applied to the resulting table:
+\begin{frame}{Validation}
+For each task $d$, setup $a$, bound $T$ and seed $s$ we record the training run and compute $S_{\mathrm{preq}}$, $S_{\mathrm{req}}$ and EDL.
 \begin{itemize}
-\item \textbf{Agreement between estimators.} The orderings they assign to the same tasks are compared by Spearman correlation and Kendall's $\tau$, both within and across setups.
-\item \textbf{Setup dependence.} For each pair of setups we report
-\[
-\Delta_{ab}(d,T) = S(d,a,T) - S(d,b,T),
-\qquad a,b \in \{\text{MLP},\ \text{CNN},\ \text{DiT}\}.
-\]
-A large $\Delta$ with a stable task ordering means the estimator is partly re-measuring the setup rather than the data.
-\item \textbf{Seed variance.} Reported explicitly and compared against the spread across setups; final test loss and sample efficiency serve as external baselines.
+\item \textbf{Agreement:} Spearman and Kendall $\tau$ between task orderings, within and across setups.
+\item \textbf{Setup dependence:} $\Delta_{ab}(d,T) = S(d,a,T) - S(d,b,T)$.\
+Large $\Delta$ with a stable task order: the estimate partly measures the setup.
+\item \textbf{Seed variance}, compared with the spread across setups.
+\item \textbf{Baselines:} final test loss, sample efficiency.
 \end{itemize}
-The DiT setup is the sharpest case, because there the observer is not a single function but a compute schedule: we can ask whether this compute-bounded view separates sampling strategies from one another when final sample quality does not.
-\vspace{1mm}
-The deliverable is a map of where these estimators are setup-invariant and where they are not --- not a ranking of architectures.
+
+\medskip
+\textbf{Deliverable:} a map of where each estimator is setup-invariant.
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Literature}
+\begin{frame}[t]{Literature}
 \small
 \begin{thebibliography}{99}
 \bibitem[Finzi et al.(2026)]{finzi2026}
@@ -149,7 +155,5 @@ E.~Donoway, H.~Joren, F.~Roger, J.~Leike.
 \newblock \emph{Excess Description Length of Learning Generalizable Predictors}.
 \newblock arXiv:2601.04728, 2026.
 \end{thebibliography}
-\footnotesize
-The project studies computationally bounded structural information through a controlled change of observer architecture, estimator, and compute budget.
 \end{frame}
 \end{document}
