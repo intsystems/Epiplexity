@@ -56,24 +56,23 @@ a data part (unpredictable information), uncertainty over seeds, and dependence 
 \[
 H(X)=\E[-\log_2 p(X)].
 \]
-It is the average number of bits needed to encode a draw from a known distribution.
+Average bits needed to encode a draw from a known distribution.
 
 \medskip
-Uniform random bits have high entropy. A deterministic alternating string has low entropy.
+Random bits have high entropy; a fixed alternating string has none.
 \column{.48\linewidth}
 \textbf{Kolmogorov complexity: a recipe for one object}
 \[
-K(x)=\text{length of the shortest program that prints }x.
+K(x)=\min_{p:\,U(p)=x}|p|.
 \]
-The program runs on a fixed universal computer; changing that computer alters $K$ only by a constant.
+Here $U$ is a fixed universal computer. Changing $U$ alters $K$ only by a constant.
 
 \medskip
-An alternating string has a short recipe. A typical random string has no shorter recipe.
-It is a mathematical benchmark: $K(x)$ is not computable exactly for arbitrary $x$.
+An alternating string has a short recipe; a typical random string does not. Exact $K(x)$ is uncomputable in general.
 \end{columns}
 
 \medskip
-Both notions are useful, but neither says how much computation is available while finding or using the description.
+Neither notion bounds the computation used to find or apply a description.
 \end{frame}
 
 \begin{frame}{Why introduce a third quantity?}
@@ -126,7 +125,9 @@ unpredictable data using that model. Epiplexity is the first part; time-bounded 
 For supervised data, inputs are available to the decoder. With $X$ known and labels $Y$ to encode,
 the target is the conditional quantity
 \[
- S_T(Y\mid X)=K(P^*),\qquad
+ S_T(Y\mid X)=K(P^*),
+\]
+\[
  P^*\in\arg\min_{P\in\mathcal P_T}\left\{K(P)+\E[-\log P(Y\mid X)]\right\}.
 \]
 
@@ -189,7 +190,8 @@ the classifier extension is an experiment, not a theorem that it equals $S_T$.
 These baselines test whether the ranking is specific to time-bounded learning codes.
 
 \medskip
-\begin{tabular}{p{.25\linewidth}p{.64\linewidth}}
+\scriptsize
+\begin{tabular}{p{.22\linewidth}p{.69\linewidth}}
 \toprule
 Method & Quantity reported \\
 \midrule
@@ -197,7 +199,7 @@ Variational MDL & $\underbrace{\KL(q\Vert p)}_{\text{model part}}+
 \underbrace{\E_q[-\log p(D\mid w)]}_{\text{data part}}$; both in bits. \\
 Laplace evidence & log-evidence/Occam term around a fitted posterior; report its model part. \\
 EDL & $\E[K_{\rm raw}]-M L(P_{\rm final})$ for one fixed training algorithm \citep{donoway2026}. \\
-AIC/BIC/WAIC/WBIC & $-2\log L+2k$ / $-2\log L+k\log M$; WAIC/WBIC use posterior predictive or temperature corrections. \\
+AIC, BIC, WAIC, WBIC & AIC: $-2\log L+2k$; BIC: $-2\log L+k\log M$. WAIC/WBIC use predictive or temperature corrections. \\
 \bottomrule
 \end{tabular}
 
@@ -292,7 +294,7 @@ theoretical $S_T$.
 \begin{frame}{Project library: \texttt{epimeter}}
 \begin{center}
 \small
-\begin{tabular}{ll}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{.30\linewidth}>{\raggedright\arraybackslash}p{.63\linewidth}@{}}
 \toprule
 Package & Responsibility \\
 \midrule
@@ -300,7 +302,7 @@ Package & Responsibility \\
 \texttt{epimeter.models} & MLP, circular CNN, and a DiT adapter with a common interface \\
 \texttt{epimeter.codes} & prequential, requential, variational and Laplace codes \\
 \texttt{epimeter.criteria} & EDL, AIC/BIC/HQIC, WAIC/WBIC and matched baselines \\
-\texttt{epimeter.sweep} & FLOP accounting, checkpoints, lower convex hull and seed aggregation \\
+\texttt{epimeter.sweep} & FLOPs, checkpoints, lower hull and seed aggregation \\
 \texttt{epimeter.cli} & reproducible \texttt{train.py} and \texttt{test.py} entry points \\
 \bottomrule
 \end{tabular}
@@ -332,14 +334,15 @@ structure, and runs from a clean install of \texttt{epimeter}.
 \end{frame}
 
 \begin{frame}{Roles and milestones}
-\begin{tabular}{p{.19\linewidth}p{.55\linewidth}p{.16\linewidth}}
+\scriptsize
+\begin{tabular}{p{.18\linewidth}p{.52\linewidth}p{.18\linewidth}}
 \toprule
 Owner & Responsibility & BMM output \\
 \midrule
 Member 1 & prequential code, compute sweep and MLP/CNN ECA frontier & estimator + hull \\
 Member 2 & requential classifier code, noise/permutation tests and demo & estimator + Colab \\
 Member 3 & variational/Laplace codes, theory and manuscript integration & Bayesian baselines \\
-Member 4 & data generators, fast criteria, variance, CI and packaging & reproducible repo \\
+Member 4 & generators, criteria, uncertainty and packaging & reproducible repo \\
 \bottomrule
 \end{tabular}
 
