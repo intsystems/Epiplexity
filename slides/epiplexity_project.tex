@@ -11,7 +11,7 @@
 \setbeamertemplate{itemize subitem}{--}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage{amsmath,amssymb,mathtools,booktabs}
+\usepackage{amsmath,amssymb,mathtools,booktabs,array}
 \usepackage{microtype}
 \usepackage{natbib}
 \renewcommand{\bibsection}{}
@@ -78,17 +78,16 @@ Both notions are useful, but neither says how much computation is available whil
 
 \begin{frame}{Why introduce a third quantity?}
 \begin{columns}[T]
-\column{.56\linewidth}
-Consider two datasets with similar entropy. One contains reusable patterns; the other is a random-looking
-sequence. A powerful learner can discover the patterns, but a weak learner may not.
+\column{.38\linewidth}
+Similar entropy does not imply similar learnability.
 
 \medskip
 \begin{itemize}
-\item The classical quantities describe the data, not the learner's computational budget.
-\item We need to separate what the learner can predict from what remains unpredictable.
-\item Epiplexity makes the budget explicit: models must evaluate and sample within $T$ steps \citep{finzi2026}.
+\item One dataset contains reusable patterns.
+\item Another looks random to a limited learner.
+\item Epiplexity measures structure extracted within $T$ steps \citep{finzi2026}.
 \end{itemize}
-\column{.44\linewidth}
+\column{.60\linewidth}
 \centering
 \includegraphics[width=\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
 
@@ -105,9 +104,10 @@ programs that both evaluate and sample a distribution within time $T(n)$.
 For $P\in\mathcal P_T$, write $K(P)$ for its program length and
 $L_X(P)=\E[-\log P(X)]$. Define
 \[
- P^*\in\arg\min_{P\in\mathcal P_T}\{K(P)+L_X(P)\},
- \qquad
- S_T(X):=K(P^*),\quad H_T(X):=L_X(P^*).
+ P^*\in\arg\min_{P\in\mathcal P_T}\{K(P)+L_X(P)\}.
+\]
+\[
+ S_T(X):=K(P^*),\qquad H_T(X):=L_X(P^*).
 \]
 Then $\MDL_T(X)=S_T(X)+H_T(X)$ is the total two-part description length.
 
@@ -230,17 +230,20 @@ we test whether that ordering survives a different observer family \citep{finzi2
 
 \begin{frame}{Observers and fair comparisons}
 \begin{center}
-\small
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{lccc}
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{.18\linewidth}
+  >{\raggedright\arraybackslash}p{.21\linewidth}
+  >{\raggedright\arraybackslash}p{.31\linewidth}
+  >{\raggedright\arraybackslash}p{.25\linewidth}@{}}
 \toprule
  & MLP & Circular 1-D CNN & DiT reference \\
 \midrule
-Inductive bias & none & local, translation equivariant & attention, iterative denoising \\
-Output & $P(y\mid x)$ & $P(y\mid x)$ & conditional distribution / adapter \\
-Primary sweep & width $\times$ depth & channels $\times$ depth & size $\times$ sampler \\
-Manipulation & example order & input permutation & sampler and step count \\
+Inductive bias & none & local, translation equivariant & attention + denoising \\
+Output & conditional $P$ & conditional $P$ & conditional $P$ \\
+Primary sweep & width $\times$ depth & channels $\times$ depth & size $\times$ steps \\
+Manipulation & example order & input permutation & sampler + steps \\
 \bottomrule
 \end{tabular}
 \end{center}
