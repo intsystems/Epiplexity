@@ -1,4 +1,6 @@
-% Build (twice): pdflatex -jobname=Epiplexity_with_lightweight_learning_algorithms epiplexity_project.tex
+% Build from this directory:
+%   pdflatex -jobname=Epiplexity_with_lightweight_learning_algorithms epiplexity_project.tex
+% Run twice after any change to resolve the bibliography.
 \documentclass[aspectratio=43]{beamer}
 \usetheme{default}
 \usefonttheme{professionalfonts}
@@ -21,183 +23,351 @@
 \newcommand{\KL}{\mathrm{KL}}
 \newcommand{\MDL}{\mathrm{MDL}}
 \newcommand{\E}{\mathbb{E}}
-\title{Epiplexity with lightweight learning algorithms}
-\subtitle{Experimental design for MLP, CNN and DiT setups}
-\author{}
+\title{Measuring epiplexity beyond transformers}
+\subtitle{A fair, small-scale comparison of MLP, CNN and transformer observers}
+\author{BMM project: \texttt{epimeter}}
 \date{September 2026}
 \begin{document}
-% ------------------------------------------------------------
+
 \begin{frame}
 \titlepage
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Bounded observers}
-Shannon entropy and Kolmogorov complexity place no limit on the computation of the observer. Epiplexity measures information relative to a time bound \citep[Def.~7--8]{finzi2026}.
-\begin{definition}[$T$-time probabilistic model]
-Fix a prefix-free universal Turing machine $\mathcal U$ and a time bound $T:\mathbb N\to\mathbb N$. A program $P$ is a \emph{$T$-time probabilistic model} over $\{0,1\}^n$ if, within $T(n)$ steps of $\mathcal U$, it
+
+\begin{frame}{Project question and scope}
+\textbf{Question.} Does the amount of structure found in a dataset depend on the
+computational observer that measures it?
+
+\medskip
 \begin{itemize}
-\item outputs the probability $P(x)$ of any $x\in\{0,1\}^n$;
-\item outputs a sample $x\sim P$ from a string of random bits.
+\item Compare an MLP and a locality-aware 1-D CNN on elementary cellular automata (ECA).
+\item Keep a small DiT as a transformer reference; it is a baseline, not the main contribution.
+\item Validate two learning-based codes and Bayesian/information-criterion baselines.
 \end{itemize}
-$\mathcal P_T$ is the set of such programs; $|P|$ is the length of $P$ in bits.
-\end{definition}
-Logarithms are base 2.
+
+\medskip
+\textbf{Deliverable:} for each task and compute bound, report a model part (structure),
+a data part (unpredictable information), uncertainty over seeds, and dependence on the observer.
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Epiplexity and time-bounded entropy}
-\begin{definition}
-For a random variable $X$ on $\{0,1\}^n$, let
+
+\begin{frame}{Two classical ways to describe information}
+\begin{columns}[T]
+\column{.48\linewidth}
+\textbf{Shannon entropy: uncertainty before the sample}
 \[
-P^* = \arg\min_{P\in\mathcal P_T}\bigl\{|P| + \E[-\log P(X)]\bigr\},
+H(X)=\E[-\log_2 p(X)].
 \]
-with ties broken by the shortest program. Then
-\begin{align*}
-S_T(X) &:= |P^*| && \text{epiplexity: structure,}\\
-H_T(X) &:= \E[-\log P^*(X)] && \text{time-bounded entropy: randomness,}\\
-\MDL_T(X) &:= S_T(X) + H_T(X) && \text{total description length.}
-\end{align*}
-\end{definition}
-\begin{itemize}
-\item Uniform random bits: $S_T=O(1)$ and $H_T\ge n-O(1)$.
-\item $S_T$ depends on $T$ and on $\mathcal P_T$; it need not grow with $T$.
-\end{itemize}
+It is the average number of bits needed to encode a draw from a known distribution.
+
+\medskip
+Uniform random bits have high entropy. A deterministic alternating string has low entropy.
+\column{.48\linewidth}
+\textbf{Kolmogorov complexity: a recipe for one object}
+\[
+K(x)=\text{length of the shortest program that prints }x.
+\]
+The program runs on a fixed universal computer; changing that computer alters $K$ only by a constant.
+
+\medskip
+An alternating string has a short recipe. A typical random string has no shorter recipe.
+It is a mathematical benchmark: $K(x)$ is not computable exactly for arbitrary $x$.
+\end{columns}
+
+\medskip
+Both notions are useful, but neither says how much computation is available while finding or using the description.
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Random and structural information}
+
+\begin{frame}{Why introduce a third quantity?}
+\begin{columns}[T]
+\column{.56\linewidth}
+Consider two datasets with similar entropy. One contains reusable patterns; the other is a random-looking
+sequence. A powerful learner can discover the patterns, but a weak learner may not.
+
+\medskip
+\begin{itemize}
+\item The classical quantities describe the data, not the learner's computational budget.
+\item We need to separate what the learner can predict from what remains unpredictable.
+\item Epiplexity makes the budget explicit: models must evaluate and sample within $T$ steps \citep{finzi2026}.
+\end{itemize}
+\column{.44\linewidth}
 \centering
-\includegraphics[width=0.9\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
+\includegraphics[width=\linewidth,trim=56 267 65 16,clip]{epiplexity.jpeg}
+
+\vspace{1mm}
+\scriptsize A learner can turn computation into reusable structure.
+\end{columns}
+\end{frame}
+
+\begin{frame}{Definition: epiplexity}
+All logarithms below are base 2. Let $X\in\{0,1\}^n$ and let $\mathcal P_T$ be the prefix-free
+programs that both evaluate and sample a distribution within time $T(n)$.
 
 \medskip
-\raggedright\footnotesize
-\textbf{Left:} a network trained on three kinds of data. The final loss approximates $H_T$ (dashed); the area above it approximates $S_T$ (green).\\
-\textbf{Right:} computation can create both kinds of information; learned structure transfers out of distribution (OOD).\\
-Source: Fig.~1 of \citet{finzi2026}.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{From the definition to a measurement}
-A \emph{setup} $a$ fixes an architecture, an optimiser, a training schedule and, for a diffusion transformer (DiT), a sampler.
-\begin{itemize}
-\item Compute is in FLOPs. A network with $N$ parameters, trained on $D$ examples and evaluated on the $D_X$ examples of $X$, needs $6ND+2ND_X\le T$.
-\item $\mathcal P^a_T$ is the set of models that setup $a$ reaches within $T$.
-\item The code length $K(P)$ of a trained model $P$ replaces $|P|$.
-\end{itemize}
-\medskip
-The measured epiplexity is $S^a_T(X) := K(\hat P)$, where
+For $P\in\mathcal P_T$, write $K(P)$ for its program length and
+$L_X(P)=\E[-\log P(X)]$. Define
 \[
-\hat P = \arg\min_{P\in\mathcal P^a_T}\bigl\{K(P) + \E[-\log P(X)]\bigr\}.
+ P^*\in\arg\min_{P\in\mathcal P_T}\{K(P)+L_X(P)\},
+ \qquad
+ S_T(X):=K(P^*),\quad H_T(X):=L_X(P^*).
 \]
-We sweep $N$ and $D$. Each checkpoint gives the point $(\text{FLOPs},\ K + D_X\cdot\text{held-out loss})$; $S^a_T$ is the model part on the lower convex hull at $T$ \citep{finzi2026}.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Estimators I: prequential code and EDL}
-A training run sees examples $z_0,\dots,z_{M-1}$, sampled i.i.d. Model $P_i$ is trained on $z_0,\dots,z_{i-1}$; its loss is $\ell_i(z)=-\log P_i(z)$.
+Then $\MDL_T(X)=S_T(X)+H_T(X)$ is the total two-part description length.
 
 \medskip
-\textbf{Prequential code} \citep{finzi2026}: send $z_i$ in $\ell_i(z_i)$ bits, then train on it. The model part is the area of the loss curve above the final loss:
-\[
-K_{\mathrm{preq}} \approx \sum_{i<M}\bigl[\ell_i(z_i)-\ell_M(z_i)\bigr].
-\]
-\textbf{Excess description length} \citep{donoway2026}: the floor is the population loss $L(P)=\E_z[-\log P(z)]$ of the model $P_{\mathrm{fin}}$ at the end of training with compute $T$:
-\[
-\mathrm{EDL}_T = \E\sum_{i<M}\ell_i(z_i) - M\,L(P_{\mathrm{fin}}).
-\]
-The expectation is over the sample and its order. EDL is defined for one fixed training algorithm.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Estimator II: requential code}
-Requential coding transmits a student model \citep{qiu2026}.
-\begin{itemize}
-\item A teacher $P^{\mathrm t}_i$ trains on real data. A student $P^{\mathrm s}_i$ trains only on samples of the teacher.
-\item Encoder and decoder share the student initialisation, update rule and random seed.
-\item Relative entropy coding sends one sample of $P^{\mathrm t}_i$ to a decoder that knows $P^{\mathrm s}_i$ in about $\KL_i=\KL(P^{\mathrm t}_i\,\|\,P^{\mathrm s}_i)$ bits (Kullback--Leibler divergence).
-\end{itemize}
-Over student steps $i$ the code length is
-\[
-K_{\mathrm{req}} \le \sum_i\bigl[\KL_i + 2\log(1+\KL_i) + \kappa\bigr],\qquad \kappa<5.21.
-\]
-Both papers report $\sum_i\KL_i$. The code contains only the disagreement of teacher and student; the entropy of the data does not enter.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{What we test: the estimators, not the architectures}
-The measured value depends on the data $X$, the bound $T$ and the setup
-\[
-a \in \{\text{MLP},\ \text{CNN},\ \text{DiT}+\text{sampler}\}.
-\]
-Two sources of change have to be told apart:
-\begin{itemize}
-\item \emph{manipulations} inside a setup: example order, input permutation, sampler, bound $T$;
-\item the \emph{observer family}: hypothesis class and inductive bias.
-\end{itemize}
-The setup dependence is
-\[
-\Delta_{ab}(X,T) = S^a_T(X) - S^b_T(X).
-\]
-\textbf{Goal:} which part of $S^a_T(X)$ comes from $X$, which from $a$.
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Benchmark: elementary cellular automata (ECA)}
-\begin{itemize}
-\item A row of $n$ cells takes values in $\{0,1\}$. A rule $r\in\{0,\dots,255\}$ sets each cell from itself and its two neighbours; $F_r$ updates all cells at once.
-\item Task $d=(r,t)$: the input $x$ is uniform on $\{0,1\}^n$; the label is $y=F_r^t(x)$.
-\item The codes cover labels only. Every estimate is then a conditional epiplexity $S_T(Y\mid X)$: the definition with $-\log P(Y\mid X)$ in place of $-\log P(X)$.
-\end{itemize}
+Think of the code as: first send a short program describing a useful model, then send the remaining
+unpredictable data using that model. Epiplexity is the first part; time-bounded entropy is the second.
 
 \medskip
-\citet{finzi2026} report, for transformers on 64 cells and $t=48$:
-\begin{center}
-\begin{tabular}{lccc}
+\begin{itemize}
+\item $S_T$ is the model/structure part; $H_T$ is the residual/random part.
+\item Only $\MDL_T$ is guaranteed to be non-increasing as $T$ grows; $S_T$ need not be.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Our tasks are conditional}
+For supervised data, inputs are available to the decoder. With $X$ known and labels $Y$ to encode,
+the target is the conditional quantity
+\[
+ S_T(Y\mid X)=K(P^*),\qquad
+ P^*\in\arg\min_{P\in\mathcal P_T}\left\{K(P)+\E[-\log P(Y\mid X)]\right\}.
+\]
+
+\medskip
+For a classifier with $C$ classes, the per-example loss is
+\[
+ \ell_i(x,y)=-\log_2 P_i(y\mid x)\quad\text{bits per label}.
+\]
+The input tokens count toward compute, but not toward the reported label code length.
+
+\medskip
+\textbf{Important distinction.} The theoretical minimum ranges over all $T$-time programs.
+Our experiment restricts it to models reached by a stated architecture, optimiser and schedule;
+we therefore write $\widehat S^{\,a}_T$ and call it an estimator.
+\end{frame}
+
+\begin{frame}{Estimator 1: prequential area}
+Train $P_i$ on the first $i$ examples of an i.i.d. stream $(x_i,y_i)$.
+
+\medskip
+\textbf{Exact online code:}
+\[
+ K_{\rm raw}=\sum_{i=0}^{M-1}-\log_2 P_i(y_i\mid x_i).
+\]
+After learning, this still pays the data entropy. To isolate the model part, estimate a floor
+$\widehat L_{\rm floor}$ on independent held-out labels (or use the first-pass/EDL floor):
+\[
+ \widehat S_{\rm preq}=\max\!\left(0,\ K_{\rm raw}-M\widehat L_{\rm floor}\right).
+\]
+
+\medskip
+The subtraction is a structure proxy, not a universal code. We report $K_{\rm raw}$,
+$\widehat L_{\rm floor}$ and $\widehat S_{\rm preq}$ separately. A training-set floor is excluded:
+it turns memorised noise into false structure.
+\end{frame}
+
+\begin{frame}{Estimator 2: requential coding}
+The encoder has a teacher $P_i^{\rm t}$ trained on real labels; the decoder has a student
+$P_i^{\rm s}$ trained only on teacher samples. They share initialisation, update rule, seed and batch size.
+
+\medskip
+For a batch whose inputs $x_b$ are known, the exact categorical divergence is
+\[
+ \KL_i=\sum_b\sum_{c=1}^{C}P_i^{\rm t}(c\mid x_b)
+ \log_2\frac{P_i^{\rm t}(c\mid x_b)}{P_i^{\rm s}(c\mid x_b)}.
+\]
+Relative-entropy coding gives the expected bound
+\[
+ K_{\rm req}\le\sum_i\left[\KL_i+2\log_2(1+\KL_i)+\kappa\right],
+ \qquad \kappa<5.21.
+\]
+\citep{qiu2026}
+
+\medskip
+Report both $\sum_i\KL_i$ and the full bound. The per-message terms matter when batches are small;
+the classifier extension is an experiment, not a theorem that it equals $S_T$.
+\end{frame}
+
+\begin{frame}{Bayesian and classical baselines}
+These baselines test whether the ranking is specific to time-bounded learning codes.
+
+\medskip
+\begin{tabular}{p{.25\linewidth}p{.64\linewidth}}
 \toprule
-Rule & 54 & 15 & 30 \\
+Method & Quantity reported \\
 \midrule
-$S_T$, bits & $\approx5\times10^6$ & $\approx2\times10^5$ & $\approx0$ \\
+Variational MDL & $\underbrace{\KL(q\Vert p)}_{\text{model part}}+
+\underbrace{\E_q[-\log p(D\mid w)]}_{\text{data part}}$; both in bits. \\
+Laplace evidence & log-evidence/Occam term around a fitted posterior; report its model part. \\
+EDL & $\E[K_{\rm raw}]-M L(P_{\rm final})$ for one fixed training algorithm \citep{donoway2026}. \\
+AIC/BIC/WAIC/WBIC & $-2\log L+2k$ / $-2\log L+k\log M$; WAIC/WBIC use posterior predictive or temperature corrections. \\
 \bottomrule
 \end{tabular}
-\end{center}
-Rule 30 looks random to a bounded observer: its information is almost all $H_T$.
+
+\medskip
+All methods use the same task split, label units and held-out data. No raw code length is compared
+across methods without stating its floor and overhead.
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Setups and manipulations}
+
+\begin{frame}{Benchmark: ECA plus controlled data}
+\textbf{ECA.} A periodic row $x\in\{0,1\}^n$ is updated by a local rule $F_r$;
+$Y=F_r^t(X)$ with $X\sim\operatorname{Unif}(\{0,1\}^n)$. We measure $S_T(Y\mid X)$ in label bits.
+
+\medskip
+\begin{tabular}{p{.26\linewidth}p{.58\linewidth}}
+\toprule
+Control & What it tests \\
+\midrule
+Rules $15,30,54,110$ & contrasting learnability at fixed input size. \\
+Constant labels & zero structural difficulty. \\
+Shuffled or independent labels & entropy/noise floor; structure should be near zero. \\
+Symmetric label noise $\rho$ & $H(Y\mid X)=h(\rho)+\rho\log_2(C-1)$ per example. \\
+Fixed pixel/input permutation & preserves MLP distribution; disrupts CNN locality. \\
+\bottomrule
+\end{tabular}
+
+\medskip
+The published transformer result gives the reference ordering rule 54 $>$ rule 15 $>$ rule 30;
+we test whether that ordering survives a different observer family \citep{finzi2026}.
+\end{frame}
+
+\begin{frame}{Observers and fair comparisons}
 \begin{center}
 \small
 \setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.12}
+\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{lccc}
 \toprule
-& MLP & CNN & DiT \\
+ & MLP & Circular 1-D CNN & DiT reference \\
 \midrule
-Parameters $N$ & $10^3$--$10^6$ & $10^3$--$10^6$ & small $\rightarrow$ medium \\
-Prior & weakest & locality & generative, iterative \\
-Optimiser & SGD / Adam(W) & SGD / Adam(W) & Adam(W) \\
-Manipulation & example order & input permutation & sampler, \#steps \\
+Inductive bias & none & local, translation equivariant & attention, iterative denoising \\
+Output & $P(y\mid x)$ & $P(y\mid x)$ & conditional distribution / adapter \\
+Primary sweep & width $\times$ depth & channels $\times$ depth & size $\times$ sampler \\
+Manipulation & example order & input permutation & sampler and step count \\
 \bottomrule
 \end{tabular}
 \end{center}
-\begin{itemize}
-\item \emph{Example order:} the order of $z_0,\dots,z_{M-1}$. An MLP has no spatial prior.
-\item \emph{Input permutation:} one fixed permutation of cells or pixels. Labels are unchanged; locality is removed.
-\item \emph{Sampler:} the denoising schedule of the DiT; \#steps is the number of network evaluations per sample.
-\end{itemize}
-Within one comparison the task and $T$ are fixed.
+
+\medskip
+Within a comparison we fix the dataset, split, optimiser family, evaluation set, and compute bound.
+The CNN uses circular padding for ECA; otherwise locality would be confounded with boundary effects.
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Validation}
-For each task $d$, setup $a$, bound $T$ and seed $s$ we compute $S_{\mathrm{preq}}$ and $S_{\mathrm{req}}$ (the value $S^a_T$ with $K=K_{\mathrm{preq}}$ or $K_{\mathrm{req}}$) and $\mathrm{EDL}_T$.
+
+\begin{frame}{Protocol: from runs to $\widehat S_T$}
+\begin{enumerate}
+\item Fix tasks, label units and a held-out set. Use at least five independent seeds.
+\item Sweep widths/depths, data passes and learning rates for every observer. Log parameter count
+      $N$, examples $D$, evaluation examples $D_X$, losses and wall-clock/FLOPs.
+\item Use the dense-model accounting $\widetilde C=6ND+2ND_X$ only as an approximation; for CNN/DiT
+      also record measured FLOPs. Keep points with $C_a\le T$.
+\item Plot $(C_a,\ K+M\widehat L_{\rm floor})$ and take the lower convex hull. The model coordinate
+      of the hull at $T$ is $\widehat S^{\,a}_T$.
+\item Repeat at several $T$ values; never report one compute point as a curve.
+\end{enumerate}
+
+\medskip
+\textbf{Accounting rule:} all losses are converted from natural logs to bits by dividing by $\ln 2$;
+all totals state whether they count labels only or inputs plus labels.
+\end{frame}
+
+\begin{frame}{Validation and planned claims}
+For task $d$, observer $a$, bound $T$ and seed $s$, store
+\[
+ (\widehat S^{\,a}_{T,s},\ \widehat H^{\,a}_{T,s},\ C_{a,s},\ \text{loss curve}).
+\]
 \begin{itemize}
-\item \textbf{Agreement:} Spearman $\rho$ and Kendall $\tau$ between the task orderings of two estimators, within and across setups.
-\item \textbf{Setup dependence:} $\Delta_{ab}$ per task, averaged over seeds. A large $\Delta$ with a stable task order means the estimate partly measures the setup.
-\item \textbf{Seed variance:} the standard deviation over $s$, compared with the spread across setups.
-\item \textbf{Baselines:} final test loss, sample efficiency.
+\item \textbf{Agreement:} Spearman $\rho$ and Kendall $\tau$ between estimator rankings.
+\item \textbf{Observer effect:} $\Delta_{ab}(d,T)=\operatorname{median}_s
+      (\widehat S^a_{T,s}-\widehat S^b_{T,s})$ with a paired bootstrap interval.
+\item \textbf{Seed stability:} standard deviation and probability that a ranking is preserved.
+\item \textbf{Controls:} random/constant labels, input permutation, and known-noise entropy floor.
 \end{itemize}
 
 \medskip
-\textbf{Deliverable:} a map of where each estimator is setup-invariant.
+\textbf{Claim we can support:} an estimator is observer-stable on a testbed if task orderings agree
+within uncertainty across setups. We will not call a setup-dependent proxy the architecture-independent
+theoretical $S_T$.
 \end{frame}
-% ------------------------------------------------------------
-\begin{frame}[t]{Literature}
+
+\begin{frame}{Project library: \texttt{epimeter}}
+\begin{center}
+\small
+\begin{tabular}{ll}
+\toprule
+Package & Responsibility \\
+\midrule
+\texttt{epimeter.data} & ECA, noise/permutation, Markov and teacher--student generators \\
+\texttt{epimeter.models} & MLP, circular CNN, and a DiT adapter with a common interface \\
+\texttt{epimeter.codes} & prequential, requential, variational and Laplace codes \\
+\texttt{epimeter.criteria} & EDL, AIC/BIC/HQIC, WAIC/WBIC and matched baselines \\
+\texttt{epimeter.sweep} & FLOP accounting, checkpoints, lower convex hull and seed aggregation \\
+\texttt{epimeter.cli} & reproducible \texttt{train.py} and \texttt{test.py} entry points \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Stack:} Python, PyTorch, NumPy/SciPy, pytest, Docker and one Colab GPU.
+Every run is one JSON line; figures are regenerated only from saved runs.
+\end{frame}
+
+\begin{frame}[fragile]{Demo: one common result object}
+\small
+\begin{verbatim}
+from epimeter.data import ECA
+from epimeter.models import MLP
+from epimeter.codes import prequential
+
+task = ECA(rule=54, cells=64, steps=8, seed=0)
+model = MLP(width=128, depth=2, out_bits=64)
+run = prequential(model, task, floor="heldout", seed=0).fit()
+
+print(run.S_bits, run.H_bits, run.flops)
+\end{verbatim}
+
+\medskip
+The same interface returns the requential bound, Bayesian model/data parts, and metadata.
+The Colab demo uses MNIST with $\rho\in\{0,0.2,0.5,1\}$, plots raw code versus held-out-floor
+structure, and runs from a clean install of \texttt{epimeter}.
+\end{frame}
+
+\begin{frame}{Roles and milestones}
+\begin{tabular}{p{.19\linewidth}p{.55\linewidth}p{.16\linewidth}}
+\toprule
+Owner & Responsibility & BMM output \\
+\midrule
+Member 1 & prequential code, compute sweep and MLP/CNN ECA frontier & estimator + hull \\
+Member 2 & requential classifier code, noise/permutation tests and demo & estimator + Colab \\
+Member 3 & variational/Laplace codes, theory and manuscript integration & Bayesian baselines \\
+Member 4 & data generators, fast criteria, variance, CI and packaging & reproducible repo \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\textbf{Milestones:} prototype and tests (TM2) $\rightarrow$ estimators and first ECA curves
+$\rightarrow$ five-seed experiments and frozen figures $\rightarrow$ final demo, documentation and review (TM3/TM4).
+\end{frame}
+
+\begin{frame}{Expected outcome and limitations}
+\textbf{Outcome.} A reproducible map of when prequential, requential and Bayesian model parts agree,
+and when an apparent epiplexity difference is caused by locality, optimisation, sampler or compute.
+
+\medskip
+\begin{itemize}
+\item A positive result: MLP/CNN task rankings reproduce the ECA reference with non-overlapping
+      uncertainty intervals.
+\item A negative result is informative: it identifies observer dependence or an estimator failure.
+\item Small datasets, finite sweeps and imperfect loss floors limit absolute values; we therefore
+      emphasise matched controls, curves in $T$, units and uncertainty.
+\end{itemize}
+
+\medskip
+\centering
+\textbf{Main question for discussion:} which observer properties should count as part of the measured object?
+\end{frame}
+
+\begin{frame}[t]{References}
 \small
 \begin{thebibliography}{99}
 \bibitem[Finzi et al.(2026)]{finzi2026}
-M.~Finzi, S.~Qiu, Y.~Jiang, P.~Izmailov, J.~Zico Kolter, A.~G.~Wilson.
+M.~Finzi, S.~Qiu, Y.~Jiang, P.~Izmailov, J.~Z.~Kolter, A.~G.~Wilson.
 \newblock \emph{From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence}.
 \newblock arXiv:2601.03220, 2026.
 \bibitem[Qiu et al.(2026)]{qiu2026}
