@@ -1,3 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment / tooling
+.venv/
+
+# Runtime artifacts (never commit weights/results)
+results/
+logs/
+checkpoints/
+
+# LaTeX (notes/ and paper/)
 *.aux
 *.log
 *.bbl
@@ -7,3 +26,8 @@
 *.synctex.gz
 *.fdb_latexmk
 *.fls
+*.nav
+*.snm
+*.vrb
+
+.DS_Store
