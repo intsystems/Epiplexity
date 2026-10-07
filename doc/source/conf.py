@@ -15,14 +15,14 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../../src/'))
 
-from mylib import __version__
+from epimeter import __version__
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'MyLib'
-copyright = '2022, Andrey Grabovoy'
-author = 'Andrey Grabovoy'
+project = 'epimeter'
+copyright = '2026, Epiplexity team'
+author = 'Epiplexity team'
 
 version = __version__
 master_doc = 'index'
@@ -39,8 +39,6 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.autosummary', 'sphinx.ext.mathjax',
               'sphinx_rtd_theme']
 
-autodoc_mock_imports = ["numpy", "scipy", "sklearn"]
-
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -53,9 +51,9 @@ html_extra_path = []
 
 html_context = {
     "display_github": True, # Integrate GitHub
-    "github_user": "Intelligent-Systems-Phystech", # Username
-    "github_repo": "ProjectTemplate", # Repo name
-    "github_version": "master", # Version
+    "github_user": "intsystems", # Username
+    "github_repo": "Epiplexity", # Repo name
+    "github_version": "main", # Version
     "conf_py_path": "/doc/source/", # Path in the checkout to the docs root
 }
 

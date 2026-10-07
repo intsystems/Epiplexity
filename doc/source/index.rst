@@ -1,21 +1,20 @@
-.. MixtureLib documentation master file, created by
-   sphinx-quickstart on Fri Mar 20 22:58:28 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. epimeter documentation master file
 
-Welcome to Mixture Lib!
-=======================
+Welcome to epimeter!
+====================
+
+Estimating epiplexity with small models on small datasets on a single GPU.
 
 .. toctree::
    :maxdepth: 1
    :caption: Main Info:
-   
+
    info.rst
 
 .. toctree::
    :maxdepth: 1
    :caption: Get Started:
-   
+
    installation.rst
 
 
@@ -23,7 +22,7 @@ Welcome to Mixture Lib!
    :maxdepth: 1
    :caption: Packages:
 
-   train.rst
+   api.rst
 
 
 Indices and tables
