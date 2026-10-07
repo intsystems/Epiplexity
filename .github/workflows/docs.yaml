@@ -1,41 +1,44 @@
 name: docs
 
+# Docs are built on every push and pull request to main. Deploy to GitHub Pages
+# runs only on a manual start (Actions → docs → Run workflow): autodeploy is off
+# at the request of the BMM course.
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        python-version: [3.7]
-        
-    steps:
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.7
 
+    steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v2
-        
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
       - name: Install Dependencies
         run: |
-          pip install -U sphinx
-          pip install -U sphinx-rtd-theme
-          
+          pip install -U torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -U -e . sphinx sphinx-rtd-theme
+
       - name: Build Docs
         run: |
           sphinx-build -b html ./doc/source/ public
           touch public/.nojekyll
-          
+
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
+        if: github.event_name == 'workflow_dispatch'
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: public
+          branch: gh-pages
+          folder: public
