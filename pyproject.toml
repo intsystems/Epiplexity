@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epimeter"
+description = "Estimating epiplexity with small models on small datasets on a single GPU."
+readme = "README.rst"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Epiplexity team" }]
+dynamic = ["version"]
+
+# Runtime deps kept minimal on purpose: heavy/optional stacks (e.g. pyro for the
+# Bayesian codes) are added as [project.optional-dependencies] on later stages.
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+bayesian = ["pyro-ppl>=1.9"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "matplotlib>=3.7",
+    "jupyter>=1.0",
+]
+
+[project.urls]
+Repository = "https://github.com/intsystems/Epiplexity"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "epimeter._version.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]
