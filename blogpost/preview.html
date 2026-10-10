@@ -3,8 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        
-        
+
+
         <title>From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data? (local preview)</title>
 
         <meta name="description" content="Spherical loss functions and their performance compared to log-softmax in multi-class classification tasks.">
@@ -46,13 +46,13 @@
   "inLanguage": "en",
   "image": "https://intsystems.github.io/images/blog/spherical-loss-family.png",
   "datePublished": "2025-12-11T00:00:00+00:00",
-  
+
   "author": [
-    
+
     { "@type": "Person", "name": "Fedor Sobolevsky" }
-    
+
   ],
-  
+
   "publisher": {
     "@type": "EducationalOrganization",
     "name": "Intelligent Systems Department, MIPT",
@@ -64,13 +64,13 @@
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    
+
     { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://intsystems.github.io/" },
-    
+
     { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://intsystems.github.io/materials/blog/" },
-    
+
     { "@type": "ListItem", "position": 3, "name": "An Exploration of Softmax Alternatives Belonging to the Spherical Loss Family", "item": "https://intsystems.github.io/materials/blog/spherical-loss-family/" }
-    
+
   ]
 }
 </script>
@@ -85,7 +85,7 @@
         <!-- Icons (former Font Awesome / academicons) are CSS masks in _sass/_icons.scss -->
         <link rel="preload" href="https://intsystems.github.io/fonts/open-sans-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
         <link rel="preload" href="https://intsystems.github.io/fonts/open-sans-cyrillic-normal.woff2" as="font" type="font/woff2" crossorigin>
-        
+
         <!-- MathJax: loaded only on pages with math (blog posts, or math: true in front matter) -->
         <script>
             window.MathJax = {
@@ -114,7 +114,7 @@
             async
             src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
         ></script>
-        
+
         <!-- Navbar collapse/dropdown behavior (replaces Bootstrap + jQuery) -->
         <script src="https://intsystems.github.io/javascript/navbar.js" defer></script>
         <!-- favicon -->
@@ -135,19 +135,22 @@
         <!-- local -->
         <script src="https://intsystems.github.io/javascript/prevent_flash.js"></script>
         <script src="https://intsystems.github.io/javascript/fade_in.js"></script>
-        
+
         <script src="https://intsystems.github.io/javascript/copy_email.js"></script>
         <script src="https://intsystems.github.io/javascript/table_scroll.js"></script>
-        
+
         <!-- Mermaid: loaded only where diagrams can appear (blog/news, or mermaid: true) -->
         <script type="module" src="https://intsystems.github.io/javascript/mermaid_init.js"></script>
-        
+
         <link rel="stylesheet" href="https://intsystems.github.io/style.css">
-    <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
+
+
+
+<style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
         <a class="skip-link" href="#main">Skip to content</a>
-        
+
         <div class="navbar-page">
             <nav class="navbar navbar-default navbar-fixed-top" aria-label="Main navigation">
     <div class="navbar-container">
@@ -176,38 +179,38 @@
         <!-- Main menu (collapsible on mobile) -->
         <div class="collapse navbar-collapse" id="navbar">
             <ul class="nav navbar-nav navbar-center">
-                
-                
+
+
                 <li>
                     <a class="name" href="https://intsystems.github.io/">Home</a>
                 </li>
-                
-                
-                
+
+
+
                 <li>
                     <a class="name" href="https://intsystems.github.io/education">Schedule</a>
                 </li>
-                
-                
-                
+
+
+
                 <li>
                     <a class="name" href="https://intsystems.github.io/people">People</a>
                 </li>
-                
-                
-                
+
+
+
                 <li>
                     <a class="name" href="https://intsystems.github.io/course">Courses</a>
                 </li>
-                
-                
-                
+
+
+
                 <li>
                     <a class="name" href="https://intsystems.github.io/admission">Admission</a>
                 </li>
-                
-                
-                
+
+
+
                 <li class="nav-item dropdown">
                     <a
                         class="nav-link dropdown-toggle"
@@ -220,59 +223,59 @@
                     >Materials</a>
                     <div class="dropdown-menu" aria-labelledby="materials">
                         <ul class="nav navbar-nav">
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/nir">Research Reports</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/thesis">Theses</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/blog">Blog</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/seminars">Meetings</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/scholarship">Scholarships</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/paper_guidelines">Paper Guidelines</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/templates">Templates</a>
                             </li>
-                            
+
                             <li>
                                 <a class="name" href="https://intsystems.github.io/materials/conferences">Conferences & Journals</a>
                             </li>
-                            
+
                         </ul>
                     </div>
                 </li>
-                
-                
+
+
             </ul>
             <!-- Language switcher + social links for mobile (inside collapse menu) -->
             <div class="navbar-social-mobile">
                 <div class="navbar-social-mobile-item">
                     <span class="navbar-social-mobile-label">Language:</span>
                     <div class="navbar-social-mobile-links">
-                        
-                        
+
+
                         <a href="https://intsystems.github.io/materials/blog/spherical-loss-family/" class="active">EN</a>
-                        
-                        
-                        
+
+
+
                         <a href="https://intsystems.github.io/ru/materials/blog/spherical-loss-family/" class="">RU</a>
-                        
-                        
+
+
                     </div>
                 </div>
                 <div class="navbar-social-mobile-item">
@@ -297,19 +300,19 @@
                 >EN</a>
                 <div class="dropdown-menu" aria-labelledby="languageDropdown">
                     <ul class="nav navbar-nav">
-                        
+
                         <li>
-                            
+
                             <a class="name" href="https://intsystems.github.io/materials/blog/spherical-loss-family/">EN</a>
-                            
+
                         </li>
-                        
+
                         <li>
-                            
+
                             <a class="name" href="https://intsystems.github.io/ru/materials/blog/spherical-loss-family/">RU</a>
-                            
+
                         </li>
-                        
+
                     </ul>
                 </div>
             </div>
@@ -333,7 +336,7 @@
 <p><em>The <a href="https://arxiv.org/abs/2601.03220">paper</a> and the <a href="https://github.com/shikaiqiu/epiplexity">code</a> are public.</em></p>
 <h2 id="motivation">Motivation</h2>
 <p>Start with a practical question: why can pretraining on two datasets of the same size produce very different results on new tasks? The paper motivates this question with the broad transfer observed after text pretraining. A useful measure should distinguish unpredictable details from reusable predictive structure.</p>
-<p>AlphaZero makes the question vivid. It never saw a human game of chess: it received the rules and a reinforcement-learning algorithm, then trained by self-play. The rules, algorithm and random seed are a short description of the run, yet the trained network contains useful chess strategies. What did the computation make accessible to the learner?</p>
+<p>AlphaZero makes the question vivid. It never saw a human game of chess: it received the rules and a reinforcement-learning procedure, then generated training positions by self-play. These ingredients are compact to specify, yet the trained network contains task-relevant strategies. The example asks which regularities the computation made available to the learner.</p>
 <p>The same gap appears in practical questions of machine learning:</p>
 <ul>
 <li>Pretraining on text improves robotics control, theorem proving and time-series forecasting. Pretraining on as many bytes of images gives a much narrower gain. Which property of text is responsible?</li>
@@ -343,9 +346,9 @@
 <p><a href="#ref-finzi2026">Finzi et al. (2026)</a> argue that these questions need a measure of information relative to an observer with bounded computation. We first make the classical notions explicit, then add the computational restriction, define the new quantity, and finally discuss estimators and experiments.</p>
 <hr />
 <h2 id="two-classical-notions-of-information">Two classical notions of information</h2>
-<p>Two classical measures answer different questions. For a random variable \(X\) with probability mass function \(p\), the <strong>Shannon entropy</strong> is the expected number of bits needed to encode a draw from the distribution:</p>
-\[H(X)=\mathbb{E}\bigl[-\log p(X)\bigr].\]
-<p>Logarithms in this post are base 2. The <strong>Kolmogorov complexity</strong> \(K(x)\) of one realised string \(x\) is the length of the shortest self-delimiting program that makes a fixed universal machine \(\mathcal{U}\) output \(x\) (<a href="#ref-livitanyi2008">Li and Vitányi, 2008</a>).</p>
+<p>Two classical measures answer different questions. For a discrete random variable \(X\) with probability distribution \(p(x)=\Pr[X=x]\), the <strong>Shannon entropy</strong> is</p>
+\[H(X)=\mathbb{E}\bigl[-\log_2 p(X)\bigr].\]
+<p>For every binary prefix code, the expected code length is at least \(H(X)\); block codes can approach this lower bound per sample. The <strong>Kolmogorov complexity</strong> \(K(x)\) of one realised string \(x\) is the length of the shortest self-delimiting program that makes a fixed prefix-free universal Turing machine \(\mathcal{U}\) output \(x\) and halt (<a href="#ref-livitanyi2008">Li and Vitányi, 2008</a>).</p>
 <p>The distinction is easiest with two examples:</p>
 <ul>
 <li><strong>Random bits:</strong> high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short program to discover.</li>
@@ -356,7 +359,7 @@
 <p><strong>Keep this distinction in mind:</strong> Shannon entropy describes uncertainty in a distribution; Kolmogorov complexity measures the shortest program for one string. Epiplexity measures the program part of the best two-part code available under a computation bound.</p>
 </blockquote>
 <p><img src="images/fig1.png" alt="Random and structural information in three kinds of data, and information created by computation" /></p>
-<p><em>Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final loss, the random part; the green area above it is the structural part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.</em></p>
+<p><em>Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final-loss baseline; the green area is the cumulative excess loss above that baseline, used as a proxy for the model part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.</em></p>
 <p>The paper turns this missing resource into three <strong>paradoxes</strong>: statements that hold for an unlimited observer but can fail for a computationally bounded learner.</p>
 <table>
 <thead>
@@ -375,7 +378,7 @@
 <td style="text-align: left;">Language models compress English text better left to right than in reverse (<a href="#ref-papadopoulos2024">Papadopoulos et al., 2024</a>)</td>
 </tr>
 <tr>
-<td style="text-align: left;">Likelihood training reproduces the generator: \(\arg\min_P\mathbb{E}_{X\sim Q}[-\log P(X)]=Q\)</td>
+<td style="text-align: left;">Likelihood training reproduces the generator: \(\arg\min_P\mathbb{E}_{X\sim Q}[-\log_2 P(X)]=Q\)</td>
 <td style="text-align: left;">In the Game of Life a local rule generates gliders; a predictor with bounded time learns gliders as objects</td>
 </tr>
 </tbody>
@@ -396,23 +399,29 @@
 </blockquote>
 <p>Roman \(\mathrm{P}\) denotes the program and italic \(P\) the distribution it computes. A function \(T\) is time-constructible if \(\mathcal{U}\) can compute \(T(n)\) from \(n\) within \(O(T(n))\) steps. The definition requires both modes because a useful model of data does both: it scores an observation and generates new ones. A transformer with a softmax output does both within a fixed number of forward passes, as do most sequence models.</p>
 <h3 id="epiplexity-and-time-bounded-entropy">Epiplexity and time-bounded entropy</h3>
-<p>A program in \(\mathcal{P}_T\) gives a <strong>two-part code</strong> for data. First transmit the program describing a useful model; then transmit the residual data using that model. Arithmetic coding of \(x\) with a model \(P\) takes about \(-\log P(x)\) bits. The best program under the time bound splits the information in \(X\) into a model part and a residual part.</p>
+<p>A program in \(\mathcal{P}_T\) gives a <strong>two-part code</strong> for data. First transmit the program describing a useful model; then transmit the residual data using that model. Arithmetic coding of \(x\) with a model \(P\) has ideal length \(-\log_2 P(x)\) bits, up to coding overhead. The best program under the time bound splits the information in \(X\) into a model part and a residual part.</p>
 <blockquote>
 <p><strong>Definition 2</strong> (epiplexity and time-bounded entropy; Def. 8 of the paper). For a random variable \(X\) on \(\{0,1\}^n\), let</p>
-\[\mathrm{P}^\star=\arg\min_{\mathrm{P}\in\mathcal{P}_T}\Bigl\{\lvert\mathrm{P}\rvert+\mathbb{E}\bigl[-\log P(X)\bigr]\Bigr\},\]
-<p>with ties broken by the shortest program. The <strong>epiplexity</strong> of \(X\) is \(S_T(X):=\lvert\mathrm{P}^\star\rvert\). The <strong>time-bounded entropy</strong> of \(X\) is \(H_T(X):=\mathbb{E}\bigl[-\log P^\star(X)\bigr]\).</p>
+\[\mathrm{P}^\star=\arg\min_{\mathrm{P}\in\mathcal{P}_T}\Bigl\{\lvert\mathrm{P}\rvert+\mathbb{E}\bigl[-\log_2 P(X)\bigr]\Bigr\},\]
+<p>with ties broken by the shortest program. The <strong>epiplexity</strong> of \(X\) is \(S_T(X):=\lvert\mathrm{P}^\star\rvert\). The <strong>time-bounded entropy</strong> of \(X\) is \(H_T(X):=\mathbb{E}\bigl[-\log_2 P^\star(X)\bigr]\).</p>
 </blockquote>
 <p>The sum \(\mathrm{MDL}_T(X):=S_T(X)+H_T(X)\) is the minimum description length (MDL) of \(X\) under the bound. Epiplexity is the model part of this code: the bits of structure the observer has to keep in order to predict well. Time-bounded entropy is the data part: the bits that remain unpredictable even for the best model the observer can run.</p>
 <p>In plain language: <strong>how much of the data can this learner explain with a reusable model, and how much still looks random to it?</strong> The answer changes when the allowed compute or the model family changes.</p>
 <ul>
-<li><strong>Uniform random bits.</strong> Let \(U_n\) be uniform on \(\{0,1\}^n\) and \(T(n)\ge c_1\). A program of constant length \(c_2\) assigns \(P(x)=2^{-n}\) to every string; the two-part code with this program has length \(n+c_2\). Hence \(\mathrm{MDL}_T(U_n)\le n+c_2\). By the Gibbs inequality, no model codes \(U_n\) in fewer than \(n\) bits on average: \(H_T(U_n)\ge H(U_n)=n\). Therefore \(S_T(U_n)\le c_2\): random bits contain maximal random information and no structure.</li>
+<li><strong>Uniform random bits.</strong> Let \(U_n\) be uniform on \(\{0,1\}^n\), with the length \(n\) available to the model and \(T(n)\) sufficient to evaluate and sample the uniform distribution. A program of constant length \(c_2\) assigns \(P(x)=2^{-n}\) to every string; the two-part code with this program has length \(n+c_2\). Hence \(\mathrm{MDL}_T(U_n)\le n+c_2\). By the Gibbs inequality, no model codes \(U_n\) in fewer than \(n\) bits on average: \(H_T(U_n)\ge H(U_n)=n\). Therefore \(S_T(U_n)\le c_2\): the model part is constant, while the residual code grows linearly with \(n\).</li>
 <li><strong>Two alternating strings.</strong> Let \(X\) be \(0101\ldots\) or \(1010\ldots\), each with probability \(\tfrac12\). Take \(T(n)=\Theta(n)\). A program of constant size assigns probability \(\tfrac12\) to \(0101\ldots\) and to \(1010\ldots\) within linear time. Both \(S_T(X)\) and \(H_T(X)\) are \(O(1)\).</li>
 </ul>
 <p>Only the total is monotone in the bound: \(\mathrm{MDL}_{T'}(X)\le\mathrm{MDL}_T(X)\) whenever \(T'\ge T\). Epiplexity itself can rise or fall with \(T\); an experiment below shows it falling.</p>
 <p>For pairs of random variables the authors define conditional versions.</p>
 <blockquote>
-<p><strong>Definition 3</strong> (conditional quantities; Def. 11 of the paper). For random variables \(X\) and \(Y\), the conditional epiplexity \(S_T(Y\mid X)\) and time-bounded entropy \(H_T(Y\mid X)\) follow from Definition 2 with \(-\log P(Y\mid X)\) in place of \(-\log P(X)\) and the expectation over \((X,Y)\). The program receives \(x\) as input and must be a \(T\)-time model of \(Y\) for every fixed \(x\).</p>
+<p><strong>Definition 3</strong> (conditional quantities; Def. 11 of the paper). Let \(\mathcal P_T^X\) be the programs that receive \(x\) as input and evaluate and sample a distribution of \(Y\) within the time bound for every fixed \(x\). Choose</p>
+\[\mathrm P^\star_{Y\mid X}\in\arg\min_{\mathrm P\in\mathcal P_T^X}
+\left\{|\mathrm P|+\mathbb E_{X,Y}[-\log_2 P(Y\mid X)]\right\},\]
+<p>again selecting the shortest program among minimisers. Define</p>
+\[S_T(Y\mid X):=|\mathrm P^\star_{Y\mid X}|,\qquad
+H_T(Y\mid X):=\mathbb E_{X,Y}[-\log_2 P^\star(Y\mid X)].\]
 </blockquote>
+<p>For image classification, \(X\) is the image and \(Y\) its label. The decoder already has the images: the model code describes the classifier, and the data code encodes labels using its conditional probabilities. Images are not transmitted in this conditional code; the expectation still averages over the joint distribution of images and labels.</p>
 <p>Unlike Shannon entropy, these quantities obey no chain rule: in general \(H_T(Y,X)-H_T(X)\ne H_T(Y\mid X)\). Paradox 2 rests on this asymmetry.</p>
 <hr />
 <h2 id="the-theory">The theory</h2>
@@ -439,8 +448,8 @@
 <p>A <strong>one-way permutation</strong> is a bijection \(f\) of \(\{0,1\}^n\), computable in polynomial time, that efficient algorithms cannot invert. Formally, every probabilistic polynomial-time algorithm \(A\) with polynomial advice has \(\Pr_{x\sim U_n}[A(f(x))=x]&lt;n^{-m}\) for every \(m&gt;0\) and all large \(n\).</p>
 <blockquote>
 <p><strong>Theorem 3</strong> (Thm. 13 of the paper). Let \(f\) be a one-way permutation, \(X=U_n\) and \(Y=f(X)\). Then</p>
-\[H_{\mathrm{Poly}}(X\mid Y)+H_{\mathrm{Poly}}(Y)&gt;H_{\mathrm{Poly}}(Y\mid X)+H_{\mathrm{Poly}}(X)+\omega(\log n).\]
-<p>Here \(\omega(\log n)\) is a term \(g(n)\) with \(g(n)/\log n\to\infty\).</p>
+\[H_{\mathrm{Poly}}(X\mid Y)+H_{\mathrm{Poly}}(Y)&gt;H_{\mathrm{Poly}}(Y\mid X)+H_{\mathrm{Poly}}(X)+\omega(\log_2 n).\]
+<p>Here \(\omega(\log_2 n)\) is a term \(g(n)\) with \(g(n)/\log_2 n\to\infty\).</p>
 </blockquote>
 <p>For Shannon entropy both sides equal \(H(X,Y)\). Under a time bound, predicting \(X\) first and then \(Y=f(X)\) is easy: the observer computes \(f\). Predicting \(Y\) first and then \(X\) requires inverting \(f\), which no polynomial-time observer can do. The same data leave more random information in one order than in the other.</p>
 <p>The authors check this with an <strong>elementary cellular automaton</strong> (ECA): a row of binary cells updated in parallel by a rule \(r\in\{0,\dots,255\}\) that sets each cell from the three cells centred on it. Rule 30 is believed to be one-way (<a href="#ref-wolfram2002">Wolfram, 2002</a>). The map \(f\) is 8 updates of rule 30 on \(n\) cells with periodic boundary. In Figure 2, a transformer trained in the forward order reaches the Shannon entropy of the data; in the reverse order a gap to the Shannon entropy persists.</p>
@@ -448,7 +457,7 @@
 <p><em>Figure 2. Total time-bounded entropy of an input–output pair of rule 30 against the number of cells \(n\), predicted in the forward order (input first) and in the reverse order (output first). Grey region: the Shannon entropy. Source: Fig. 4a of the paper.</em></p>
 <h3 id="how-much-structure-can-exist">How much structure can exist?</h3>
 <blockquote>
-<p><strong>Theorem 4</strong> (Thm. 10 of the paper). If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables \(X_n\) on \(\{0,1\}^n\) have \(S_{\mathrm{Poly}}(X_n)=\Omega(\log n)\).</p>
+<p><strong>Theorem 4</strong> (Thm. 10 of the paper). If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables \(X_n\) on \(\{0,1\}^n\) have \(S_{\mathrm{Poly}}(X_n)=\Omega(\log_2 n)\).</p>
 </blockquote>
 <p>Epiplexity can therefore grow without bound. The authors acknowledge the limits of this result. Logarithmic growth is far below the power laws suggested by natural data; the proof is non-constructive. No theorem gives an explicit distribution with large epiplexity.</p>
 <hr />
@@ -460,21 +469,21 @@
 <p>Writing out the weights of a trained network overestimates the information in them, particularly for large networks trained on little data. The authors encode the <em>training process</em> instead, with the prequential or the requential code.</p>
 <h3 id="prequential-coding-the-area-under-the-loss-curve">Prequential coding: the area under the loss curve</h3>
 <p>Let \(Z_0,\dots,Z_{M-1}\) be i.i.d. training examples. Let \(P_i\) be the network after training on the first \(i\) examples, so \(P_0\) is the initial model. Sender and receiver agree on the initialisation, update rule and random seed. The <strong>prequential code</strong> (<a href="#ref-dawid1984">Dawid, 1984</a>) encodes \(Z_i\) before updating the model on it. Its ideal contribution is</p>
-\[\ell_i=-\log P_i(Z_i)=\log\frac{1}{P_i(Z_i)}\]
+\[\ell_i=-\log_2 P_i(Z_i)=\log_2\frac{1}{P_i(Z_i)}\]
 <p>bits. Actual arithmetic coding adds rounding and termination overhead. After decoding, both sides make the same update and obtain \(P_{i+1}\). The chain rule explains why the contributions add: the adaptive predictions define a joint probability</p>
 \[\begin{aligned}
 Q_{\mathrm{preq}}(Z_{0:M-1})
 &amp;=\prod_{i=0}^{M-1}P_i(Z_i),\\
 L_{\mathrm{preq}}
-&amp;=-\log Q_{\mathrm{preq}}(Z_{0:M-1})
+&amp;=-\log_2 Q_{\mathrm{preq}}(Z_{0:M-1})
 =\sum_{i=0}^{M-1}\ell_i.
 \end{aligned}\]
 <p>Each \(P_i\) depends on the already decoded prefix. Consequently this code reconstructs both the data and the final network \(P_M\). It is a data code, rather than a separate code for the model alone.</p>
-<p>To isolate a model part, the paper uses the symmetry-of-information intuition: a description of the data and their deterministically trained model can be organised as “model, then data given model”. This suggests subtracting \(L_{\mathrm{final}}=\sum_i-\log P_M(Z_i)\) from the sequential data code (<a href="#ref-zhang2020">Zhang et al., 2020</a>). Write the result as an estimate, \(\widehat K_{\mathrm{preq}}\):</p>
+<p>To isolate a model part, the paper uses the symmetry-of-information intuition: a description of the data and their deterministically trained model can be organised as “model, then data given model”. This suggests subtracting \(L_{\mathrm{final}}=\sum_i-\log_2 P_M(Z_i)\) from the sequential data code (<a href="#ref-zhang2020">Zhang et al., 2020</a>). Write the result as an estimate, \(\widehat K_{\mathrm{preq}}\):</p>
 \[\begin{aligned}
 \widehat K_{\mathrm{preq}}
 &amp;:=L_{\mathrm{preq}}-L_{\mathrm{final}}\\
-&amp;=\sum_{i=0}^{M-1}\Bigl[-\log P_i(Z_i)+\log P_M(Z_i)\Bigr].
+&amp;=\sum_{i=0}^{M-1}\Bigl[-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)\Bigr].
 \end{aligned}\]
 <p>This is the discrete area between the predictive-loss curve and the final-model loss. For a plot sampled every \(\Delta_i\) tokens, multiply each loss gap in bits per token by \(\Delta_i\); the sum then has units of bits. A flat curve gives little area, rapid improvement gives a small area, and sustained improvement gives a larger area. With finite samples these are tendencies, rather than exact statements about every dataset.</p>
 <p><img src="images/requential-illustration.png" alt="Training loss curves of teacher and student with the prequential and requential areas" /></p>
@@ -482,28 +491,28 @@ L_{\mathrm{preq}}
 <p>The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In practice, a held-out final loss provides a safer baseline for the area estimate. Subtracting two code lengths does not construct a model-only code or certify its decoding time: \(\widehat K_{\mathrm{preq}}\) is a heuristic proxy, and finite-sample estimates need not even be positive.</p>
 <h3 id="requential-coding-transmitting-only-the-disagreement">Requential coding: transmitting only the disagreement</h3>
 <p>The <strong>requential code</strong> (<a href="#ref-qiu2026">Qiu et al., 2026</a>) is an explicit code with a known decoding time. A <em>teacher</em> network \(P^{\mathrm{t}}_i\) trains on the real data. A <em>student</em> network \(P^{\mathrm{s}}_i\) trains only on samples \(\widetilde{Z}_i\sim P^{\mathrm{t}}_i\) generated by the teacher. Sender and receiver hold identical copies of the student. At step \(i\), both sides use shared randomness to generate proposals \(Y_i^{(0)},Y_i^{(1)},\ldots\sim P_i^{\mathrm{s}}\). The sender uses the teacher distribution to select an index; the decoder regenerates that proposal from the index and the shared randomness. The selection rule makes the accepted sample have distribution \(P_i^{\mathrm{t}}\), while the message records only the index. The expected log-likelihood ratio of a teacher sample is</p>
-\[\mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
+\[\mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log_2\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
 =\mathrm{KL}_i,
 \qquad \mathrm{KL}_i:=\mathrm{KL}\bigl(P_i^{\mathrm{t}}\,\Vert\,P_i^{\mathrm{s}}\bigr).\]
 <p>The identity has a useful interpretation:</p>
 \[\mathrm{KL}_i
-=\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm s}(Z)]
--\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm t}(Z)].\]
+=\mathbb{E}_{P_i^{\mathrm t}}[-\log_2 P_i^{\mathrm s}(Z)]
+-\mathbb{E}_{P_i^{\mathrm t}}[-\log_2 P_i^{\mathrm t}(Z)].\]
 <p>Thus KL is the student’s excess loss on <strong>teacher samples</strong>, above the teacher’s own entropy. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.</p>
 <p>Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using the decoder’s shared proposals. Ordinary lossless coding communicates a particular sample already fixed by the sender. The shared randomness and the freedom to select the sample are what make the KL rate possible.</p>
-<p>The relative entropy coding theorem bounds the expected logarithm of the selected proposal index by \(\mathrm{KL}_i+O(1)\) (<a href="#ref-theis2022">Theis and Ahmed, 2022</a>). To send the index without requiring the decoder to know KL, <a href="https://arxiv.org/html/2607.11883v1#A1.SS1">Qiu et al. (2026), Appendix A.1</a> use a universal prefix-free integer code. Its length is bounded by \(\log J+2\log(1+\log J)+1\) for index \(J\ge1\). Taking expectations and applying Jensen’s inequality gives</p>
+<p>The relative entropy coding theorem bounds the expected logarithm of the selected proposal index by \(\mathrm{KL}_i+O(1)\) (<a href="#ref-theis2022">Theis and Ahmed, 2022</a>). To send the index without requiring the decoder to know KL, <a href="https://arxiv.org/html/2607.11883v1#A1.SS1">Qiu et al. (2026), Appendix A.1</a> use a universal prefix-free integer code. Its length is bounded by \(\log_2 J+2\log_2(1+\log_2 J)+1\) for index \(J\ge1\). Taking expectations and applying Jensen’s inequality gives</p>
 \[\mathbb{E}[\ell_i\mid\mathcal F_i]
-\le \mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa,
+\le \mathrm{KL}_i+2\log_2(1+\mathrm{KL}_i)+\kappa,
 \qquad \kappa&lt;5.21.\]
 <p>Here \(\mathcal F_i\) is the training history before message \(i\), and \(\ell_i\) is the number of bits sent. Once the sample is decoded, both copies of the student apply the same update. The final student is therefore specified by the shared setup and all the messages. Adding their lengths and taking expectations yields</p>
 \[\begin{aligned}
 \mathbb{E}[L_{\mathrm{req}}]
 &amp;\le C_{\mathrm{setup}}
 +\mathbb{E}\!\left[\sum_{i=0}^{M-1}
-\bigl(\mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa\bigr)\right].
+\bigl(\mathrm{KL}_i+2\log_2(1+\mathrm{KL}_i)+\kappa\bigr)\right].
 \end{aligned}\]
-<p>The setup includes the initialisation, update rule, shared seed and schedule. A realised trajectory may exceed its conditional-mean bound; this is an expected-length result. The epiplexity paper originally used \(\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4\) as its per-message expression; the later requential paper explicitly accounts for coding the index without transmitting KL. We use that later bound here.</p>
-<p>When \(2\log(1+\mathrm{KL}_i)+\kappa\) is small relative to \(\mathrm{KL}_i\), the leading estimate is \(\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i\). At small block sizes the overhead can dominate, so the full bound should also be reported.</p>
+<p>The setup includes the initialisation, update rule, shared seed and schedule. A realised trajectory may exceed its conditional-mean bound; this is an expected-length result. The epiplexity paper originally used \(\mathrm{KL}_i+\log_2(1+\mathrm{KL}_i)+4\) as its per-message expression; the later requential paper explicitly accounts for coding the index without transmitting KL. We use that later bound here.</p>
+<p>When \(2\log_2(1+\mathrm{KL}_i)+\kappa\) is small relative to \(\mathrm{KL}_i\), the leading estimate is \(\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i\). At small block sizes the overhead can dominate, so the full bound should also be reported.</p>
 <p>The decoder reconstructs the <strong>student</strong>, without the teacher or the original training data. Its main cost is replaying student training, approximately \(6ND\) FLOPs under the paper’s dense-model accounting, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.</p>
 <table>
 <thead>
@@ -533,7 +542,7 @@ L_{\mathrm{preq}}
 </table>
 <p>Across the datasets of the paper the prequential and requential estimates correlate, most closely among datasets of the same kind. The authors recommend the prequential estimate for ranking datasets, especially when the loss curve of an expensive training run already exists. For accurate values they recommend the requential estimate.</p>
 <h3 id="the-compute-optimal-two-part-code">The compute-optimal two-part code</h3>
-<p>Either code gives the model part \(\lvert\mathrm{P}\rvert\) of a trained network. The authors estimate the data part \(\mathbb{E}[\log 1/P(X)]\) as the validation loss times \(\mathcal{D}\). They sweep the model size \(N\) (width and depth) and the training length \(D\). Training uses a constant learning rate with an exponential moving average of the weights: each run then gives a whole curve of code length against compute. The lower envelope over all runs estimates \(\mathrm{MDL}_T\) at every bound \(T\). Figure 4 shows the construction. At a given \(T\) the model part of the envelope estimates \(S_T(X)\); the data part estimates \(H_T(X)\). The empirical envelope is jagged; the authors smooth it with a lower convex hull.</p>
+<p>The prequential procedure estimates a model part; the requential procedure constructs a student-model code. The authors estimate the data part \(\mathbb{E}[\log_2 1/P(X)]\) as the validation loss times \(\mathcal{D}\). They sweep the model size \(N\) (width and depth) and the training length \(D\). Training uses a constant learning rate with an exponential moving average of the weights: each run then gives a whole curve of code length against compute. The lower envelope over all runs estimates \(\mathrm{MDL}_T\) at every bound \(T\). Figure 4 shows the construction. At a given \(T\) the model part of the envelope estimates \(S_T(X)\); the data part estimates \(H_T(X)\). The empirical envelope is jagged; the authors smooth it with a lower convex hull.</p>
 <p><img src="images/pareto-frontier.png" alt="Two-part code length against compute for runs of different sizes, with the lower envelope" /></p>
 <p><em>Figure 4. Schematic of the estimation. Each thin curve is a training run, coloured by the number of parameters \(N\); the dots form the lower envelope. At each compute bound, dark green is \(S_T\) and light green is \(H_T\). Source: Fig. 2b of the paper.</em></p>
 <p>Under standard scaling assumptions the authors derive typical trends. Epiplexity grows with the compute bound \(T\) while time-bounded entropy falls. With unlimited compute, epiplexity grows with the size \(\mathcal{D}\) of the dataset while time-bounded entropy per token falls. These trends are typical only; the emergence experiment below is a counterexample.</p>
@@ -635,26 +644,26 @@ L_{\mathrm{preq}}
 </tbody>
 </table>
 <p><em>Our estimates from Figure 9.</em></p>
-<p>Epiplexity is a small fraction of the total information in every dataset. Text contains the most structure. CIFAR-5M contains the most information and the least structure. Over 99% of that information is random: it specifies the exact values of pixels. This ordering matches the observation from the motivation: text pretraining transfers broadly, image pretraining much less.</p>
+<p>In these experiments, estimated epiplexity is a small fraction of the total two-part code length. At the stated token count and compute budget, text has the largest estimated model part; CIFAR-5M has the largest total code length and the smallest model part. More than 99% of its code length is assigned to residual pixel values. This ranking is relative to the paper’s tokenisation, model family and compute budget; it is not an intrinsic ordering of text and images.</p>
 <p>Published scaling laws give the same ordering: extrapolated to \(T=10^{25}\) FLOPs and \(10^{12}\) tokens, they place language first and pixel images last. Epiplexity also agrees with a result on data selection. Adaptive data optimisation (<a href="#ref-jiang2025">Jiang et al., 2025</a>) reweights data domains during pretraining; the data it selects have higher prequential epiplexity than natural sampling, along with better downstream accuracy.</p>
 <hr />
 <h2 id="limitations">Limitations</h2>
 <p>The authors acknowledge these limits:</p>
 <ul>
 <li>Epiplexity measures the amount of structure, independent of the usefulness of that structure for a given task. The authors stress that it is no guarantee of OOD performance.</li>
-<li>The theorems are asymptotic and rest on cryptographic assumptions. The largest proved epiplexity grows as \(\Omega(\log n)\).</li>
+<li>The theorems are asymptotic and rest on cryptographic assumptions. The largest proved epiplexity grows as \(\Omega(\log_2 n)\).</li>
 <li>The prequential estimate is a heuristic; the requential estimate is 2 to 10 times slower.</li>
 </ul>
 <p>The released code and the experiments show further limits:</p>
 <ul>
-<li>Every estimate depends on the architecture, the optimiser, the bound \(T\) and the size \(\mathcal{D}\) of the test set. Comparisons are meaningful only with all four held fixed.</li>
+<li>Every estimate depends on the architecture, optimiser, bound \(T\) and evaluation size \(\mathcal D\). Comparing datasets requires a common observer and protocol. Comparing architectures treats the observer as the experimental variable and requires common data, evaluation criteria and compute accounting.</li>
 <li>Every sweep in the released code uses one random seed; no figure shows error bars.</li>
 <li>All experiments use transformers.</li>
 </ul>
 <hr />
 <h2 id="conclusion">Conclusion</h2>
-<p>Epiplexity separates the information in data into the part a bounded observer can learn and the part that stays random. With a time bound, the paradoxes disappear. Deterministic computation creates information (Theorem 2 and the cellular automata). The order of prediction changes it (Theorem 3 and chess). A predictor can require more structure than the generating process exposes (the hidden bits). In practice the authors estimate it as the area under a loss curve above the final loss, or as the summed divergence between a teacher and a student, at the compute-optimal model. On natural data it ranks text above images; pretraining on text also transfers more broadly.</p>
-<p>For machine learning the main message concerns data. Loss measures how random the data look to a model; epiplexity measures how much structure the model has to acquire to explain the rest. Two datasets with the same final loss can support different amounts of transferable structure. When the aim is transfer to new tasks, epiplexity is a candidate criterion for selecting and generating data.</p>
+<p>Epiplexity is the model part of the shortest two-part description available under a time bound. This restriction permits phenomena excluded by the corresponding unbounded statements: deterministic computation can increase the time-bounded quantities, prediction order can matter, and prediction can require a more elaborate model than generation. The empirical procedures approximate the model part using cumulative excess prequential loss or a requential student code, then select a model by total description length. The ranking of datasets is therefore relative to the specified observer and budget.</p>
+<p>For machine learning, predictive loss and estimated model description length provide complementary measurements. Two datasets with the same final loss can yield different model parts. Epiplexity is therefore a candidate criterion for data selection, while transfer performance must still be evaluated on the intended downstream tasks.</p>
 <hr />
 <h2 id="references">References</h2>
 <ol type="1">
@@ -689,8 +698,8 @@ L_{\mathrm{preq}}
     </div>
 </footer>
 
-        
-        
+
+
 
 
 

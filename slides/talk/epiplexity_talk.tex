@@ -2,7 +2,7 @@
 % figs/ holds the vector figures of the arXiv v2 source (byte-identical to v1), unchanged; slides crop them with `trim'.
 % Statement and figure numbers ("Thm. 9 of the paper", "Fig. 3") follow v2; v2 kept the v1 numbering.
 % Build (twice): pdflatex epiplexity_talk.tex
-% Audience questions include their answers on slide 17.
+% Audience questions include their answers after the main discussion.
 \documentclass[aspectratio=169,notheorems]{beamer}
 \usetheme{default}
 \usefonttheme{professionalfonts}
@@ -56,137 +56,194 @@ Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J.~Zico Kolter, Andrew Gor
 Speaker: Alex Kravatsky
 \end{frame}
 % ============================================================ MOTIVATION
-\begin{frame}{Which pretraining data support transfer?}
+\begin{frame}{Motivation: evaluating pretraining data}
 \begin{columns}[T]
-\begin{column}{0.54\textwidth}
-\begin{itemize}\setlength{\itemsep}{0.7em}
-\item Models pretrained on text can improve performance on robotics, theorem proving and forecasting tasks.
-\item Dataset size alone does not measure reusable predictive structure.
-\item \textbf{Question:} how much structure can a particular learner extract, given a fixed compute budget?
-\end{itemize}
+\begin{column}{0.50\textwidth}
+\small
+Pretraining is intended to improve performance on tasks beyond the training distribution.
+
+\medskip
+Dataset size and final predictive loss do not quantify how much reusable structure a model acquires.
+
+\begin{block}{The paper's question}
+How can we measure structural information in data relative to a fixed computational budget?
+\end{block}
 \end{column}
-\begin{column}{0.42\textwidth}
+\begin{column}{0.46\textwidth}
 \centering
 \includegraphics[width=\linewidth,trim=0 0 660 40,clip]{figs/fig1.pdf}
 \raggedright
-\src{Training loss on three kinds of data. Dashed line: final loss; green area: loss removed by learning. Source: Fig.~1 of \citet{finzi2026}.}
+\src{Schematic loss curves. Dashed line: final loss. Green area: cumulative excess loss above that baseline, used as a structural-information proxy. Fig.~1, \citet{finzi2026}.}
 \end{column}
 \end{columns}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Two classical lenses on information}
+\begin{frame}{Shannon entropy and Kolmogorov complexity}
 \small
-$H(X)=\E[-\log_2 p(X)]$ is the Shannon entropy of a random variable $X$ with probability mass function $p$.
-It is the ideal average code length in bits for a draw from the distribution.
+\begin{columns}[T]
+\begin{column}{0.47\textwidth}
+\textbf{Shannon entropy: a distribution}
+\[
+\begin{aligned}
+p(x)&=\Pr(X=x),\\[-0.15em]
+H(X)&=\E[-\log_2 p(X)].
+\end{aligned}
+\]
+For discrete $X$, entropy is a lower bound on the expected length of any binary prefix code.
 
 \medskip
-$K(x)$ is the Kolmogorov complexity of one realised string $x$: the length of the shortest self-delimiting program that outputs
-$x$ on a fixed universal computer $\mathcal U$ \citep{livitanyi2008}.
+Uniform $n$-bit strings: $H(X)=n$.
 
 \smallskip
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.49\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}@{}}
-\toprule
-\textbf{Shannon entropy} & \textbf{Kolmogorov complexity} \\
-\midrule
-Uncertainty in a distribution. Uniform $n$-bit strings have entropy $n$; a distribution concentrated on one string has entropy zero. &
-Program length for one string. A repeating pattern can be specified by its rule and length; a typical random string needs about $n$ bits. \\
-\bottomrule
-\end{tabular}
-\smallskip
-Kolmogorov complexity is a mathematical benchmark; no algorithm computes $K(x)$ exactly for every string.
-\normalsize
-\take{Entropy measures average uncertainty; Kolmogorov complexity measures program length.}
+A fixed string: $H(X)=0$.
+\end{column}
+\begin{column}{0.47\textwidth}
+\textbf{Kolmogorov complexity: a string}
+\[
+K(x)=\min_{p:\,\mathcal U(p)=x}|p|.
+\]
+The shortest self-delimiting program that outputs $x$ and halts on a fixed prefix-free universal Turing machine $\mathcal U$.
+
+\medskip
+An alternating string is specified by its rule and length. Most uniform $n$-bit strings require at least $n-O(1)$ program bits.
+\end{column}
+\end{columns}
+\medskip
+\src{$K(x)$ is uncomputable in general. Definition~1 and Section~2.1, \citet{finzi2026}.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
-\begin{frame}{The missing ingredient: computational access}
+\begin{frame}{Why introduce a computation bound?}
 \small
-Neither classical quantity asks whether a learner can find or use the relevant pattern within a finite budget.
-For example, a deterministic training run can produce a network with useful circuits, although the rules and
-random seed form a short description of the run.
+\begin{block}{A short program can require a long computation}
+A simulator and its initial conditions can specify a complex trajectory. Reproducing it may still require more computation than the observer can perform.
+\end{block}
 
 \medskip
-\begin{itemize}\setlength{\itemsep}{0.35em}
-\item A weak observer may treat a structured process as random.
-\item A stronger observer may discover a compact predictive model.
-\item We therefore define information relative to the models available within time $T$.
-\end{itemize}
+Neither Shannon entropy nor unbounded Kolmogorov complexity restricts the runtime of a predictive model.
 
-\take{Epiplexity measures model bits in the best description available under a time bound.}
+\medskip
+The paper therefore restricts the admissible models to programs that evaluate probabilities and generate samples within time $T$.
+
+\medskip
+Within this class, it separates the description of the model from the description of data given the model.
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{A model with bounded computation}
+\begin{frame}{Time-bounded probabilistic models}
 \small
-Fix a prefix-free universal computer $\mathcal U$ and a time bound $T(n)$. The observer may use only
-programs $\prog\in\PT$ that, within $T(n)$ steps, can both
-\begin{itemize}\setlength{\itemsep}{0.25em}
-\item evaluate a probability $P(x)$ for an observation $x$;
-\item sample a new $x$ from the same distribution $P$.
+Fix a prefix-free universal Turing machine $\mathcal U$ and a time bound $T(n)$.
+A program $\prog\in\PT$ implements a distribution $P$ on $\{0,1\}^n$ with two modes:
+\begin{itemize}\setlength{\itemsep}{0.7em}
+\item \textbf{Evaluation:} given $x$, return $P(x)$ within $T(n)$ steps.
+\item \textbf{Sampling:} given independent random bits, generate $x\sim P$ within $T(n)$ steps.
 \end{itemize}
 
 \medskip
-The program length $|\prog|$ is measured in bits. This is the idealised definition; in experiments we
-replace $\PT$ by models reachable with a stated architecture, optimiser and FLOP budget.
+The returned probabilities must sum to one and agree with the sampling distribution.
+Roman $\prog$ denotes the program; italic $P$ denotes its distribution. $|\prog|$ is the program length in bits.
 
 \medskip
-\take{The formal bound limits evaluation and sampling; empirical estimates also account for training.}
+\src{Definition~7, \citet{finzi2026}. The formal bound is non-decreasing and time-constructible.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity: the two-part description}
-\begin{definition}[Def.~8 of the paper]\label{def:epi}
-For a random variable $X$ on $\{0,1\}^n$, let
-\vspace{-0.4em}
-\[
-\prog^\star=\argmin_{\prog\in\PT}\bigl\{|\prog|+\E[-\log P(X)]\bigr\},
-\]
-with ties broken by the shortest program. Logarithms are base~$2$. The \emph{epiplexity} of $X$ is $S_T(X):=|\prog^\star|$. The \emph{time-bounded entropy} of $X$ is $H_T(X):=\E[-\log P^\star(X)]$.
-\end{definition}
 \small
-$S_T$ is the model part: bits needed to describe the selected predictor. $H_T$ is the data part: expected bits
-needed to encode data with that predictor. Their sum $\MDL_T(X):=S_T(X)+H_T(X)$ is the minimum two-part
-description length under the bound.
+For $X$ on $\{0,1\}^n$, choose an admissible model minimizing the expected two-part description length:
+\[
+\prog^\star\in\argmin_{\prog\in\PT}
+\bigl\{|\prog|+\E[-\log_2 P(X)]\bigr\}.
+\]
+Among minimizers, select one with the shortest program.
 
-\smallskip
-\centering
-\begin{tabular}{@{}llcc@{}}
-\toprule
-Random variable $X$ & Time bound & $S_T(X)$ & $H_T(X)$ \\
-\midrule
-$U_n$, uniform on $\{0,1\}^n$ & enough for uniform model & $O(1)$ & $n+O(1)$ \\
-$0101\ldots$ or $1010\ldots$, probability $\tfrac12$ each & $T(n)=\Theta(n)$ & $O(1)$ & $O(1)$ \\
-\bottomrule
-\end{tabular}
+\begin{columns}[T]
+\begin{column}{0.47\textwidth}
+\begin{block}{Epiplexity: model description}
+\[
+S_T(X):=|\prog^\star|.
+\]
+Length of the selected model's program.
+\end{block}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{block}{Time-bounded entropy: data description}
+\[
+H_T(X):=\E[-\log_2 P^\star(X)].
+\]
+Expected data-code length using that model.
+\end{block}
+\end{column}
+\end{columns}
+\[
+\MDL_T(X)=S_T(X)+H_T(X).
+\]
+\src{Definition~8, \citet{finzi2026}.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Examples: random bits and a repeated pattern}
+\small
+Assume the length $n$ is specified and the time bound permits the models below.
 
-\smallskip
-\raggedright
-For $U_n$, $S_T=O(1)$ and $H_T\ge n$. For the alternating pair, both parts are $O(1)$.
+\begin{block}{Uniform bits: $X\sim U_n$}
+A constant-length program assigns $P(x)=2^{-n}$ to every $n$-bit string.
+\[
+\MDL_T(X)\le n+c,\qquad H_T(X)\ge H(X)=n.
+\]
+Consequently $S_T(X)\le c$: a large data-code length can accompany a small model description.
+\end{block}
+
+\begin{block}{Alternating strings: two equally likely outcomes}
+$X=0101\ldots$ or $1010\ldots$, each with probability $\tfrac12$.
+A constant-length program generates either pattern in linear time.
+\[
+S_T(X)=O(1),\qquad H_T(X)=O(1).
+\]
+Here both the model description and the residual data code are small.
+\end{block}
 \end{frame}
 % ============================================================ THEORY
-\begin{frame}{Two consequences of the time bound}
+\begin{frame}{Cryptographic consequences of the time bound}
 \small
 \begin{itemize}\setlength{\itemsep}{0.65em}
-\item \textbf{Pseudorandom generator.} A short seed is stretched into $n$ bits. Shannon entropy sees
-      only the seed; a polynomial-time observer sees almost $n$ unpredictable bits and almost no structure.
-\item \textbf{One-way map.} For $Y=f(X)$, predicting $Y$ from $X$ is easy, while recovering $X$ from
-      $Y$ is hard. A bounded observer assigns different information to the two orders.
+\item \textbf{Pseudorandom generator.} $G$ maps $k$ random seed bits to $n>k$ output bits.
+      $H(G(U_k))\le k$, yet for a secure generator $H_{\Poly}(G(U_k))\approx n$ and $S_{\Poly}(G(U_k))=O(1)$.
+\item \textbf{One-way function.} Computing $f(x)$ is efficient; finding a preimage of $f(x)$ is hard for efficient algorithms.
+      For a one-way \emph{permutation}, the paper proves that the two factorization orders have different time-bounded entropies.
 \end{itemize}
 
 \medskip
-For supervised learning we use the conditional version $S_T(Y\mid X)$: the input $X$ is available,
-and only the labels $Y$ are encoded.
+\src{Theorems~9 and~13, \citet{finzi2026}. These results assume security against non-uniform probabilistic polynomial-time algorithms.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Conditional epiplexity: predicting labels from inputs}
+\small
+For supervised data $(X,Y)$, the decoder already has the input $X$.
+The model evaluates $P(y\mid x)$ and samples $Y\mid X=x$ within the bound for each fixed $x$.
+
+\[
+\prog^\star_{Y\mid X}\in\argmin_{\prog\in\mathcal P_T^X}
+\left\{|\prog|+\E_{X,Y}[-\log_2 P(Y\mid X)]\right\}.
+\]
+\[
+S_T(Y\mid X):=|\prog^\star_{Y\mid X}|,\qquad
+H_T(Y\mid X):=\E_{X,Y}[-\log_2 P^\star(Y\mid X)].
+\]
+\begin{block}{Example: image classification}
+The model code describes the classifier. The data code describes the labels given the images; it does not encode the images.
+\end{block}
+These quantities are defined directly. In general,
+$H_T(Y\mid X)\ne H_T(X,Y)-H_T(X)$.
 
 \medskip
-\take{The same data can look random or structured depending on what the observer can compute.}
+\src{Definition~11, \citet{finzi2026}.}
 \end{frame}
 % ============================================================ METHOD
-\begin{frame}{From programs to networks: the compute-optimal code}
+\begin{frame}{From programs to neural-network estimates}
 \begin{columns}[T]
 \begin{column}{0.58\textwidth}
 \small
 \begin{itemize}\setlength{\itemsep}{0.25em}
 \item Search over all programs is intractable, so fix an architecture and optimiser.
 \item Approximate dense-model accounting: $6ND+2N\Dt\le T$, where $N$ counts parameters and $D,\Dt$ count training and evaluation tokens.
-\item Each run gives a model code plus a validation-data code. Select the shortest admissible two-part code; a lower hull smooths the empirical curve.
+\item Each run gives a model-part estimate plus a validation-data code. Select the shortest admissible two-part code; a lower hull smooths the empirical curve.
 \item Report its model and data parts as estimates $\widehat S_T$ and $\widehat H_T$.
 \end{itemize}
 \end{column}
@@ -200,16 +257,16 @@ and only the labels $Y$ are encoded.
 \end{columns}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Estimation I: the prequential code}
+\begin{frame}{Estimating the model part: prequential coding}
 \begin{columns}[T]
 \begin{column}{0.64\textwidth}
 \small
 \begin{itemize}\setlength{\itemsep}{0.2em}
 \item $P_i$ has seen $Z_0,\ldots,Z_{i-1}$; $P_0$ is the initial model.
-\item Encode $Z_i$ at ideal cost $-\log_2P_i(Z_i)$, then update. The decoder repeats the update.
+\item Encode $Z_i$ using its predicted probability, then update. The decoder repeats the update.
 \item The sequential data code sums these costs. Subtract the final-model data code to estimate the model part:
 \[
-\widehat K_{\mathrm{preq}}=\sum_{i<M}\bigl[-\log P_i(Z_i)+\log P_M(Z_i)\bigr].
+\widehat K_{\mathrm{preq}}=\sum_{i<M}\bigl[-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)\bigr].
 \]
 \end{itemize}
 \end{column}
@@ -218,26 +275,26 @@ and only the labels $Y$ are encoded.
 \centering
 \includegraphics[width=\linewidth]{figs/requential_illustration.pdf}
 \raggedright
-\src{Dark curve: $\log 1/P_i(Z_i)$ of the network trained on real data (superscript t). Blue area: $|\prog_{\mathrm{preq}}|$. Red curve and red area: the requential code of the next slide. Source: Fig.~2a of \citet{finzi2026}.}
+\src{Blue area: prequential model-part estimate. Red area: teacher--student loss gap used to visualise requential coding. Fig.~2a, \citet{finzi2026}.}
 \end{column}
 \end{columns}
 \small
 \begin{itemize}\setlength{\itemsep}{0.2em}
-\item The loss is measured before fitting each example, so it is a test-like loss.
+\item On an i.i.d.\ stream, the pre-update loss estimates loss on a fresh sample.
 \item The area is a heuristic model-part estimate; subtraction alone gives no model-only code.
 \end{itemize}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Estimation II: the requential code}
+\begin{frame}{An explicit model code: requential coding}
 \small
 \begin{itemize}\setlength{\itemsep}{0.25em}
 \item A teacher model trains on real data; a student model trains on teacher-distributed samples \citep{qiu2026}.
 \item Both sides share the student and a random seed. Send the index of a student proposal selected to have the teacher's distribution.
-\item Relative entropy coding bounds the expected message cost by teacher--student disagreement:
+\item Relative entropy coding bounds the expected message length by a function of the teacher--student KL divergence:
 \[
-\E[\ell_i\mid\mathcal F_i]\le\KL_i+2\log(1+\KL_i)+\kappa,\quad \kappa<5.21,
+\E[\ell_i\mid\mathcal F_i]\le\KL_i+2\log_2(1+\KL_i)+\kappa,\quad \kappa<5.21,
 \]
-where $\KL_i=\KL(P_i^{\mathrm t}\Vert P_i^{\mathrm s})$ and $\mathcal F_i$ is the prior history. Summing gives the student-code bound; $\sum_i\KL_i$ is its leading estimate.
+Here $\KL_i=\E_{Z\sim P_i^{\mathrm t}}[\log_2(P_i^{\mathrm t}(Z)/P_i^{\mathrm s}(Z))]$ is the Kullback--Leibler divergence, and $\mathcal F_i$ is the prior history. $\sum_i\KL_i$ is the leading model-code estimate.
 \end{itemize}
 \centering
 \begin{tabular}{@{}lll@{}}
@@ -249,11 +306,12 @@ Training & one network & teacher and student, $2$--$10\times$ slower \\
 Reported values & larger in the paper & smaller in the paper \\
 \bottomrule
 \end{tabular}
+\par\smallskip
 \raggedright
-\take{Prequential is cheaper; requential has an explicit code.}
+\src{The bound shown is from \citet{qiu2026}, Appendix~A.1; the epiplexity paper used an earlier overhead expression.}
 \end{frame}
 % ============================================================ EXPERIMENTS
-\begin{frame}{Experiment: cellular automata create structure}
+\begin{frame}{Cellular automata: simple dynamics, different model parts}
 \small
 An \emph{elementary cellular automaton} (ECA) updates binary cells in parallel from their three-cell neighbourhoods \citep{wolfram2002}.\par
 \textbf{Setting.} $64$ periodic cells; $Y=F_r^{48}(X)$; transformer sweep; requential code.
@@ -280,10 +338,10 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \end{column}
 \end{columns}
 \src{Left: rollouts, time downward. Right: $S_T$ and $H_T$ against compute in FLOPs. Table: our estimates from the plots at $10^{17}$ FLOPs. Source: Fig.~3 of \citet{finzi2026}.}
-\take{Rule 15 is simple, rule 30 looks random, and rule 54 contains learnable structure.}
+\take{Under this protocol, rule 54 has the largest estimated model part.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Experiment: prediction requires more structure than generation}
+\begin{frame}{Hidden variables: generation and prediction differ}
 \small
 \textbf{Setting.} Hide $h$ bits of a random $Z\in\{0,1\}^{32}$; predict four rule~30 updates of $Z$ from the visible bits.
 
@@ -300,10 +358,10 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \end{columns}
 \src{Left: the data. Right: training loss against compute in FLOPs (dashed: $h$ bits) and $S_T$ for each $h$. Source: Fig.~5 of \citet{finzi2026}.}
 \begin{itemize}
-\item The generator runs forward; the predictor must infer the hidden bits.
-\item The loss approaches $h$ bits only after rapidly growing compute, and $S_T$ grows with $h$.
+\item Generation uses the complete state $Z$. Prediction conditions on only its visible bits.
+\item As $h$ increases, reaching a loss near $h$ bits requires more compute, and the estimated model part increases.
 \end{itemize}
-\take{Predicting with partial observations requires inference that is absent from forward generation.}
+\take{Prediction requires a distribution over hidden states; generation does not.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Experiment: the order of chess data}
@@ -324,9 +382,9 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \src{Left: $H_T$ and $S_T$ against compute in FLOPs. Right: $S_T$ and accuracy after fine-tuning. Source: Figs.~4c and~7 of \citet{finzi2026}.}
 \begin{itemize}
 \item At large compute, reverse order gives higher $H_T$ and $S_T$.
-\item It transfers better to board evaluation: $0.28$ vs $0.21$ accuracy; puzzles are tied.
+\item After fine-tuning, reverse-order models reach $0.28$ board-evaluation accuracy versus $0.21$ for forward-order models; puzzle accuracy is similar.
 \end{itemize}
-\take{The reverse order forces a model of the board state. That structure transfers to a task on board states.}
+\take{This supports the authors' hypothesis that reverse ordering develops more useful board-state representations.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Application: structure in natural data}
@@ -356,25 +414,25 @@ CIFAR-5M & $9\times10^7$ & $2.3\times10^{10}$ & $0.4\%$ \\
 \smallskip
 \begin{itemize}\setlength{\itemsep}{0.2em}
 \item Under this protocol, text has the largest estimated model part; pixel images have the largest residual part.
-\item Scaling laws and adaptive data selection show the same ordering \citep{jiang2025}.
+\item These measurements compare representations at a fixed token count, rather than equal bytes or semantic content.
 \end{itemize}
 \end{column}
 \end{columns}
 \take{This ranking is relative to the tokenisation, model family and compute budget.}
 \end{frame}
 % ============================================================ SUMMARY
-\begin{frame}{Summary and limitations}
+\begin{frame}{Conclusions and limitations}
 \textbf{Summary}
 \begin{itemize}\setlength{\itemsep}{0.3em}
 \item $S_T$ counts selected model bits; $H_T$ is the expected data-code length.
-\item A time bound makes computation, prediction order and learned structure observable.
-\item Estimate $S_T$ with prequential area or teacher--student divergence at the compute-optimal model.
+\item Computational restrictions can change both the total description length and its decomposition.
+\item Neural-network estimates combine a model-code estimate with validation loss, optimized under a compute budget.
 \end{itemize}
 \medskip
 \textbf{Limitations}
 \begin{itemize}\setlength{\itemsep}{0.3em}
 \item $S_T$ is not a guarantee of downstream usefulness.
-\item The theorems are asymptotic and cryptographic; the proved lower bound is only $\Omega(\log n)$.
+\item The existence theorem is conditional on cryptographic assumptions and proves $\Omega(\log_2 n)$ growth.
 \item Estimates depend on architecture, optimiser, $T$, dataset size and random seed.
 \end{itemize}
 \end{frame}
@@ -398,18 +456,18 @@ Y.~Jiang et al.\ Adaptive data optimization.\ \emph{ICLR}, 2025.
 \begin{frame}{Questions for the audience: answers}
 \small
 \begin{enumerate}\setlength{\itemsep}{1.1em}
-\item A dataset $X$ consists of $n$ uniformly random bits. Which quantity is close to $n$?
+\item Let $X\sim U_n$. Which quantity is close to $n$: $S_T(X)$ or $H_T(X)$?
 \begin{block}{Answer}
-$H_T(X)\approx n$: the bounded observer cannot predict the bits. A constant-size uniform model gives $S_T(X)=O(1)$.
+$H_T(X)=n+O(1)$. A constant-length uniform model gives $\MDL_T(X)\le n+c$; since $H_T(X)\ge n$, the selected model has $S_T(X)\le c$.
 \end{block}
 \item In the prequential estimate, which part of the training-loss curve approximates the epiplexity?
 \begin{block}{Answer}
-The area between the loss before each update and the final-model loss, namely
-$\sum_i[\log 1/P_i(Z_i)-\log 1/P_M(Z_i)]$.
+The cumulative excess loss above the final-model baseline:
+$\sum_i[-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)]$.
 \end{block}
 \item What does changing $T$ change?
 \begin{block}{Answer}
-It changes the available observer. The total $\MDL_T$ cannot increase with $T$, while $S_T$ itself may rise or fall.
+It enlarges the admissible model class. The minimum total $\MDL_T$ cannot increase, while the selected model length $S_T$ may rise or fall.
 \end{block}
 \end{enumerate}
 \end{frame}
@@ -426,21 +484,21 @@ Let $c_1,c_2$ be constants independent of $X$. For a random variable $X$ on $\{0
 \end{proposition}
 Property~4 is the analogue of $K(f(x))\le K(x)+K(f)+c$. Under a time bound a short program for $f^{-1}$ gives no short program for $f$.
 \begin{theorem}[Thm.~10 of the paper]
-If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables $X_n$ on $\{0,1\}^n$ have $S_{\Poly}(X_n)=\Omega(\log n)$.
+If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables $X_n$ on $\{0,1\}^n$ have $S_{\Poly}(X_n)=\Omega(\log_2 n)$.
 \end{theorem}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Backup: emergence, where $S_T$ falls as $T$ grows}
+\begin{frame}{Backup: epiplexity need not increase with compute}
 \begin{columns}[T]
 \begin{column}{0.52\textwidth}
 \small
-\textbf{Setting.} ECA rule~54, $64$ updates. A non-looped transformer predicts the final state directly. A looped transformer generates the intermediate states one after another: the exact simulation.
+\textbf{Setting.} ECA rule~54, $64$ updates. The non-looped model predicts the final state; the looped model simulates each update.
 
 \medskip
-\begin{itemize}\setlength{\itemsep}{0.4em}
-\item Below $10^{15}$ FLOPs the non-looped model gives the shorter code. The epiplexity of this model rises to $1.45\times10^7$ bits: it learns emergent patterns of rule~54.
-\item Above that bound the looped model gives the shorter code. $\MDL_T$ drops to almost zero; $S_T$ falls.
-\item The authors call this case uncommon. For natural data at moderate compute they expect $S_T$ to grow with compute.
+\begin{itemize}\setlength{\itemsep}{0.2em}
+\item Below $10^{15}$ FLOPs, the non-looped model gives the shorter code; its model part reaches $1.45\times10^7$ bits.
+\item Above that bound, the looped model wins because the rule is a compact model.
+\item Thus epiplexity need not increase with the budget; growth is expected to be more typical for natural data.
 \end{itemize}
 \end{column}
 \begin{column}{0.44\textwidth}

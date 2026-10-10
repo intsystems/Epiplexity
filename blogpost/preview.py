@@ -93,6 +93,11 @@ def frame():
     try:
         page = urllib.request.urlopen(FRAME_URL, timeout=20).read().decode("utf-8", "replace")
     except OSError:
+        # Keep the previous site frame when regenerating without network access.
+        if os.path.exists(OUT):
+            cached = io.open(OUT, encoding="utf-8").read()
+            if '<nav' in cached and 'blog-post__content' in cached:
+                return cached.replace(NAVBAR_OFFSET, "")
         return FALLBACK
     page = re.sub(r'((?:href|src)=")/(?!/)', r"\1" + SITE + "/", page)       # root-relative -> live site
     page = page.replace("_blogs/spherical-loss-family.md", "_blogs/%s.md" % SLUG)
@@ -129,6 +134,7 @@ def main():
     page = re.sub(r"<article.*?</article>", lambda m: article, page, count=1, flags=re.S)
     page = re.sub(r"<title>.*?</title>", "<title>%s (local preview)</title>" % esc(fm["title"]), page, count=1, flags=re.S)
     page = page.replace("</head>", NAVBAR_OFFSET + "\n</head>", 1)
+    page = "\n".join(line.rstrip() for line in page.splitlines()) + "\n"
     io.open(OUT, "w", encoding="utf-8").write(page)
     print("wrote %s: %d math spans, %d images" % (OUT, len(store), content.count("<img")))
 
