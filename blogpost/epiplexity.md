@@ -3,10 +3,10 @@ edit: true
 title: "From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data?"
 lang: en
 date: 2026-09-29
-read_time: 16
+read_time: 20
 authors:
   - Alex Kravatsky
-summary: "Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest description of one object. Epiplexity adds a compute budget and measures the structure a learner can actually extract. It can be estimated from neural-network loss curves and used to compare what different datasets teach."
+summary: "Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest program for one object. Epiplexity adds a compute budget and measures the model part of a two-part description. Prequential and requential coding provide practical estimates of that model part."
 tags:
   - Information Theory
   - Epiplexity
@@ -21,7 +21,7 @@ _The [paper](https://arxiv.org/abs/2601.03220) and the [code](https://github.com
 
 ## Motivation
 
-Start with a practical question: why can two datasets of the same size teach a model very different things? Text pretraining transfers to robotics control, theorem proving and forecasting; the same number of image bytes transfers much less. A useful measure should distinguish information that is merely unpredictable from information that a learner can turn into a reusable pattern.
+Start with a practical question: why can pretraining on two datasets of the same size produce very different results on new tasks? The paper motivates this question with the broad transfer observed after text pretraining. A useful measure should distinguish unpredictable details from reusable predictive structure.
 
 AlphaZero makes the question vivid. It never saw a human game of chess: it received the rules and a reinforcement-learning algorithm, then trained by self-play. The rules, algorithm and random seed are a short description of the run, yet the trained network contains useful chess strategies. What did the computation make accessible to the learner?
 
@@ -43,16 +43,16 @@ $$
 H(X)=\mathbb{E}\bigl[-\log p(X)\bigr].
 $$
 
-Logarithms in this post are base 2. The **Kolmogorov complexity** $$K(x)$$ of one realised string $$x$$ is the length of the shortest program that prints $$x$$ on a fixed universal Turing machine $$\mathcal{U}$$ ([Li and Vitányi, 2008](#ref-livitanyi2008)).
+Logarithms in this post are base 2. The **Kolmogorov complexity** $$K(x)$$ of one realised string $$x$$ is the length of the shortest self-delimiting program that makes a fixed universal machine $$\mathcal{U}$$ output $$x$$ ([Li and Vitányi, 2008](#ref-livitanyi2008)).
 
 The distinction is easiest with two examples:
 
-- **Random bits:** high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short recipe to discover.
-- **A repeated pattern:** low entropy and low complexity. A short program can generate the whole string.
+- **Random bits:** high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short program to discover.
+- **A fixed repeated pattern:** a distribution concentrated on one alternating string has zero entropy. The string also has low complexity: a program only needs the repetition rule and the length. A pattern alone does not determine entropy; the distribution matters.
 
 These measures describe uncertainty or compressibility. They do not say whether a particular learner can discover a pattern within a finite compute budget. A model trained on random API keys learns little beyond their frequencies; a model trained on a compact algorithm can learn reusable circuits even when the algorithm itself is short. Figure 1 illustrates the distinction.
 
-> **Keep this distinction in mind:** Shannon entropy asks how surprising a sample is on average; Kolmogorov complexity asks how short a recipe can describe one sample. Epiplexity will ask how much of that recipe a specified learner can actually find.
+> **Keep this distinction in mind:** Shannon entropy describes uncertainty in a distribution; Kolmogorov complexity measures the shortest program for one string. Epiplexity measures the program part of the best two-part code available under a computation bound.
 
 ![Random and structural information in three kinds of data, and information created by computation](/images/blog/epiplexity/fig1.png)
 
@@ -194,31 +194,90 @@ Writing out the weights of a trained network overestimates the information in th
 
 ### Prequential coding: the area under the loss curve
 
-Let $$Z_0,\dots,Z_{M-1}$$ be training examples, i.i.d. with the distribution of $$X$$. Let $$P_i$$ be the network after training on $$Z_0,\dots,Z_{i-1}$$. The **prequential code** ([Dawid, 1984](#ref-dawid1984)) transmits the data one example at a time. The sender encodes $$Z_i$$ with $$\log 1/P_i(Z_i)$$ bits and then trains on it. The receiver decodes $$Z_i$$ with an identical copy of $$P_i$$ and repeats the same training step. The total length $$\sum_i\log 1/P_i(Z_i)$$ encodes the data together with the final network $$P_M$$.
-
-To isolate the network, the authors subtract the code length of the data given the final network, $$\sum_i\log 1/P_M(Z_i)$$, following a heuristic based on symmetry of information ([Zhang et al., 2020](#ref-zhang2020)). The remainder is the **area under the loss curve above the final loss**:
+Let $$Z_0,\dots,Z_{M-1}$$ be i.i.d. training examples. Let $$P_i$$ be the network after training on the first $$i$$ examples, so $$P_0$$ is the initial model. Sender and receiver agree on the initialisation, update rule and random seed. The **prequential code** ([Dawid, 1984](#ref-dawid1984)) encodes $$Z_i$$ before updating the model on it. Its ideal contribution is
 
 $$
-\lvert\mathrm{P}_{\mathrm{preq}}\rvert\approx\sum_{i=0}^{M-1}\Bigl[\log\frac{1}{P_i(Z_i)}-\log\frac{1}{P_M(Z_i)}\Bigr].
+\ell_i=-\log P_i(Z_i)=\log\frac{1}{P_i(Z_i)}
 $$
 
-Figure 3 shows why this area measures structure. On random data the loss never decreases: the area is zero. On simple data the loss drops at once and the area is small. Only data whose structure the network absorbs step by step produce a large area.
+bits. Actual arithmetic coding adds rounding and termination overhead. After decoding, both sides make the same update and obtain $$P_{i+1}$$. The chain rule explains why the contributions add: the adaptive predictions define a joint probability
+
+$$
+\begin{aligned}
+Q_{\mathrm{preq}}(Z_{0:M-1})
+&=\prod_{i=0}^{M-1}P_i(Z_i),\\
+L_{\mathrm{preq}}
+&=-\log Q_{\mathrm{preq}}(Z_{0:M-1})
+=\sum_{i=0}^{M-1}\ell_i.
+\end{aligned}
+$$
+
+Each $$P_i$$ depends on the already decoded prefix. Consequently this code reconstructs both the data and the final network $$P_M$$. It is a data code, rather than a separate code for the model alone.
+
+To isolate a model part, the paper uses the symmetry-of-information intuition: a description of the data and their deterministically trained model can be organised as “model, then data given model”. This suggests subtracting $$L_{\mathrm{final}}=\sum_i-\log P_M(Z_i)$$ from the sequential data code ([Zhang et al., 2020](#ref-zhang2020)). Write the result as an estimate, $$\widehat K_{\mathrm{preq}}$$:
+
+$$
+\begin{aligned}
+\widehat K_{\mathrm{preq}}
+&:=L_{\mathrm{preq}}-L_{\mathrm{final}}\\
+&=\sum_{i=0}^{M-1}\Bigl[-\log P_i(Z_i)+\log P_M(Z_i)\Bigr].
+\end{aligned}
+$$
+
+This is the discrete area between the predictive-loss curve and the final-model loss. For a plot sampled every $$\Delta_i$$ tokens, multiply each loss gap in bits per token by $$\Delta_i$$; the sum then has units of bits. A flat curve gives little area, rapid improvement gives a small area, and sustained improvement gives a larger area. With finite samples these are tendencies, rather than exact statements about every dataset.
 
 ![Training loss curves of teacher and student with the prequential and requential areas](/images/blog/epiplexity/requential-illustration.png)
 
 *Figure 3. Training loss against the number of training tokens. The blue area is the prequential estimate $$\lvert\mathrm{P}_{\mathrm{preq}}\rvert$$. The red area between the student and teacher curves is the requential estimate $$\lvert\mathrm{P}_{\mathrm{req}}\rvert$$ of the next section. Source: Fig. 2a of the paper.*
 
-Each loss $$\log 1/P_i(Z_i)$$ is computed before the network trains on $$Z_i$$, which makes it an estimate of the test loss. When the network overfits, this estimate departs from the training loss. The estimate is also a heuristic. Both code lengths are only upper bounds on Kolmogorov complexities; the difference between them is not an upper bound on the complexity of the network. Symmetry of information fails under a time bound; the decoding time need not be $$6ND$$.
+The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In practice, a held-out final loss provides a safer baseline for the area estimate. Subtracting two code lengths does not construct a model-only code or certify its decoding time: $$\widehat K_{\mathrm{preq}}$$ is a heuristic proxy, and finite-sample estimates need not even be positive.
 
 ### Requential coding: transmitting only the disagreement
 
-The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) is an explicit code with a known decoding time. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on the real data. A *student* network $$P^{\mathrm{s}}_i$$ trains only on samples $$\widetilde{Z}_i\sim P^{\mathrm{t}}_i$$ generated by the teacher. Sender and receiver hold identical copies of the student. **Relative entropy coding** ([Theis and Ahmed, 2022](#ref-theis2022)) transmits one sample of $$P^{\mathrm{t}}_i$$ to a receiver that holds only $$P^{\mathrm{s}}_i$$ in about $$\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4$$ bits on average. Here $$\mathrm{KL}_i:=\mathrm{KL}\bigl(P^{\mathrm{t}}_i\,\Vert\,P^{\mathrm{s}}_i\bigr)$$ is the Kullback–Leibler divergence $$\mathrm{KL}(p\,\Vert\,q)=\mathbb{E}_p[\log p/q]$$. The code length of the final student is the sum over training steps:
+The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) is an explicit code with a known decoding time. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on the real data. A *student* network $$P^{\mathrm{s}}_i$$ trains only on samples $$\widetilde{Z}_i\sim P^{\mathrm{t}}_i$$ generated by the teacher. Sender and receiver hold identical copies of the student. At step $$i$$, both sides use shared randomness to generate proposals $$Y_i^{(0)},Y_i^{(1)},\ldots\sim P_i^{\mathrm{s}}$$. The sender uses the teacher distribution to select an index; the decoder regenerates that proposal from the index and the shared randomness. The selection rule makes the accepted sample have distribution $$P_i^{\mathrm{t}}$$, while the message records only the index. The expected log-likelihood ratio of a teacher sample is
 
 $$
-\lvert\mathrm{P}_{\mathrm{req}}\rvert=\sum_{i=0}^{M-1}\bigl[\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4\bigr]+O(1)\approx\sum_{i=0}^{M-1}\mathrm{KL}_i .
+\mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
+=\mathrm{KL}_i,
+\qquad \mathrm{KL}_i:=\mathrm{KL}\bigl(P_i^{\mathrm{t}}\,\Vert\,P_i^{\mathrm{s}}\bigr).
 $$
 
-The code transmits only the disagreement between teacher and student; the entropy of the real data does not enter. The receiver replays the student training in $$6ND$$ FLOPs. In Figure 3 the requential estimate is roughly the area between the student and teacher loss curves.
+The identity has a useful interpretation:
+
+$$
+\mathrm{KL}_i
+=\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm s}(Z)]
+-\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm t}(Z)].
+$$
+
+Thus KL is the student's excess loss on **teacher samples**, above the teacher's own entropy. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.
+
+Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using the decoder's shared proposals. Ordinary lossless coding communicates a particular sample already fixed by the sender. The shared randomness and the freedom to select the sample are what make the KL rate possible.
+
+The relative entropy coding theorem bounds the expected logarithm of the selected proposal index by $$\mathrm{KL}_i+O(1)$$ ([Theis and Ahmed, 2022](#ref-theis2022)). To send the index without requiring the decoder to know KL, [Qiu et al. (2026), Appendix A.1](https://arxiv.org/html/2607.11883v1#A1.SS1) use a universal prefix-free integer code. Its length is bounded by $$\log J+2\log(1+\log J)+1$$ for index $$J\ge1$$. Taking expectations and applying Jensen's inequality gives
+
+$$
+\mathbb{E}[\ell_i\mid\mathcal F_i]
+\le \mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa,
+\qquad \kappa<5.21.
+$$
+
+Here $$\mathcal F_i$$ is the training history before message $$i$$, and $$\ell_i$$ is the number of bits sent. Once the sample is decoded, both copies of the student apply the same update. The final student is therefore specified by the shared setup and all the messages. Adding their lengths and taking expectations yields
+
+$$
+\begin{aligned}
+\mathbb{E}[L_{\mathrm{req}}]
+&\le C_{\mathrm{setup}}
++\mathbb{E}\!\left[\sum_{i=0}^{M-1}
+\bigl(\mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa\bigr)\right].
+\end{aligned}
+$$
+
+The setup includes the initialisation, update rule, shared seed and schedule. A realised trajectory may exceed its conditional-mean bound; this is an expected-length result. The epiplexity paper originally used $$\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4$$ as its per-message expression; the later requential paper explicitly accounts for coding the index without transmitting KL. We use that later bound here.
+
+When $$2\log(1+\mathrm{KL}_i)+\kappa$$ is small relative to $$\mathrm{KL}_i$$, the leading estimate is $$\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i$$. At small block sizes the overhead can dominate, so the full bound should also be reported.
+
+The decoder reconstructs the **student**, without the teacher or the original training data. Its main cost is replaying student training, approximately $$6ND$$ FLOPs under the paper's dense-model accounting, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.
 
 |          | Prequential | Requential |
 | :-- | :-- | :-- |
@@ -262,7 +321,7 @@ Under standard scaling assumptions the authors derive typical trends. Epiplexity
 
 Rules 15, 30 and 54 define programs of equal length and equal running time. Rule 15 is periodic with a simple inverse. The loss saturates quickly; the data contain little information of either kind. Rule 30 is chaotic. The loss makes no progress; the information is maximal and entirely random. Rule 54 is complex but partly predictable. The loss decreases steadily as compute grows; the model extracts millions of bits of structure. [Zhang et al. (2024)](#ref-zhang2024) found that models trained on class IV rules transfer best to downstream tasks, in line with the high epiplexity of rule 54.
 
-### Induction: a model learns more than the generator contains
+### Induction: prediction requires more structure than generation
 
 Paradox 3 states that likelihood training only reproduces the generating process. The authors construct data whose best predictor must contain more than the generator.
 
@@ -339,9 +398,9 @@ The released code and the experiments show further limits:
 
 ## Conclusion
 
-Epiplexity separates the information in data into the part a bounded observer can learn and the part that stays random. With a time bound, the paradoxes disappear. Deterministic computation creates information (Theorem 2 and the cellular automata). The order of prediction changes it (Theorem 3 and chess). A model can learn more than the generating program contains (the hidden bits). In practice the authors estimate it as the area under a loss curve above the final loss, or as the summed divergence between a teacher and a student, at the compute-optimal model. On natural data it ranks text above images; pretraining on text also transfers more broadly.
+Epiplexity separates the information in data into the part a bounded observer can learn and the part that stays random. With a time bound, the paradoxes disappear. Deterministic computation creates information (Theorem 2 and the cellular automata). The order of prediction changes it (Theorem 3 and chess). A predictor can require more structure than the generating process exposes (the hidden bits). In practice the authors estimate it as the area under a loss curve above the final loss, or as the summed divergence between a teacher and a student, at the compute-optimal model. On natural data it ranks text above images; pretraining on text also transfers more broadly.
 
-For machine learning the main message concerns data. Loss measures how random the data look to a model; epiplexity measures how much structure the model has to acquire to explain the rest. Two datasets with the same final loss can teach different amounts. When the aim is transfer to new tasks, epiplexity is a candidate criterion for selecting and generating data.
+For machine learning the main message concerns data. Loss measures how random the data look to a model; epiplexity measures how much structure the model has to acquire to explain the rest. Two datasets with the same final loss can support different amounts of transferable structure. When the aim is transfer to new tasks, epiplexity is a candidate criterion for selecting and generating data.
 
 ---
 

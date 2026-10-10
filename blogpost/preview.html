@@ -1,21 +1,338 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data? (local preview)</title>
-<link rel="stylesheet" href="https://intsystems.github.io/style.css">
-<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']],
-processEscapes:true,processEnvironments:true}};</script>
-<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        
+        <title>From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data? (local preview)</title>
+
+        <meta name="description" content="Spherical loss functions and their performance compared to log-softmax in multi-class classification tasks.">
+<meta name="keywords" content="Loss Functions, BMM">
+<meta name="author" content="Fedor Sobolevsky">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<link rel="canonical" href="https://intsystems.github.io/materials/blog/spherical-loss-family/">
+
+<!-- Language alternates (must match canonical URLs) -->
+<link rel="alternate" hreflang="en" href="https://intsystems.github.io/materials/blog/spherical-loss-family/">
+
+<link rel="alternate" hreflang="x-default" href="https://intsystems.github.io/materials/blog/spherical-loss-family/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="An Exploration of Softmax Alternatives Belonging to the Spherical Loss Family">
+<meta property="og:description" content="Spherical loss functions and their performance compared to log-softmax in multi-class classification tasks.">
+<meta property="og:url" content="https://intsystems.github.io/materials/blog/spherical-loss-family/">
+<meta property="og:site_name" content="Intelligent Systems Department, MIPT">
+<meta property="og:image" content="https://intsystems.github.io/images/blog/spherical-loss-family.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ru_RU">
+<meta property="article:published_time" content="2025-12-11T00:00:00+00:00">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="An Exploration of Softmax Alternatives Belonging to the Spherical L...">
+<meta name="twitter:description" content="Spherical loss functions and their performance compared to log-softmax in multi-class classification tasks.">
+<meta name="twitter:image" content="https://intsystems.github.io/images/blog/spherical-loss-family.png">
+
+<!-- Structured data (JSON-LD) -->
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "An Exploration of Softmax Alternatives Belonging to the Spherical Loss Family",
+  "description": "Spherical loss functions and their performance compared to log-softmax in multi-class classification tasks.",
+  "url": "https://intsystems.github.io/materials/blog/spherical-loss-family/",
+  "mainEntityOfPage": "https://intsystems.github.io/materials/blog/spherical-loss-family/",
+  "inLanguage": "en",
+  "image": "https://intsystems.github.io/images/blog/spherical-loss-family.png",
+  "datePublished": "2025-12-11T00:00:00+00:00",
+  
+  "author": [
+    
+    { "@type": "Person", "name": "Fedor Sobolevsky" }
+    
+  ],
+  
+  "publisher": {
+    "@type": "EducationalOrganization",
+    "name": "Intelligent Systems Department, MIPT",
+    "url": "https://intsystems.github.io/",
+    "logo": { "@type": "ImageObject", "url": "https://intsystems.github.io/images/logo/logo-full.png" }
+  }
+}</script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://intsystems.github.io/" },
+    
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://intsystems.github.io/materials/blog/" },
+    
+    { "@type": "ListItem", "position": 3, "name": "An Exploration of Softmax Alternatives Belonging to the Spherical Loss Family", "item": "https://intsystems.github.io/materials/blog/spherical-loss-family/" }
+    
+  ]
+}
+</script>
+
+        <link rel="alternate" type="application/atom+xml" title="Intelligent Systems — Home" href="https://intsystems.github.io/feed.xml">
+        <link rel="alternate" type="application/atom+xml" title="Intelligent Systems — Blog" href="https://intsystems.github.io/feed/blog.xml">
+
+        <!-- Google and Yandex Verification -->
+        <meta name="google-site-verification" content="Mq6PRXIcGjEbdk2gdU6tahVlGnP5nsUEPwtpEH_eYb8">
+        <meta name="yandex-verification" content="b955620073da94d9">
+        <!-- Self-hosted Open Sans: @font-face rules live in _sass/_fonts.scss -->
+        <!-- Icons (former Font Awesome / academicons) are CSS masks in _sass/_icons.scss -->
+        <link rel="preload" href="https://intsystems.github.io/fonts/open-sans-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="https://intsystems.github.io/fonts/open-sans-cyrillic-normal.woff2" as="font" type="font/woff2" crossorigin>
+        
+        <!-- MathJax: loaded only on pages with math (blog posts, or math: true in front matter) -->
+        <script>
+            window.MathJax = {
+                tex: {
+                    inlineMath: [
+                        ['$', '$'],
+                        ['\\(', '\\)']
+                    ],
+                    displayMath: [
+                        ['$$', '$$'],
+                        ['\\[', '\\]']
+                    ],
+                    processEscapes: true,
+                    processEnvironments: true
+                },
+                options: {
+                    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                    ignoreHtmlClass: 'tex2jax_ignore',
+                    processHtmlClass: 'tex2jax_process'
+                }
+            };
+        </script>
+        <script
+            type="text/javascript"
+            id="MathJax-script"
+            async
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+        ></script>
+        
+        <!-- Navbar collapse/dropdown behavior (replaces Bootstrap + jQuery) -->
+        <script src="https://intsystems.github.io/javascript/navbar.js" defer></script>
+        <!-- favicon -->
+        <link rel="shortcut icon" href="https://intsystems.github.io/favicon.ico">
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="https://intsystems.github.io/images/logo/icon-32.png"
+        >
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="https://intsystems.github.io/images/logo/icon-16.png"
+        >
+        <link rel="apple-touch-icon" href="https://intsystems.github.io/images/logo/apple-touch-icon.png">
+        <!-- local -->
+        <script src="https://intsystems.github.io/javascript/prevent_flash.js"></script>
+        <script src="https://intsystems.github.io/javascript/fade_in.js"></script>
+        
+        <script src="https://intsystems.github.io/javascript/copy_email.js"></script>
+        <script src="https://intsystems.github.io/javascript/table_scroll.js"></script>
+        
+        <!-- Mermaid: loaded only where diagrams can appear (blog/news, or mermaid: true) -->
+        <script type="module" src="https://intsystems.github.io/javascript/mermaid_init.js"></script>
+        
+        <link rel="stylesheet" href="https://intsystems.github.io/style.css">
+    <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
-<body><main id="main" class="container"><div class="content"><article class="blog-post" itemscope itemtype="https://schema.org/BlogPosting">
+    <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+        
+        <div class="navbar-page">
+            <nav class="navbar navbar-default navbar-fixed-top" aria-label="Main navigation">
+    <div class="navbar-container">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <a class="navbar-brand" href="https://intsystems.github.io/">
+                <img
+                    src="https://intsystems.github.io/images/logo/logo-nav.png"
+                    height="50"
+                    alt="Intelligent Systems"
+                    class="navbar-logo"
+                >
+            </a>
+            <button
+                type="button"
+                class="navbar-toggle"
+                data-toggle="collapse"
+                data-target="#navbar"
+            >
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+        </div>
+        <!-- Main menu (collapsible on mobile) -->
+        <div class="collapse navbar-collapse" id="navbar">
+            <ul class="nav navbar-nav navbar-center">
+                
+                
+                <li>
+                    <a class="name" href="https://intsystems.github.io/">Home</a>
+                </li>
+                
+                
+                
+                <li>
+                    <a class="name" href="https://intsystems.github.io/education">Schedule</a>
+                </li>
+                
+                
+                
+                <li>
+                    <a class="name" href="https://intsystems.github.io/people">People</a>
+                </li>
+                
+                
+                
+                <li>
+                    <a class="name" href="https://intsystems.github.io/course">Courses</a>
+                </li>
+                
+                
+                
+                <li>
+                    <a class="name" href="https://intsystems.github.io/admission">Admission</a>
+                </li>
+                
+                
+                
+                <li class="nav-item dropdown">
+                    <a
+                        class="nav-link dropdown-toggle"
+                        href="#"
+                        id="materials"
+                        role="button"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                    >Materials</a>
+                    <div class="dropdown-menu" aria-labelledby="materials">
+                        <ul class="nav navbar-nav">
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/nir">Research Reports</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/thesis">Theses</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/blog">Blog</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/seminars">Meetings</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/scholarship">Scholarships</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/paper_guidelines">Paper Guidelines</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/templates">Templates</a>
+                            </li>
+                            
+                            <li>
+                                <a class="name" href="https://intsystems.github.io/materials/conferences">Conferences & Journals</a>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </li>
+                
+                
+            </ul>
+            <!-- Language switcher + social links for mobile (inside collapse menu) -->
+            <div class="navbar-social-mobile">
+                <div class="navbar-social-mobile-item">
+                    <span class="navbar-social-mobile-label">Language:</span>
+                    <div class="navbar-social-mobile-links">
+                        
+                        
+                        <a href="https://intsystems.github.io/materials/blog/spherical-loss-family/" class="active">EN</a>
+                        
+                        
+                        
+                        <a href="https://intsystems.github.io/ru/materials/blog/spherical-loss-family/" class="">RU</a>
+                        
+                        
+                    </div>
+                </div>
+                <div class="navbar-social-mobile-item">
+                    <span class="navbar-social-mobile-label">Connect:</span>
+                    <div class="navbar-social-mobile-icons">
+                        <a href="https://github.com/intsystems" class="" target="_blank" rel="noopener"><i class="fa fa-github"></i></a><a href="#" onclick="copyEmailToClipboard(event, 'mlalgorithms@gmail.com')" class=""><i class="fa fa-envelope-o"></i></a><a href="https://t.me/IS_MIPT" class="" target="_blank" rel="noopener"><i class="fa fa-telegram"></i></a><a href="https://www.youtube.com/c/MachineLearningPhystech" class="" target="_blank" rel="noopener"><i class="fa fa-youtube-play"></i></a><a href="https://rutube.ru/channel/40144363" class=" social-link--text" target="_blank" rel="noopener">Rutube</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Language switcher + social links (desktop) -->
+        <div class="navbar-social-block">
+            <div class="nav-item dropdown">
+                <a
+                    class="nav-link dropdown-toggle"
+                    href="#"
+                    id="languageDropdown"
+                    role="button"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                >EN</a>
+                <div class="dropdown-menu" aria-labelledby="languageDropdown">
+                    <ul class="nav navbar-nav">
+                        
+                        <li>
+                            
+                            <a class="name" href="https://intsystems.github.io/materials/blog/spherical-loss-family/">EN</a>
+                            
+                        </li>
+                        
+                        <li>
+                            
+                            <a class="name" href="https://intsystems.github.io/ru/materials/blog/spherical-loss-family/">RU</a>
+                            
+                        </li>
+                        
+                    </ul>
+                </div>
+            </div>
+            <a href="https://github.com/intsystems" class="navbar-social" target="_blank" rel="noopener"><i class="fa fa-github"></i></a><a href="#" onclick="copyEmailToClipboard(event, 'mlalgorithms@gmail.com')" class="navbar-social"><i class="fa fa-envelope-o"></i></a><a href="https://t.me/IS_MIPT" class="navbar-social" target="_blank" rel="noopener"><i class="fa fa-telegram"></i></a><a href="https://www.youtube.com/c/MachineLearningPhystech" class="navbar-social" target="_blank" rel="noopener"><i class="fa fa-youtube-play"></i></a><a href="https://rutube.ru/channel/40144363" class="navbar-social social-link--text" target="_blank" rel="noopener">Rutube</a>
+        </div>
+    </div>
+</nav>
+
+        </div>
+        <main id="main" class="container">
+            <div class="content" data-toc-content>
+                <article class="blog-post" itemscope itemtype="https://schema.org/BlogPosting">
 <header class="blog-post__header">
 <h1 class="blog-post__title page-heading" itemprop="headline">From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data?</h1>
 <ul class="blog-post__tags" itemprop="keywords"><li>Information Theory</li><li>Epiplexity</li><li>Data Selection</li><li>BMM</li></ul>
-<div class="blog-post__meta"><time datetime="2026-09-29">September 29, 2026</time><span aria-hidden="true">&middot;</span><span>16 min</span><span aria-hidden="true">&middot;</span><span itemprop="author">Alex Kravatsky</span></div>
-<p class="blog-post__summary" itemprop="description">Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest description of one object. Epiplexity adds a compute budget and measures the structure a learner can actually extract. It can be estimated from neural-network loss curves and used to compare what different datasets teach.</p>
+<div class="blog-post__meta"><time datetime="2026-09-29">September 29, 2026</time><span aria-hidden="true">&middot;</span><span>20 min</span><span aria-hidden="true">&middot;</span><span itemprop="author">Alex Kravatsky</span></div>
+<p class="blog-post__summary" itemprop="description">Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest program for one object. Epiplexity adds a compute budget and measures the model part of a two-part description. Prequential and requential coding provide practical estimates of that model part.</p>
 </header>
 <div class="blog-post__content" itemprop="articleBody">
 <p><strong>Based on the paper by Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J. Zico Kolter and Andrew Gordon Wilson (Carnegie Mellon University, New York University), arXiv:2601.03220, version 2, March 2026</strong></p>
 <p><em>The <a href="https://arxiv.org/abs/2601.03220">paper</a> and the <a href="https://github.com/shikaiqiu/epiplexity">code</a> are public.</em></p>
 <h2 id="motivation">Motivation</h2>
-<p>Start with a practical question: why can two datasets of the same size teach a model very different things? Text pretraining transfers to robotics control, theorem proving and forecasting; the same number of image bytes transfers much less. A useful measure should distinguish information that is merely unpredictable from information that a learner can turn into a reusable pattern.</p>
+<p>Start with a practical question: why can pretraining on two datasets of the same size produce very different results on new tasks? The paper motivates this question with the broad transfer observed after text pretraining. A useful measure should distinguish unpredictable details from reusable predictive structure.</p>
 <p>AlphaZero makes the question vivid. It never saw a human game of chess: it received the rules and a reinforcement-learning algorithm, then trained by self-play. The rules, algorithm and random seed are a short description of the run, yet the trained network contains useful chess strategies. What did the computation make accessible to the learner?</p>
 <p>The same gap appears in practical questions of machine learning:</p>
 <ul>
@@ -28,15 +345,15 @@ processEscapes:true,processEnvironments:true}};</script>
 <h2 id="two-classical-notions-of-information">Two classical notions of information</h2>
 <p>Two classical measures answer different questions. For a random variable \(X\) with probability mass function \(p\), the <strong>Shannon entropy</strong> is the expected number of bits needed to encode a draw from the distribution:</p>
 \[H(X)=\mathbb{E}\bigl[-\log p(X)\bigr].\]
-<p>Logarithms in this post are base 2. The <strong>Kolmogorov complexity</strong> \(K(x)\) of one realised string \(x\) is the length of the shortest program that prints \(x\) on a fixed universal Turing machine \(\mathcal{U}\) (<a href="#ref-livitanyi2008">Li and Vitányi, 2008</a>).</p>
+<p>Logarithms in this post are base 2. The <strong>Kolmogorov complexity</strong> \(K(x)\) of one realised string \(x\) is the length of the shortest self-delimiting program that makes a fixed universal machine \(\mathcal{U}\) output \(x\) (<a href="#ref-livitanyi2008">Li and Vitányi, 2008</a>).</p>
 <p>The distinction is easiest with two examples:</p>
 <ul>
-<li><strong>Random bits:</strong> high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short recipe to discover.</li>
-<li><strong>A repeated pattern:</strong> low entropy and low complexity. A short program can generate the whole string.</li>
+<li><strong>Random bits:</strong> high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short program to discover.</li>
+<li><strong>A fixed repeated pattern:</strong> a distribution concentrated on one alternating string has zero entropy. The string also has low complexity: a program only needs the repetition rule and the length. A pattern alone does not determine entropy; the distribution matters.</li>
 </ul>
 <p>These measures describe uncertainty or compressibility. They do not say whether a particular learner can discover a pattern within a finite compute budget. A model trained on random API keys learns little beyond their frequencies; a model trained on a compact algorithm can learn reusable circuits even when the algorithm itself is short. Figure 1 illustrates the distinction.</p>
 <blockquote>
-<p><strong>Keep this distinction in mind:</strong> Shannon entropy asks how surprising a sample is on average; Kolmogorov complexity asks how short a recipe can describe one sample. Epiplexity will ask how much of that recipe a specified learner can actually find.</p>
+<p><strong>Keep this distinction in mind:</strong> Shannon entropy describes uncertainty in a distribution; Kolmogorov complexity measures the shortest program for one string. Epiplexity measures the program part of the best two-part code available under a computation bound.</p>
 </blockquote>
 <p><img src="images/fig1.png" alt="Random and structural information in three kinds of data, and information created by computation" /></p>
 <p><em>Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final loss, the random part; the green area above it is the structural part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.</em></p>
@@ -142,17 +459,52 @@ processEscapes:true,processEnvironments:true}};</script>
 <p>The authors call \(X\) the <em>test dataset</em>: we choose the training data freely, while \(X\) is the data whose information we measure.</p>
 <p>Writing out the weights of a trained network overestimates the information in them, particularly for large networks trained on little data. The authors encode the <em>training process</em> instead, with the prequential or the requential code.</p>
 <h3 id="prequential-coding-the-area-under-the-loss-curve">Prequential coding: the area under the loss curve</h3>
-<p>Let \(Z_0,\dots,Z_{M-1}\) be training examples, i.i.d. with the distribution of \(X\). Let \(P_i\) be the network after training on \(Z_0,\dots,Z_{i-1}\). The <strong>prequential code</strong> (<a href="#ref-dawid1984">Dawid, 1984</a>) transmits the data one example at a time. The sender encodes \(Z_i\) with \(\log 1/P_i(Z_i)\) bits and then trains on it. The receiver decodes \(Z_i\) with an identical copy of \(P_i\) and repeats the same training step. The total length \(\sum_i\log 1/P_i(Z_i)\) encodes the data together with the final network \(P_M\).</p>
-<p>To isolate the network, the authors subtract the code length of the data given the final network, \(\sum_i\log 1/P_M(Z_i)\), following a heuristic based on symmetry of information (<a href="#ref-zhang2020">Zhang et al., 2020</a>). The remainder is the <strong>area under the loss curve above the final loss</strong>:</p>
-\[\lvert\mathrm{P}_{\mathrm{preq}}\rvert\approx\sum_{i=0}^{M-1}\Bigl[\log\frac{1}{P_i(Z_i)}-\log\frac{1}{P_M(Z_i)}\Bigr].\]
-<p>Figure 3 shows why this area measures structure. On random data the loss never decreases: the area is zero. On simple data the loss drops at once and the area is small. Only data whose structure the network absorbs step by step produce a large area.</p>
+<p>Let \(Z_0,\dots,Z_{M-1}\) be i.i.d. training examples. Let \(P_i\) be the network after training on the first \(i\) examples, so \(P_0\) is the initial model. Sender and receiver agree on the initialisation, update rule and random seed. The <strong>prequential code</strong> (<a href="#ref-dawid1984">Dawid, 1984</a>) encodes \(Z_i\) before updating the model on it. Its ideal contribution is</p>
+\[\ell_i=-\log P_i(Z_i)=\log\frac{1}{P_i(Z_i)}\]
+<p>bits. Actual arithmetic coding adds rounding and termination overhead. After decoding, both sides make the same update and obtain \(P_{i+1}\). The chain rule explains why the contributions add: the adaptive predictions define a joint probability</p>
+\[\begin{aligned}
+Q_{\mathrm{preq}}(Z_{0:M-1})
+&amp;=\prod_{i=0}^{M-1}P_i(Z_i),\\
+L_{\mathrm{preq}}
+&amp;=-\log Q_{\mathrm{preq}}(Z_{0:M-1})
+=\sum_{i=0}^{M-1}\ell_i.
+\end{aligned}\]
+<p>Each \(P_i\) depends on the already decoded prefix. Consequently this code reconstructs both the data and the final network \(P_M\). It is a data code, rather than a separate code for the model alone.</p>
+<p>To isolate a model part, the paper uses the symmetry-of-information intuition: a description of the data and their deterministically trained model can be organised as “model, then data given model”. This suggests subtracting \(L_{\mathrm{final}}=\sum_i-\log P_M(Z_i)\) from the sequential data code (<a href="#ref-zhang2020">Zhang et al., 2020</a>). Write the result as an estimate, \(\widehat K_{\mathrm{preq}}\):</p>
+\[\begin{aligned}
+\widehat K_{\mathrm{preq}}
+&amp;:=L_{\mathrm{preq}}-L_{\mathrm{final}}\\
+&amp;=\sum_{i=0}^{M-1}\Bigl[-\log P_i(Z_i)+\log P_M(Z_i)\Bigr].
+\end{aligned}\]
+<p>This is the discrete area between the predictive-loss curve and the final-model loss. For a plot sampled every \(\Delta_i\) tokens, multiply each loss gap in bits per token by \(\Delta_i\); the sum then has units of bits. A flat curve gives little area, rapid improvement gives a small area, and sustained improvement gives a larger area. With finite samples these are tendencies, rather than exact statements about every dataset.</p>
 <p><img src="images/requential-illustration.png" alt="Training loss curves of teacher and student with the prequential and requential areas" /></p>
 <p><em>Figure 3. Training loss against the number of training tokens. The blue area is the prequential estimate \(\lvert\mathrm{P}_{\mathrm{preq}}\rvert\). The red area between the student and teacher curves is the requential estimate \(\lvert\mathrm{P}_{\mathrm{req}}\rvert\) of the next section. Source: Fig. 2a of the paper.</em></p>
-<p>Each loss \(\log 1/P_i(Z_i)\) is computed before the network trains on \(Z_i\), which makes it an estimate of the test loss. When the network overfits, this estimate departs from the training loss. The estimate is also a heuristic. Both code lengths are only upper bounds on Kolmogorov complexities; the difference between them is not an upper bound on the complexity of the network. Symmetry of information fails under a time bound; the decoding time need not be \(6ND\).</p>
+<p>The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In practice, a held-out final loss provides a safer baseline for the area estimate. Subtracting two code lengths does not construct a model-only code or certify its decoding time: \(\widehat K_{\mathrm{preq}}\) is a heuristic proxy, and finite-sample estimates need not even be positive.</p>
 <h3 id="requential-coding-transmitting-only-the-disagreement">Requential coding: transmitting only the disagreement</h3>
-<p>The <strong>requential code</strong> (<a href="#ref-qiu2026">Qiu et al., 2026</a>) is an explicit code with a known decoding time. A <em>teacher</em> network \(P^{\mathrm{t}}_i\) trains on the real data. A <em>student</em> network \(P^{\mathrm{s}}_i\) trains only on samples \(\widetilde{Z}_i\sim P^{\mathrm{t}}_i\) generated by the teacher. Sender and receiver hold identical copies of the student. <strong>Relative entropy coding</strong> (<a href="#ref-theis2022">Theis and Ahmed, 2022</a>) transmits one sample of \(P^{\mathrm{t}}_i\) to a receiver that holds only \(P^{\mathrm{s}}_i\) in about \(\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4\) bits on average. Here \(\mathrm{KL}_i:=\mathrm{KL}\bigl(P^{\mathrm{t}}_i\,\Vert\,P^{\mathrm{s}}_i\bigr)\) is the Kullback–Leibler divergence \(\mathrm{KL}(p\,\Vert\,q)=\mathbb{E}_p[\log p/q]\). The code length of the final student is the sum over training steps:</p>
-\[\lvert\mathrm{P}_{\mathrm{req}}\rvert=\sum_{i=0}^{M-1}\bigl[\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4\bigr]+O(1)\approx\sum_{i=0}^{M-1}\mathrm{KL}_i .\]
-<p>The code transmits only the disagreement between teacher and student; the entropy of the real data does not enter. The receiver replays the student training in \(6ND\) FLOPs. In Figure 3 the requential estimate is roughly the area between the student and teacher loss curves.</p>
+<p>The <strong>requential code</strong> (<a href="#ref-qiu2026">Qiu et al., 2026</a>) is an explicit code with a known decoding time. A <em>teacher</em> network \(P^{\mathrm{t}}_i\) trains on the real data. A <em>student</em> network \(P^{\mathrm{s}}_i\) trains only on samples \(\widetilde{Z}_i\sim P^{\mathrm{t}}_i\) generated by the teacher. Sender and receiver hold identical copies of the student. At step \(i\), both sides use shared randomness to generate proposals \(Y_i^{(0)},Y_i^{(1)},\ldots\sim P_i^{\mathrm{s}}\). The sender uses the teacher distribution to select an index; the decoder regenerates that proposal from the index and the shared randomness. The selection rule makes the accepted sample have distribution \(P_i^{\mathrm{t}}\), while the message records only the index. The expected log-likelihood ratio of a teacher sample is</p>
+\[\mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
+=\mathrm{KL}_i,
+\qquad \mathrm{KL}_i:=\mathrm{KL}\bigl(P_i^{\mathrm{t}}\,\Vert\,P_i^{\mathrm{s}}\bigr).\]
+<p>The identity has a useful interpretation:</p>
+\[\mathrm{KL}_i
+=\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm s}(Z)]
+-\mathbb{E}_{P_i^{\mathrm t}}[-\log P_i^{\mathrm t}(Z)].\]
+<p>Thus KL is the student’s excess loss on <strong>teacher samples</strong>, above the teacher’s own entropy. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.</p>
+<p>Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using the decoder’s shared proposals. Ordinary lossless coding communicates a particular sample already fixed by the sender. The shared randomness and the freedom to select the sample are what make the KL rate possible.</p>
+<p>The relative entropy coding theorem bounds the expected logarithm of the selected proposal index by \(\mathrm{KL}_i+O(1)\) (<a href="#ref-theis2022">Theis and Ahmed, 2022</a>). To send the index without requiring the decoder to know KL, <a href="https://arxiv.org/html/2607.11883v1#A1.SS1">Qiu et al. (2026), Appendix A.1</a> use a universal prefix-free integer code. Its length is bounded by \(\log J+2\log(1+\log J)+1\) for index \(J\ge1\). Taking expectations and applying Jensen’s inequality gives</p>
+\[\mathbb{E}[\ell_i\mid\mathcal F_i]
+\le \mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa,
+\qquad \kappa&lt;5.21.\]
+<p>Here \(\mathcal F_i\) is the training history before message \(i\), and \(\ell_i\) is the number of bits sent. Once the sample is decoded, both copies of the student apply the same update. The final student is therefore specified by the shared setup and all the messages. Adding their lengths and taking expectations yields</p>
+\[\begin{aligned}
+\mathbb{E}[L_{\mathrm{req}}]
+&amp;\le C_{\mathrm{setup}}
++\mathbb{E}\!\left[\sum_{i=0}^{M-1}
+\bigl(\mathrm{KL}_i+2\log(1+\mathrm{KL}_i)+\kappa\bigr)\right].
+\end{aligned}\]
+<p>The setup includes the initialisation, update rule, shared seed and schedule. A realised trajectory may exceed its conditional-mean bound; this is an expected-length result. The epiplexity paper originally used \(\mathrm{KL}_i+\log(1+\mathrm{KL}_i)+4\) as its per-message expression; the later requential paper explicitly accounts for coding the index without transmitting KL. We use that later bound here.</p>
+<p>When \(2\log(1+\mathrm{KL}_i)+\kappa\) is small relative to \(\mathrm{KL}_i\), the leading estimate is \(\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i\). At small block sizes the overhead can dominate, so the full bound should also be reported.</p>
+<p>The decoder reconstructs the <strong>student</strong>, without the teacher or the original training data. Its main cost is replaying student training, approximately \(6ND\) FLOPs under the paper’s dense-model accounting, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.</p>
 <table>
 <thead>
 <tr>
@@ -224,7 +576,7 @@ processEscapes:true,processEnvironments:true}};</script>
 </table>
 <p><em>Values at \(10^{17}\) FLOPs, our estimates from Figure 5.</em></p>
 <p>Rules 15, 30 and 54 define programs of equal length and equal running time. Rule 15 is periodic with a simple inverse. The loss saturates quickly; the data contain little information of either kind. Rule 30 is chaotic. The loss makes no progress; the information is maximal and entirely random. Rule 54 is complex but partly predictable. The loss decreases steadily as compute grows; the model extracts millions of bits of structure. <a href="#ref-zhang2024">Zhang et al. (2024)</a> found that models trained on class IV rules transfer best to downstream tasks, in line with the high epiplexity of rule 54.</p>
-<h3 id="induction-a-model-learns-more-than-the-generator-contains">Induction: a model learns more than the generator contains</h3>
+<h3 id="induction-prediction-requires-more-structure-than-generation">Induction: prediction requires more structure than generation</h3>
 <p>Paradox 3 states that likelihood training only reproduces the generating process. The authors construct data whose best predictor must contain more than the generator.</p>
 <p><strong>Setting.</strong> \(Z\) is uniform on \(\{0,1\}^{32}\). The map \(f\) is 4 updates of rule 30; the mask \(m\) deletes the first \(h\) bits of \(Z\). The model receives \(m(Z)\) and predicts \(f(Z)\). A transformer with 3 layers and width 256 trains for 20 000 steps with the requential code.</p>
 <p><img src="images/hidden-bits-illustration.png" alt="The hidden-bits task: generation and prediction" /></p>
@@ -301,8 +653,8 @@ processEscapes:true,processEnvironments:true}};</script>
 </ul>
 <hr />
 <h2 id="conclusion">Conclusion</h2>
-<p>Epiplexity separates the information in data into the part a bounded observer can learn and the part that stays random. With a time bound, the paradoxes disappear. Deterministic computation creates information (Theorem 2 and the cellular automata). The order of prediction changes it (Theorem 3 and chess). A model can learn more than the generating program contains (the hidden bits). In practice the authors estimate it as the area under a loss curve above the final loss, or as the summed divergence between a teacher and a student, at the compute-optimal model. On natural data it ranks text above images; pretraining on text also transfers more broadly.</p>
-<p>For machine learning the main message concerns data. Loss measures how random the data look to a model; epiplexity measures how much structure the model has to acquire to explain the rest. Two datasets with the same final loss can teach different amounts. When the aim is transfer to new tasks, epiplexity is a candidate criterion for selecting and generating data.</p>
+<p>Epiplexity separates the information in data into the part a bounded observer can learn and the part that stays random. With a time bound, the paradoxes disappear. Deterministic computation creates information (Theorem 2 and the cellular automata). The order of prediction changes it (Theorem 3 and chess). A predictor can require more structure than the generating process exposes (the hidden bits). In practice the authors estimate it as the area under a loss curve above the final loss, or as the summed divergence between a teacher and a student, at the compute-optimal model. On natural data it ranks text above images; pretraining on text also transfers more broadly.</p>
+<p>For machine learning the main message concerns data. Loss measures how random the data look to a model; epiplexity measures how much structure the model has to acquire to explain the rest. Two datasets with the same final loss can support different amounts of transferable structure. When the aim is transfer to new tasks, epiplexity is a candidate criterion for selecting and generating data.</p>
 <hr />
 <h2 id="references">References</h2>
 <ol type="1">
@@ -321,4 +673,53 @@ processEscapes:true,processEnvironments:true}};</script>
 </ol>
 
 </div>
-</article></div></main></body></html>
+</article>
+
+            </div>
+        </main>
+        <footer>
+    <hr>
+    <div class="footer-body">
+        <a href="https://github.com/intsystems" class="social" target="_blank" rel="noopener"><i class="fa fa-github"></i></a><a href="#" onclick="copyEmailToClipboard(event, 'mlalgorithms@gmail.com')" class="social"><i class="fa fa-envelope-o"></i></a><a href="https://t.me/IS_MIPT" class="social" target="_blank" rel="noopener"><i class="fa fa-telegram"></i></a><a href="https://www.youtube.com/c/MachineLearningPhystech" class="social" target="_blank" rel="noopener"><i class="fa fa-youtube-play"></i></a><a href="https://rutube.ru/channel/40144363" class="social social-link--text" target="_blank" rel="noopener">Rutube</a>
+        <br>
+        Intelligent Systems Department, Long Lake City
+        <br>
+        &#9400; 2003 – 2026
+        <br>
+    </div>
+</footer>
+
+        
+        
+
+
+
+
+
+
+
+
+
+
+<a
+    class="edit-floating-btn"
+    href="https://github.com/intsystems/intsystems.github.io/edit/main/_blogs/epiplexity.md"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Edit this page"
+    title="Edit this page"
+>
+    <svg
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        fill="currentColor"
+        stroke="currentColor"
+    >
+        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+    </svg>
+</a>
+
+
+    </body>
+</html>

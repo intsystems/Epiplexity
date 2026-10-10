@@ -2,9 +2,7 @@
 % figs/ holds the vector figures of the arXiv v2 source (byte-identical to v1), unchanged; slides crop them with `trim'.
 % Statement and figure numbers ("Thm. 9 of the paper", "Fig. 3") follow v2; v2 kept the v1 numbering.
 % Build (twice): pdflatex epiplexity_talk.tex
-% Answers to the questions for the form (slide "Questions for the audience"):
-%   (1) H_T(X): it is at least n, while S_T(X) is at most a constant (slide "Epiplexity: the two-part description").
-%   (2) The area between the training-loss curve and the final loss (slide "Estimation I").
+% Audience questions include their answers on slide 17.
 \documentclass[aspectratio=169,notheorems]{beamer}
 \usetheme{default}
 \usefonttheme{professionalfonts}
@@ -58,12 +56,12 @@ Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J.~Zico Kolter, Andrew Gor
 Speaker: Alex Kravatsky
 \end{frame}
 % ============================================================ MOTIVATION
-\begin{frame}{The question: which data teach a model?}
+\begin{frame}{Which pretraining data support transfer?}
 \begin{columns}[T]
 \begin{column}{0.54\textwidth}
 \begin{itemize}\setlength{\itemsep}{0.7em}
-\item Pretraining on text transfers to robotics control, theorem proving and forecasting. The same number of image bytes transfers less.
-\item A dataset can contain many unpredictable bits and still teach a useful, reusable pattern.
+\item Models pretrained on text can improve performance on robotics, theorem proving and forecasting tasks.
+\item Dataset size alone does not measure reusable predictive structure.
 \item \textbf{Question:} how much structure can a particular learner extract, given a fixed compute budget?
 \end{itemize}
 \end{column}
@@ -79,10 +77,10 @@ Speaker: Alex Kravatsky
 \begin{frame}{Two classical lenses on information}
 \small
 $H(X)=\E[-\log_2 p(X)]$ is the Shannon entropy of a random variable $X$ with probability mass function $p$.
-It is the average number of bits needed to encode a draw from the distribution.
+It is the ideal average code length in bits for a draw from the distribution.
 
 \medskip
-$K(x)$ is the Kolmogorov complexity of one realised string $x$: the length of the shortest program that prints
+$K(x)$ is the Kolmogorov complexity of one realised string $x$: the length of the shortest self-delimiting program that outputs
 $x$ on a fixed universal computer $\mathcal U$ \citep{livitanyi2008}.
 
 \smallskip
@@ -91,14 +89,14 @@ $x$ on a fixed universal computer $\mathcal U$ \citep{livitanyi2008}.
 \toprule
 \textbf{Shannon entropy} & \textbf{Kolmogorov complexity} \\
 \midrule
-Uncertainty in a distribution. Uniform random bits have high entropy; a deterministic alternating string has low entropy. &
-A shortest executable recipe. An alternating string has a short recipe; a typical random string does not. \\
+Uncertainty in a distribution. Uniform $n$-bit strings have entropy $n$; a distribution concentrated on one string has entropy zero. &
+Program length for one string. A repeating pattern can be specified by its rule and length; a typical random string needs about $n$ bits. \\
 \bottomrule
 \end{tabular}
 \smallskip
 Kolmogorov complexity is a mathematical benchmark; no algorithm computes $K(x)$ exactly for every string.
 \normalsize
-\take{These are complementary: entropy describes average uncertainty, while Kolmogorov complexity describes one object's shortest recipe.}
+\take{Entropy measures average uncertainty; Kolmogorov complexity measures program length.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
 \begin{frame}{The missing ingredient: computational access}
@@ -114,7 +112,7 @@ random seed form a short description of the run.
 \item We therefore define information relative to the models available within time $T$.
 \end{itemize}
 
-\take{Epiplexity is the structure that a computationally bounded observer can extract.}
+\take{Epiplexity measures model bits in the best description available under a time bound.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{A model with bounded computation}
@@ -131,7 +129,7 @@ The program length $|\prog|$ is measured in bits. This is the idealised definiti
 replace $\PT$ by models reachable with a stated architecture, optimiser and FLOP budget.
 
 \medskip
-\take{The time bound describes what the observer can compute, not a property of the data alone.}
+\take{The formal bound limits evaluation and sampling; empirical estimates also account for training.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity: the two-part description}
@@ -144,8 +142,8 @@ For a random variable $X$ on $\{0,1\}^n$, let
 with ties broken by the shortest program. Logarithms are base~$2$. The \emph{epiplexity} of $X$ is $S_T(X):=|\prog^\star|$. The \emph{time-bounded entropy} of $X$ is $H_T(X):=\E[-\log P^\star(X)]$.
 \end{definition}
 \small
-$S_T$ is the model part: bits needed to describe the useful predictor. $H_T$ is the data part: bits
-that the predictor cannot explain. Their sum $\MDL_T(X):=S_T(X)+H_T(X)$ is the minimum two-part
+$S_T$ is the model part: bits needed to describe the selected predictor. $H_T$ is the data part: expected bits
+needed to encode data with that predictor. Their sum $\MDL_T(X):=S_T(X)+H_T(X)$ is the minimum two-part
 description length under the bound.
 
 \smallskip
@@ -154,7 +152,7 @@ description length under the bound.
 \toprule
 Random variable $X$ & Time bound & $S_T(X)$ & $H_T(X)$ \\
 \midrule
-$U_n$, uniform on $\{0,1\}^n$ & $T(n)\ge c_1$ & $\le c_2$ & $\ge n$ \\
+$U_n$, uniform on $\{0,1\}^n$ & enough for uniform model & $O(1)$ & $n+O(1)$ \\
 $0101\ldots$ or $1010\ldots$, probability $\tfrac12$ each & $T(n)=\Theta(n)$ & $O(1)$ & $O(1)$ \\
 \bottomrule
 \end{tabular}
@@ -187,9 +185,9 @@ and only the labels $Y$ are encoded.
 \small
 \begin{itemize}\setlength{\itemsep}{0.25em}
 \item Search over all programs is intractable, so fix an architecture and optimiser.
-\item Compute accounting: $6ND+2N\Dt\le T$ for training and evaluation.
-\item Each run gives a model code plus a validation-data code. The lower convex hull over $N$ and $D$ estimates $\MDL_T$.
-\item At compute $T$, split the hull into $S_T$ (model) and $H_T$ (data).
+\item Approximate dense-model accounting: $6ND+2N\Dt\le T$, where $N$ counts parameters and $D,\Dt$ count training and evaluation tokens.
+\item Each run gives a model code plus a validation-data code. Select the shortest admissible two-part code; a lower hull smooths the empirical curve.
+\item Report its model and data parts as estimates $\widehat S_T$ and $\widehat H_T$.
 \end{itemize}
 \end{column}
 \begin{column}{0.38\textwidth}
@@ -207,11 +205,11 @@ and only the labels $Y$ are encoded.
 \begin{column}{0.64\textwidth}
 \small
 \begin{itemize}\setlength{\itemsep}{0.2em}
-\item Train $P_i$ on the first $i$ examples of an i.i.d.\ stream.
-\item Encode example $Z_i$ with $-\log_2P_i(Z_i)$ bits, then train on it.
-\item Subtract the final-model floor. The remainder is the area above the final loss:
+\item $P_i$ has seen $Z_0,\ldots,Z_{i-1}$; $P_0$ is the initial model.
+\item Encode $Z_i$ at ideal cost $-\log_2P_i(Z_i)$, then update. The decoder repeats the update.
+\item The sequential data code sums these costs. Subtract the final-model data code to estimate the model part:
 \[
-|\prog_{\mathrm{preq}}|\approx\sum_{i<M}\bigl[\log 1/P_i(Z_i)-\log 1/P_M(Z_i)\bigr].
+\widehat K_{\mathrm{preq}}=\sum_{i<M}\bigl[-\log P_i(Z_i)+\log P_M(Z_i)\bigr].
 \]
 \end{itemize}
 \end{column}
@@ -226,28 +224,29 @@ and only the labels $Y$ are encoded.
 \small
 \begin{itemize}\setlength{\itemsep}{0.2em}
 \item The loss is measured before fitting each example, so it is a test-like loss.
-\item This model-part estimate is heuristic; decoding-time guarantees are not established.
+\item The area is a heuristic model-part estimate; subtraction alone gives no model-only code.
 \end{itemize}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Estimation II: the requential code}
 \small
 \begin{itemize}\setlength{\itemsep}{0.25em}
-\item A teacher trains on real data; a student trains only on teacher samples. Encoder and decoder share the student \citep{qiu2026}.
-\item Relative entropy coding pays for their disagreement, $\KL_i=\KL(P_i^{\mathrm t}\,\|\,P_i^{\mathrm s})$:
-\item The code length of the final student is
+\item A teacher model trains on real data; a student model trains on teacher-distributed samples \citep{qiu2026}.
+\item Both sides share the student and a random seed. Send the index of a student proposal selected to have the teacher's distribution.
+\item Relative entropy coding bounds the expected message cost by teacher--student disagreement:
 \[
-|\prog_{\mathrm{req}}|=\sum_{i<M}\bigl[\KL_i+\log(1+\KL_i)+4\bigr]+O(1)\approx\sum_{i<M}\KL_i .
+\E[\ell_i\mid\mathcal F_i]\le\KL_i+2\log(1+\KL_i)+\kappa,\quad \kappa<5.21,
 \]
+where $\KL_i=\KL(P_i^{\mathrm t}\Vert P_i^{\mathrm s})$ and $\mathcal F_i$ is the prior history. Summing gives the student-code bound; $\sum_i\KL_i$ is its leading estimate.
 \end{itemize}
 \centering
 \begin{tabular}{@{}lll@{}}
 \toprule
 & Prequential & Requential \\
 \midrule
-Code & heuristic, decoding time unknown & explicit, decoded in $6ND$ FLOPs \\
+Model part & heuristic subtraction & explicit student reconstruction \\
 Training & one network & teacher and student, $2$--$10\times$ slower \\
-Estimate & several times larger & smaller \\
+Reported values & larger in the paper & smaller in the paper \\
 \bottomrule
 \end{tabular}
 \raggedright
@@ -284,7 +283,7 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \take{Rule 15 is simple, rule 30 looks random, and rule 54 contains learnable structure.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Experiment: a model learns more than the generator contains}
+\begin{frame}{Experiment: prediction requires more structure than generation}
 \small
 \textbf{Setting.} Hide $h$ bits of a random $Z\in\{0,1\}^{32}$; predict four rule~30 updates of $Z$ from the visible bits.
 
@@ -304,7 +303,7 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \item The generator runs forward; the predictor must infer the hidden bits.
 \item The loss approaches $h$ bits only after rapidly growing compute, and $S_T$ grows with $h$.
 \end{itemize}
-\take{Under a time bound, maximum likelihood learns an inference circuit that the generating program does not contain.}
+\take{Predicting with partial observations requires inference that is absent from forward generation.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Experiment: the order of chess data}
@@ -356,18 +355,18 @@ CIFAR-5M & $9\times10^7$ & $2.3\times10^{10}$ & $0.4\%$ \\
 
 \smallskip
 \begin{itemize}\setlength{\itemsep}{0.2em}
-\item Text has the most structure; pixel images have the most residual information.
+\item Under this protocol, text has the largest estimated model part; pixel images have the largest residual part.
 \item Scaling laws and adaptive data selection show the same ordering \citep{jiang2025}.
 \end{itemize}
 \end{column}
 \end{columns}
-\take{Images contain the most information and the least structure. Text contains the most structure.}
+\take{This ranking is relative to the tokenisation, model family and compute budget.}
 \end{frame}
 % ============================================================ SUMMARY
 \begin{frame}{Summary and limitations}
 \textbf{Summary}
 \begin{itemize}\setlength{\itemsep}{0.3em}
-\item $S_T$ is the model bits; $H_T$ is what that model cannot predict.
+\item $S_T$ counts selected model bits; $H_T$ is the expected data-code length.
 \item A time bound makes computation, prediction order and learned structure observable.
 \item Estimate $S_T$ with prequential area or teacher--student divergence at the compute-optimal model.
 \end{itemize}
@@ -396,10 +395,22 @@ Y.~Jiang et al.\ Adaptive data optimization.\ \emph{ICLR}, 2025.
 \end{thebibliography}
 \end{frame}
 % ============================================================ QUESTIONS
-\begin{frame}{Questions for the audience}
-\begin{enumerate}\setlength{\itemsep}{2.5em}
-\item A dataset $X$ consists of $n$ uniformly random bits. Which quantity is close to $n$: the epiplexity $S_T(X)$ or the time-bounded entropy $H_T(X)$?
-\item In the prequential estimate, which part of the training loss curve approximates the epiplexity?
+\begin{frame}{Questions for the audience: answers}
+\small
+\begin{enumerate}\setlength{\itemsep}{1.1em}
+\item A dataset $X$ consists of $n$ uniformly random bits. Which quantity is close to $n$?
+\begin{block}{Answer}
+$H_T(X)\approx n$: the bounded observer cannot predict the bits. A constant-size uniform model gives $S_T(X)=O(1)$.
+\end{block}
+\item In the prequential estimate, which part of the training-loss curve approximates the epiplexity?
+\begin{block}{Answer}
+The area between the loss before each update and the final-model loss, namely
+$\sum_i[\log 1/P_i(Z_i)-\log 1/P_M(Z_i)]$.
+\end{block}
+\item What does changing $T$ change?
+\begin{block}{Answer}
+It changes the available observer. The total $\MDL_T$ cannot increase with $T$, while $S_T$ itself may rise or fall.
+\end{block}
 \end{enumerate}
 \end{frame}
 % ============================================================ BACKUP
