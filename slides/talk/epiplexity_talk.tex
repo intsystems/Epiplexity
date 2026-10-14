@@ -173,7 +173,7 @@ Prediction requires inference from clues to culprit; generation does not. The pa
 % ============================================================ FORMAL PROBLEM STATEMENT
 \begin{frame}{Time-bounded probabilistic models}
 \small
-One program $\prog$ has two routines, selected by an input flag: evaluate $P(x)$ or sample $x\sim P$. Each must finish within $T(n)$ steps and use the same distribution.
+Fix a prefix-free universal Turing machine. A program $\prog$ implements the same distribution $P$ in two modes: evaluate $P(x)$ or sample $x\sim P$. Each call must finish within $T(n)$ steps, for every input.
 
 \begin{block}{Example: one autoregressive model, fixed parameters $\theta$}
 The network outputs conditional probabilities $p_\theta(x_j\mid x_{<j})$.
@@ -185,9 +185,9 @@ P_\theta(x)=\prod_{j=1}^{n}p_\theta(x_j\mid x_{<j}).
 \item \textbf{Sampling:} draw $x_1$, then $x_2\mid x_1$, and so on, using the same conditionals and fresh random bits.
 \end{itemize}
 \end{block}
-$\PT$ contains such programs on a fixed prefix-free universal Turing machine; $|\prog|$ is the program length in bits.
+$\PT$ is the set of programs satisfying both runtime bounds and whose sampler agrees with the evaluated probabilities. $|\prog|$ is the program length in bits.
 \par\smallskip
-\src{Definition~7, \citet{finzi2026}: exact finite-binary probabilities; $T$ is non-decreasing and time-constructible.}
+\src{Definition~7, \citet{finzi2026}: $T$ is non-decreasing and time-constructible; probabilities are exact, normalized and have finite binary expansions.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity: the two-part description}
@@ -282,7 +282,7 @@ $H_T(Y\mid X)\ne H_T(X,Y)-H_T(X)$.
 % ============================================================ METHOD
 \begin{frame}{Compute budget for training and evaluation}
 \small
-Fix an architecture and optimiser. Let $N$ be the parameter count, $D$ the training-token count and $\Dt$ the evaluation-token count.
+The experiments restrict the search to models trained with a chosen architecture and optimiser. Their FLOP budget counts replaying training and evaluating the target data. Let $N$ count parameters, $D$ training tokens and $\Dt$ evaluation tokens.
 \[
 \underbrace{(2ND+4ND)}_{\text{forward + backward during training}}
 +\underbrace{2N\Dt}_{\text{evaluation: forward only}}\le T.
@@ -293,7 +293,7 @@ Fix an architecture and optimiser. Let $N$ be the parameter count, $D$ the train
 \end{itemize}
 For each $(N,D)$ satisfying the budget, estimate the model-code length and add the validation loss (bits per token) multiplied by $\Dt$. Retain the run with the smallest sum.
 \par\medskip
-\src{Section~4, \citet{finzi2026}. Approximate dense-network accounting; attention, optimiser and coding overheads require separate accounting when material.}
+\src{Sections~3--4 and Appendix~B.1, \citet{finzi2026}. This is empirical compute accounting. Formal membership in $\PT$ requires both evaluation and sampling to satisfy the bound separately.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Prequential coding: transmit data and reproduce training}
@@ -314,64 +314,51 @@ The message reconstructs the exact training batches \emph{and} the final state $
 % ------------------------------------------------------------
 \begin{frame}{Estimating model bits from the training-loss curve}
 \small
-The prequential message recovers both training data and final model $P_M$. The paper estimates the model's description length by subtracting the cost of encoding the same data with $P_M$:
+Let $Z=(Z_0,\ldots,Z_{M-1})$. The prequential message reconstructs $(Z,P_M)$; given $P_M$, the data alone have a code of length $L_{\mathrm{final}}$.
+
+\medskip
+\begin{columns}[c]
+\begin{column}{0.60\textwidth}
+The unbounded algorithmic chain rule suggests
+\[
+K(Z,P_M)\approx K(P_M)+K(Z\mid P_M).
+\]
+Substituting the two code lengths gives
 \[
 \begin{aligned}
 L_{\mathrm{final}}&=\sum_{i=0}^{M-1}-\log_2 P_M(Z_i),\\
 \widehat K_{\mathrm{preq}}&=L_{\mathrm{preq}}-L_{\mathrm{final}}.
 \end{aligned}
 \]
-\begin{columns}[c]
-\begin{column}{0.58\textwidth}
-For batch $Z_i$, the loss gap is $-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)$. Summing these gaps gives the blue area above the final-loss baseline, in bits.
-
-\medskip
-This subtraction is a \textbf{heuristic estimate}: it does not construct a separately decodable model code.
+This is a \textbf{heuristic}: subtracting two upper bounds need not bound $K(P_M)$, and the chain rule gives no decoder within $T$.
 \end{column}
-\begin{column}{0.35\textwidth}
+\begin{column}{0.36\textwidth}
 \centering
 \includegraphics[width=\linewidth]{figs/requential_illustration.pdf}
 \end{column}
 \end{columns}
 \par\smallskip
-\src{Section~4.1 and Fig.~2a, \citet{finzi2026}. Overfitting can distort a final-training-loss baseline.}
+\src{Section~4.1 and Fig.~2a, \citet{finzi2026}. The unbounded algorithmic chain rule has logarithmic overhead in this form; it does not give a time-bounded identity.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Requential coding: transmit selected training samples}
+\begin{frame}{Requential coding: reconstruct a model from sample indices}
 \small
-\textbf{Goal:} reconstruct a student trained on synthetic data, without transmitting the original data or the teacher's weights.
-
-\smallskip
-At step $i$, the encoder has a teacher $Q_i$ trained on real data. Both sides have the same student $P_i=P_{\theta_i}$, update rule $A$ and random seed $s$.
+At step $i$, the encoder has a teacher checkpoint $Q_i$, typically trained on real data. Both sides share a student $P_i=P_{\theta_i}$, initial state, update rule $A$ and random seed $s$.
 \begin{enumerate}\setlength{\itemsep}{0.45em}
-\item Generate indexed candidate batches $Y_i^{(1)},Y_i^{(2)},\ldots\sim P_i$. Each candidate is reproducible from $(s,i,j)$, where $j$ is its index.
-\item Using $Q_i$ and $P_i$, the encoder selects an index $J_i$ by \textbf{relative entropy coding}. The selected batch, denoted $\widetilde Z_i=Y_i^{(J_i)}$, has distribution $Q_i$.
-\item Transmit a prefix code for $J_i$. The decoder recovers the index and regenerates the selected batch using $(s,i,J_i)$ and $P_i$.
-\item Both compute $\theta_{i+1}=A(\theta_i,\widetilde Z_i)$.
+\item Generate indexed proposals $Y_i^{(j)}\sim P_i$, reproducible from $(s,i,j)$.
+\item The encoder uses \href{https://proceedings.mlr.press/v162/theis22a.html}{\textbf{relative entropy coding}} to select $J_i$ so that $\widetilde Z_i=Y_i^{(J_i)}\sim Q_i$, then sends a prefix code for $J_i$.
+\item The decoder regenerates $\widetilde Z_i$. Both update $\theta_{i+1}=A(\theta_i,\widetilde Z_i)$; repeating reconstructs the final student.
 \end{enumerate}
-\par\smallskip
-\src{\citet{qiu2026}, Section~3.1; \href{https://proceedings.mlr.press/v162/theis22a.html}{Theis and Ahmed (2022)}. The backup gives a selection rule via rejection sampling.}
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Requential coding: the cost of a sample index}
-\small
-The decoder generates the selected batch from its index $J_i$. Only the index needs to be transmitted.
-
-\begin{block}{When teacher and student agree}
-If $Q_i=P_i$, use the first shared proposal. A fixed message suffices, even when a batch contains many random bits.
-\end{block}
-For fixed teacher $Q_i$ and student $P_i$, let $\ell_i$ be the index-message length in bits. Their KL divergence is
+If $Q_i=P_i$, the first proposal suffices; its random bits need no transmission.
 \[
-d_i:=\KL(Q_i\Vert P_i)=\E_{Z\sim Q_i}\!\left[\log_2\frac{Q_i(Z)}{P_i(Z)}\right].
+\begin{aligned}
+d_i&:=\KL(Q_i\Vert P_i)=\E_{Z\sim Q_i}\!\left[\log_2\frac{Q_i(Z)}{P_i(Z)}\right],\\
+\E[\ell_i\mid\text{history}]&\le d_i+2\log_2(1+d_i)+\kappa,\qquad\kappa<5.21.
+\end{aligned}
 \]
-Relative entropy coding bounds the expected communication cost:
-\[
-\E[\ell_i]\le d_i+2\log_2(1+d_i)+\kappa,
-\qquad\kappa<5.21.
-\]
-Add the message lengths over all training steps to obtain the student-model code. Its leading estimate is $\widehat K_{\mathrm{req}}=\sum_i d_i$; the logarithmic overhead matters for small batches.
+Here $\ell_i$ is the index-message length. The leading model-length estimate is $\widehat K_{\mathrm{req}}=\sum_i d_i$.
 \par\smallskip
-\src{\citet{qiu2026}, Appendix~A.1: conditional expected length, assuming $P_i(z)>0$ when $Q_i(z)>0$. Simple rejection sampling need not achieve this bound.}
+\src{Relative entropy coding: \href{https://proceedings.mlr.press/v162/theis22a.html}{Theis and Ahmed (ICML, 2022)}. Protocol and bound: \citet{qiu2026}, Section~3.1 and Appendix~A.1. Assume $P_i(z)>0$ whenever $Q_i(z)>0$; setup and logarithmic overhead are omitted from the leading estimate.}
 \end{frame}
 % ============================================================ EXPERIMENTS
 \begin{frame}{Cellular automata: simple dynamics, different model parts}
@@ -513,14 +500,14 @@ CIFAR-5M & $9\times10^7$ & $2.3\times10^{10}$ & $0.4\%$ \\
 \begin{itemize}\setlength{\itemsep}{0.3em}
 \item $S_T$ counts selected model bits; $H_T$ is the expected data-code length.
 \item Computational restrictions can change both the total description length and its decomposition.
+\item Epiplexity can be unbounded: some families satisfy $S_{\Poly}(X_n)=\Omega(\log_2 n)$ under one-way-function assumptions.
 \item Neural-network estimates combine a model-code estimate with validation loss, optimized under a compute budget.
 \end{itemize}
 \medskip
 \textbf{Limitations}
 \begin{itemize}\setlength{\itemsep}{0.3em}
 \item $S_T$ is not a guarantee of downstream usefulness.
-\item Assuming one-way functions exist, some $n$-bit distributions have epiplexity $S_{\Poly}(X_n)=\Omega(\log_2 n)$.
-\item Estimates depend on architecture, optimiser, $T$, dataset size and random seed.
+\item Estimates depend on architecture, optimiser, $T$ and dataset size.
 \end{itemize}
 \end{frame}
 % ============================================================ FOLLOW-UP WORK

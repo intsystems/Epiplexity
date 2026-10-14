@@ -250,7 +250,7 @@ The authors check this with an **elementary cellular automaton** (ECA): a row of
 
 > **Theorem 4** (Thm. 10 of the paper). If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables $$X_n$$ on $$\{0,1\}^n$$ have $$S_{\mathrm{Poly}}(X_n)=\Omega(\log_2 n)$$.
 
-Epiplexity can therefore grow without bound. The authors acknowledge the limits of this result. Logarithmic growth is far below the power laws suggested by natural data; the proof is non-constructive. No theorem gives an explicit distribution with large epiplexity.
+This proves that epiplexity can grow without bound. The logarithmic lower bound does not cap the epiplexity of these distributions; it may grow faster. The proof is non-constructive and does not identify a particular distribution realizing the bound.
 
 ---
 
@@ -258,13 +258,15 @@ Epiplexity can therefore grow without bound. The authors acknowledge the limits 
 
 ### From programs to training runs
 
-A search over all programs is intractable. The authors restrict the search to neural networks of one architecture trained by one optimiser and measure compute in floating-point operations (FLOPs). Let $$N$$ be the parameter count, $$D$$ the training-token count and $$\mathcal D$$ the evaluation-token count. Their dense-network approximation assigns roughly $$2N$$ FLOPs per token to a forward pass: one multiplication and one addition per parameter. Backpropagation computes gradients with respect to both activations and weights and costs roughly two forward passes, or $$4N$$ FLOPs per token. Replaying training therefore costs about $$6ND$$ FLOPs, and forward-only evaluation costs $$2N\mathcal D$$. The budget condition is
+A search over all programs is intractable. The abstract class $$\mathcal P_T$$ requires both probability evaluation and sampling within the bound. The authors instead restrict the empirical estimate to neural networks of one architecture trained by one optimiser and measure compute in floating-point operations (FLOPs). Let $$N$$ be the parameter count, $$D$$ the training-token count and $$\mathcal D$$ the evaluation-token count. Their dense-network approximation assigns roughly $$2N$$ FLOPs per token to a forward pass: one multiplication and one addition per parameter. Backpropagation computes gradients with respect to both activations and weights and costs roughly two forward passes, or $$4N$$ FLOPs per token. Replaying training therefore costs about $$6ND$$ FLOPs, and forward-only evaluation costs $$2N\mathcal D$$. The budget condition is
 
 $$
 6ND+2N\mathcal{D}\le T.
 $$
 
-This is approximate accounting for reconstructing the trained model and evaluating it. Attention, optimiser updates and coding overheads require separate accounting when they contribute materially.
+Definition 7 bounds evaluation and sampling **separately**, in Turing-machine steps. Each complete program call must finish within $$T(n)$$. Sections 4.1–4.2 and Appendix B.1 instead use a FLOP proxy for reconstructing a model by replaying training and evaluating the target dataset. Section 3 explicitly permits restricting the model class to networks reachable by a specified architecture and optimiser. Connecting this restricted empirical estimate to the exact class $$\mathcal P_T$$ requires normalized finite-binary probabilities and a worst-case runtime bound for both evaluation and sampling, including model reconstruction. The reported FLOP condition accounts for reconstruction plus evaluation; a sampling implementation must also satisfy its own bound.
+
+Attention, optimiser updates and coding overheads require separate accounting when they contribute materially.
 
 The authors call $$X$$ the *test dataset*: we choose the training data freely, while $$X$$ is the data whose information we measure.
 
@@ -294,7 +296,7 @@ $$
 
 Each $$P_i$$ depends on the already decoded prefix. Consequently this code reconstructs both the data and the final network $$P_M$$. It is a data code, rather than a separate code for the model alone.
 
-To isolate a model part, the paper uses the symmetry-of-information intuition: a description of the data and their deterministically trained model can be organised as “model, then data given model”. This suggests subtracting $$L_{\mathrm{final}}=\sum_i-\log_2 P_M(Z_i)$$ from the sequential data code ([Zhang et al., 2020](#ref-zhang2020)). Write the result as an estimate, $$\widehat K_{\mathrm{preq}}$$:
+Why subtract the final-model loss? For unbounded Kolmogorov complexity, the algorithmic chain rule gives $$K(Z,P_M)\approx K(P_M)+K(Z\mid P_M)$$, up to logarithmic overhead. A description of the pair can be organised as a description of the model followed by the data conditional on that model. The prequential message is a code for the pair. Given $$P_M$$, the same training data have ideal code length $$L_{\mathrm{final}}:=\sum_i-\log_2 P_M(Z_i)$$. Following [Zhang et al. (2020)](#ref-zhang2020), the paper substitutes these computable code lengths for the two Kolmogorov terms. This motivates the estimate
 
 $$
 \begin{aligned}
@@ -304,19 +306,21 @@ $$
 \end{aligned}
 $$
 
-This is the discrete area between the predictive-loss curve and the final-model loss. For a plot sampled every $$\Delta_i$$ tokens, multiply each loss gap in bits per token by $$\Delta_i$$; the sum then has units of bits. A flat curve gives little area, rapid improvement gives a small area, and sustained improvement gives a larger area. With finite samples these are tendencies, rather than exact statements about every dataset.
+For a loss curve measured in bits per token, multiply each loss gap by the number of tokens in its interval to obtain the corresponding contribution in bits.
 
 ![Training loss curves of teacher and student with the prequential and requential areas](/images/blog/epiplexity/requential-illustration.png)
 
 *Figure 3. Training loss against the number of training tokens. The blue area is the prequential estimate $$\lvert\mathrm{P}_{\mathrm{preq}}\rvert$$. The red area between the student and teacher curves is the requential estimate $$\lvert\mathrm{P}_{\mathrm{req}}\rvert$$ of the next section. Source: Fig. 2a of the paper.*
 
-The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In practice, a held-out final loss provides a safer baseline for the area estimate. Subtracting two code lengths does not construct a model-only code or certify its decoding time: $$\widehat K_{\mathrm{preq}}$$ is a heuristic proxy, and finite-sample estimates need not even be positive.
+This subtraction is a **heuristic**, not a proved bound on the model's description length. Both code lengths only upper-bound their respective Kolmogorov terms; subtracting upper bounds need not bound their difference. Moreover, the unbounded chain rule does not provide a decoder that runs within $$T$$. Finite-sample estimates need not even be positive.
+
+The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In Appendix B.1, the authors approximate the final-training-data loss using scaled held-out loss, assuming a small generalization gap in their one-epoch experiments. For the adaptive-data experiment, they compute the final-training-data loss directly.
 
 ### Requential coding: reconstructing a student from sample indices
 
 The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) reconstructs a student trained on synthetic samples, without transmitting the teacher's weights or the original data. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on real data. Sender and receiver share a *student* $$P^{\mathrm{s}}_i$$ with identical initial training state, update rule and random seed. At step $$i$$, the seed defines indexed proposals $$Y_i^{(j)}\sim P_i^{\mathrm{s}}$$. A counter-based random generator keyed by the seed, step $$i$$ and proposal index $$j$$ lets the receiver regenerate a proposal directly without producing the earlier proposals.
 
-The sender uses relative entropy coding to choose an index $$J_i$$ so that $$\widetilde Z_i=Y_i^{(J_i)}$$ has the teacher distribution $$P_i^{\mathrm t}$$. It transmits a prefix code for $$J_i$$. The receiver decodes the index and regenerates the chosen batch; both copies of the student then apply the same update $$\theta^{\mathrm s}_{i+1}=A(\theta^{\mathrm s}_i,\widetilde Z_i)$$. The receiver never needs the teacher. Repeating these steps reconstructs the final student, rather than the original teacher.
+The sender uses **relative entropy coding** ([Theis and Ahmed, 2022](#ref-theis2022)) to choose an index $$J_i$$ so that $$\widetilde Z_i=Y_i^{(J_i)}$$ has the teacher distribution $$P_i^{\mathrm t}$$. It transmits a prefix code for $$J_i$$. The receiver decodes the index and regenerates the chosen batch; both copies of the student then apply the same update $$\theta^{\mathrm s}_{i+1}=A(\theta^{\mathrm s}_i,\widetilde Z_i)$$. Repeating these steps reconstructs the final student.
 
 To see how sample selection can change a distribution, consider simple rejection sampling at one step. Write $$P$$ for the student and $$Q$$ for the teacher. Assume $$P(z)>0$$ whenever $$Q(z)>0$$, and choose $$B\ge\max_z Q(z)/P(z)$$. Draw proposals $$Y^{(j)}\sim P$$ and independent uniforms $$U_j\sim\mathrm{Uniform}[0,1]$$, and accept the first index satisfying
 
@@ -505,13 +509,11 @@ Published scaling laws give the same ordering: extrapolated to $$T=10^{25}$$ FLO
 The authors acknowledge these limits:
 
 - Epiplexity measures the amount of structure, independent of the usefulness of that structure for a given task. The authors stress that it is no guarantee of OOD performance.
-- The theorems are asymptotic and rest on cryptographic assumptions. The largest proved epiplexity grows as $$\Omega(\log_2 n)$$.
 - The prequential estimate is a heuristic; the requential estimate is 2 to 10 times slower.
 
 The released code and the experiments show further limits:
 
 - Every estimate depends on the architecture, optimiser, bound $$T$$ and evaluation size $$\mathcal D$$. Comparing datasets requires a common observer and protocol. Comparing architectures treats the observer as the experimental variable and requires common data, evaluation criteria and compute accounting.
-- Every sweep in the released code uses one random seed; no figure shows error bars.
 - All experiments use transformers.
 
 ---
@@ -531,8 +533,6 @@ The most direct follow-up work comes from Andrew Gordon Wilson's group:
 - **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** a teacher selects examples drawn from the student's predictive distribution. Recording the selection indices, together with shared randomness and the training algorithm, lets a decoder reconstruct the student's training trajectory. The coding cost depends on teacher–student disagreement, rather than the entropy of the original data. The authors obtain PAC-Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models and ensembles can have shorter codes; repeated training epochs can increase the code length and indicate overfitting.
 - **[Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746):** introduce two online uses of an epiplexity proxy. **EpiSelect** fits cross-domain loss-scaling laws to account for how training on one domain affects predictions on others, then adjusts sampling weights to maximize the predicted proxy gain. **EpiGen** trains a synthetic-data generator with REINFORCE. Its reward is the reduction in learner loss on a buffer of earlier samples after training on a new generated batch. Evaluating earlier samples rewards improvements that extend beyond the new batch itself. The authors report gains in zero-shot downstream evaluation for EpiSelect and in downstream fine-tuning for EpiGen.
 
-These methods make compression-based measures usable during training. Requential coding constructs an explicit model code; EpiSelect and EpiGen optimize online proxies whose relationship to the formal minimum defining $$S_T$$ remains open.
-
 ---
 
 ## References
@@ -540,7 +540,7 @@ These methods make compression-based measures usable during training. Requential
 1. <a id="ref-finzi2026"></a>M. Finzi, S. Qiu, Y. Jiang, P. Izmailov, J. Z. Kolter, A. G. Wilson. [From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence](https://arxiv.org/abs/2601.03220). arXiv:2601.03220v2, 2026. [Code](https://github.com/shikaiqiu/epiplexity).
 2. <a id="ref-qiu2026"></a>S. Qiu, M. Finzi, Y. Zheng, K. Zhang, A. G. Wilson. [Requential Coding: Pushing the Limits of Model Compression with Self-Generated Training Data](https://arxiv.org/abs/2607.11883). arXiv:2607.11883, 2026.
 3. <a id="ref-dawid1984"></a>A. Philip Dawid. [Present Position and Potential Developments: Some Personal Views. Statistical Theory: The Prequential Approach](https://doi.org/10.2307/2981683). *Journal of the Royal Statistical Society, Series A*, 147(2), 1984.
-4. <a id="ref-theis2022"></a>L. Theis, N. Y. Ahmed. [Algorithms for the Communication of Samples](https://arxiv.org/abs/2110.12805). ICML, 2022.
+4. <a id="ref-theis2022"></a>Lucas Theis, Noureldin Y. Ahmed. [Algorithms for the Communication of Samples](https://proceedings.mlr.press/v162/theis22a.html). ICML, 2022.
 5. <a id="ref-zhang2020"></a>X. Zhang, X. Li, D. Dou, J. Wu. [Measuring Information Transfer in Neural Networks](https://arxiv.org/abs/2009.07624). arXiv:2009.07624, 2020.
 6. <a id="ref-livitanyi2008"></a>M. Li, P. Vitányi. [An Introduction to Kolmogorov Complexity and Its Applications](https://doi.org/10.1007/978-0-387-49820-1). Springer, 2008.
 7. <a id="ref-blum1982"></a>M. Blum, S. Micali. How to generate cryptographically strong sequences of pseudo random bits. FOCS, 1982.
