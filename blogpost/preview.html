@@ -153,6 +153,9 @@
 
 
 
+
+
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -399,19 +402,22 @@
 <p>Both orders describe the same pair, provided the exact conditional distributions can be used. This identity does not bound the cost of evaluating or sampling from those distributions.</p>
 <p>Let \(X\) be uniform on \(n\)-bit strings and \(Y=f(X)\) for a bijection \(f\) computable in polynomial time. Then \(Y\) is also uniform, and \(H(Y\mid X)=H(X\mid Y)=0\): each variable uniquely determines the other. Encoding the input first requires \(n\) bits for \(X\) followed by computation of \(f(X)\). Encoding the output first also has entropy \(n\), but recovering the input requires computing \(f^{-1}(Y)\). If \(f\) is a one-way permutation, no randomized algorithm with runtime polynomial in \(n\) inverts it with non-negligible success probability over uniform inputs, despite the unique inverse.</p>
 <p>This is a difference in computation, not in the classical joint entropy. Under a time bound, it can affect the conditional models available in each direction. The paper proves an asymmetry for one-way permutations and tests prediction order empirically with cellular automata and chess data.</p>
-<h3 id="paradox-3-distribution-matching-does-not-specify-an-algorithm">Paradox 3: distribution matching does not specify an algorithm</h3>
-<p>Let \(Y\sim Q\) and let \(P\) be a candidate probability model. Add and subtract \(-\log_2 Q(Y)\) in the expected loss:</p>
+<h3 id="paradox-3-can-prediction-require-more-than-generation">Paradox 3: can prediction require more than generation?</h3>
+<p>Likelihood training aims to match the distribution of the data. If the model class contains the true distribution, that distribution minimizes expected prediction loss. It is tempting to take this further: perhaps the model only needs to reproduce the computations used to generate the data, and cannot acquire an inference procedure absent from the generator. This is the expectation questioned in <a href="https://arxiv.org/html/2601.03220v2#S5.SS3">Section 5.3 of the paper</a>.</p>
+<p>Consider a mystery story. The author chooses the culprit first, then writes clues consistent with that choice. The author does not have to solve the mystery. A model predicting the culprit’s name before the reveal faces a different task: only the clues are available, so it must assign probabilities to possible culprits based on the evidence. Successful prediction can require inference that was unnecessary during generation. This is the paper’s illustration of <strong>induction</strong>, meaning inference about unobserved variables from observations.</p>
+<p>The two procedures can represent the same distribution of stories. What differs is which information is available when a computation is performed. Matching a distribution fixes probabilities, but does not specify an algorithm for calculating them. With unlimited computation, a predictor might enumerate possible hidden states. With a restricted budget, it may need to learn another procedure for inference. The paper investigates this possibility empirically; distribution matching alone is not a general theorem that the predictor must have greater program length than the generator.</p>
+<p>The objective makes the distinction precise. Let \(Y\sim Q\) and let \(P\) be a candidate probability model. Add and subtract \(-\log_2 Q(Y)\) in the expected loss:</p>
 \[\begin{aligned}
 L_Q(P)&amp;:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
 &amp;=\mathbb E_Q[-\log_2 Q(Y)]
  +\mathbb E_Q\!\left[\log_2\frac{Q(Y)}{P(Y)}\right]\\
 &amp;=H(Q)+\mathrm{KL}(Q\Vert P).
 \end{aligned}\]
-<p>Here \(H(Q)=H(Y)\), and the second term is the <strong>Kullback–Leibler (KL) divergence</strong>. It is non-negative and equals zero exactly when the two distributions agree. If \(P\) assigns zero probability to an event of positive \(Q\)-probability, the loss and divergence are infinite. Consequently, expected loss under \(Q\) is minimized at \(P=Q\) when \(Q\) is in the model class. A restricted class or finite-data training need not attain that optimum.</p>
-<p>To connect the objective to the paper’s mystery-story example, let \(Y=(C,R)\) consist of clues \(C\) followed by a reveal \(R\) identifying the culprit. The model factorization gives</p>
+<p>Here \(H(Q)=H(Y)\), and the second term is the <strong>Kullback–Leibler (KL) divergence</strong>. It is non-negative and equals zero exactly when the distributions agree. Thus \(P=Q\) minimizes expected loss when \(Q\) belongs to the model class. If \(P\) assigns zero probability to an event of positive \(Q\)-probability, the loss and divergence are infinite. A restricted class or finite-data training need not attain the optimum.</p>
+<p>For the story, write \(Y=(C,R)\), where \(C\) denotes the clues and \(R\) the reveal identifying the culprit. Since \(P(C,R)=P(C)P(R\mid C)\),</p>
 \[-\log_2 P(C,R)=-\log_2 P(C)-\log_2 P(R\mid C).\]
-<p>Thus the expected story loss includes the loss for predicting the reveal from the clues. At the distribution-matching optimum, \(P(R\mid C)=Q(R\mid C)\) for clues with positive \(Q\)-probability. The author generates the story in a different order: choose the culprit first, then write compatible clues. The predictor receives only the clues and must assign probabilities to possible culprits. The objective specifies the probabilities it should assign; it does not prescribe the author’s generating algorithm. The paper calls inference about hidden variables <strong>induction</strong>. We examine its hidden-input experiment later, alongside <strong>emergence</strong>: predicting long-run dynamics through larger-scale patterns when direct simulation is too costly.</p>
-<hr />
+<p>The story loss therefore includes predicting the reveal from the clues. At the distribution-matching optimum, \(P(R\mid C)=Q(R\mid C)\) for clues with positive \(Q\)-probability. Merely generating a new story with a newly chosen culprit does not evaluate this probability for the clues already observed.</p>
+<h2 id="we-return-to-induction-in-the-hidden-input-experiment-the-paper-also-studies-emergence-when-direct-simulation-of-long-run-dynamics-exceeds-the-observers-budget-prediction-may-rely-on-larger-scale-patterns-not-explicitly-represented-in-the-local-generating-rules">We return to induction in the hidden-input experiment. The paper also studies <strong>emergence</strong>: when direct simulation of long-run dynamics exceeds the observer’s budget, prediction may rely on larger-scale patterns not explicitly represented in the local generating rules.</h2>
 <h2 id="information-for-an-observer-with-bounded-time">Information for an observer with bounded time</h2>
 <h3 id="a-model-that-runs-in-bounded-time">A model that runs in bounded time</h3>
 <p>Definition 1 fixes the models available to the observer: probability models that can score an observation and generate a new one within a time bound. The observer is not allowed to hide an unlimited computation inside its model.</p>

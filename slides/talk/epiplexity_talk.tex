@@ -142,36 +142,33 @@ Prediction order can therefore affect what a model can compute. The paper studie
 \src{Section~5.2 and Theorem~13, \citet{finzi2026}. The theorem also allows polynomial-length advice independent of the sampled input; one-wayness is an assumption.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Paradox 3: distribution matching and inference}
+\begin{frame}{Paradox 3: can prediction require more than generation?}
 \small
-Let $Q$ be the data distribution and $P$ a candidate model. The expected negative log-likelihood under $Q$ is
+Likelihood training aims to match the data distribution $Q$. If $Q$ is in the model class, it minimizes the expected prediction loss:
 \[
-L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)]
-      =H(Q)+\KL(Q\Vert P).
+L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)].
 \]
-$H(Q)$ is fixed. The Kullback--Leibler (KL) divergence is non-negative, so $P=Q$ minimizes this loss when $Q$ belongs to the model class.
+\textbf{The apparent implication:} to predict such data, a model should need only the computations used to generate them.
 
-\smallskip
-Now let $Y=(C,R)$ be a story: clues $C$, followed by a reveal $R$ identifying the culprit. Its model probability factors as
-\[
-P(C,R)=P(C)P(R\mid C).
-\]
-Matching the story distribution therefore requires correct probabilities for the reveal given the clues.
+\medskip
+\textbf{Why this is questionable:} consider predicting the culprit's name before the reveal in a mystery story.
 
 \begin{columns}[T]
 \begin{column}{0.47\textwidth}
-\begin{block}{Generating a mystery story}
-The author chooses the culprit $R$, then writes compatible clues $C$. The culprit is already known during generation.
+\begin{block}{The author generates the story}
+Choose the culprit first, then write clues consistent with that choice. There is no need to solve the mystery.
 \end{block}
 \end{column}
 \begin{column}{0.47\textwidth}
-\begin{block}{Predicting the reveal}
-The model receives $C$ and evaluates $P(R\mid C)$. It must use the clues to assign probabilities to possible culprits.
+\begin{block}{The model predicts the reveal}
+Only the clues are available. Good predictions require inferring which culprit they support, a task the author did not perform.
 \end{block}
 \end{column}
 \end{columns}
+\medskip
+Matching probabilities does not prescribe the generator's algorithm. Under a computation bound, prediction can require additional inference procedures. The paper calls this \textbf{induction}.
 \par\smallskip
-\src{Example adapted from Section~5.3.1, \citet{finzi2026}.}
+\src{Section~5.3 and the mystery-story example in Section~5.3.1, \citet{finzi2026}.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
 \begin{frame}{Time-bounded probabilistic models}

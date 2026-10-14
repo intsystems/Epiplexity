@@ -92,9 +92,15 @@ Let $$X$$ be uniform on $$n$$-bit strings and $$Y=f(X)$$ for a bijection $$f$$ c
 
 This is a difference in computation, not in the classical joint entropy. Under a time bound, it can affect the conditional models available in each direction. The paper proves an asymmetry for one-way permutations and tests prediction order empirically with cellular automata and chess data.
 
-### Paradox 3: distribution matching does not specify an algorithm
+### Paradox 3: can prediction require more than generation?
 
-Let $$Y\sim Q$$ and let $$P$$ be a candidate probability model. Add and subtract $$-\log_2 Q(Y)$$ in the expected loss:
+Likelihood training aims to match the distribution of the data. If the model class contains the true distribution, that distribution minimizes expected prediction loss. It is tempting to take this further: perhaps the model only needs to reproduce the computations used to generate the data, and cannot acquire an inference procedure absent from the generator. This is the expectation questioned in [Section 5.3 of the paper](https://arxiv.org/html/2601.03220v2#S5.SS3).
+
+Consider a mystery story. The author chooses the culprit first, then writes clues consistent with that choice. The author does not have to solve the mystery. A model predicting the culprit's name before the reveal faces a different task: only the clues are available, so it must assign probabilities to possible culprits based on the evidence. Successful prediction can require inference that was unnecessary during generation. This is the paper's illustration of **induction**, meaning inference about unobserved variables from observations.
+
+The two procedures can represent the same distribution of stories. What differs is which information is available when a computation is performed. Matching a distribution fixes probabilities, but does not specify an algorithm for calculating them. With unlimited computation, a predictor might enumerate possible hidden states. With a restricted budget, it may need to learn another procedure for inference. The paper investigates this possibility empirically; distribution matching alone is not a general theorem that the predictor must have greater program length than the generator.
+
+The objective makes the distinction precise. Let $$Y\sim Q$$ and let $$P$$ be a candidate probability model. Add and subtract $$-\log_2 Q(Y)$$ in the expected loss:
 
 $$
 \begin{aligned}
@@ -105,16 +111,17 @@ L_Q(P)&:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
 \end{aligned}
 $$
 
-Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the two distributions agree. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. Consequently, expected loss under $$Q$$ is minimized at $$P=Q$$ when $$Q$$ is in the model class. A restricted class or finite-data training need not attain that optimum.
+Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the distributions agree. Thus $$P=Q$$ minimizes expected loss when $$Q$$ belongs to the model class. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. A restricted class or finite-data training need not attain the optimum.
 
-To connect the objective to the paper's mystery-story example, let $$Y=(C,R)$$ consist of clues $$C$$ followed by a reveal $$R$$ identifying the culprit. The model factorization gives
+For the story, write $$Y=(C,R)$$, where $$C$$ denotes the clues and $$R$$ the reveal identifying the culprit. Since $$P(C,R)=P(C)P(R\mid C)$$,
 
 $$
 -\log_2 P(C,R)=-\log_2 P(C)-\log_2 P(R\mid C).
 $$
 
-Thus the expected story loss includes the loss for predicting the reveal from the clues. At the distribution-matching optimum, $$P(R\mid C)=Q(R\mid C)$$ for clues with positive $$Q$$-probability. The author generates the story in a different order: choose the culprit first, then write compatible clues. The predictor receives only the clues and must assign probabilities to possible culprits. The objective specifies the probabilities it should assign; it does not prescribe the author's generating algorithm. The paper calls inference about hidden variables **induction**. We examine its hidden-input experiment later, alongside **emergence**: predicting long-run dynamics through larger-scale patterns when direct simulation is too costly.
+The story loss therefore includes predicting the reveal from the clues. At the distribution-matching optimum, $$P(R\mid C)=Q(R\mid C)$$ for clues with positive $$Q$$-probability. Merely generating a new story with a newly chosen culprit does not evaluate this probability for the clues already observed.
 
+We return to induction in the hidden-input experiment. The paper also studies **emergence**: when direct simulation of long-run dynamics exceeds the observer's budget, prediction may rely on larger-scale patterns not explicitly represented in the local generating rules.
 ---
 
 ## Information for an observer with bounded time
