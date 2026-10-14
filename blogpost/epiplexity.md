@@ -466,11 +466,12 @@ For machine learning, predictive loss and estimated model description length pro
 
 ## Follow-up work
 
-Three follow-up papers develop the compression method, data-selection applications and faster structure estimates:
+The most direct follow-up work comes from Andrew Gordon Wilson's group:
 
-- **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** construct a student-model code from teacher-guided sample selections, as described above. They use the shorter codes to obtain PAC-Bayes generalization bounds for large language models and study how compressibility changes with model size and repeated training epochs.
-- **[Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746):** introduce **EpiSelect**, which fits loss scaling laws to adapt data-domain sampling weights, and **EpiGen**, which rewards a synthetic-data generator for improvements in learner predictions on a buffer of prior samples. They report gains on downstream tasks. Both methods optimize a tractable online proxy; the paper leaves open whether maximizing it also maximizes the formal $$S_T$$.
-- **[Zhang and Levin (2026), Intelligence from Learnable Novelty](https://arxiv.org/abs/2607.18433):** propose a fast, differentiable structure score using a fixed random feature network and a linear readout fitted by ridge regression. They apply it to cellular-automaton dynamics, unsupervised image representations and intrinsic rewards for reinforcement-learning exploration. This score depends on a fixed model capacity and regularization; its relationship to the original time-bounded minimum over programs should not be assumed exact.
+- **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** a teacher selects examples drawn from the student's predictive distribution. Recording the selection indices, together with shared randomness and the training algorithm, lets a decoder reconstruct the student's training trajectory. The coding cost depends on teacher–student disagreement, rather than the entropy of the original data. The authors obtain PAC-Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models and ensembles can have shorter codes; repeated training epochs can increase the code length and indicate overfitting.
+- **[Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746):** introduce two online uses of an epiplexity proxy. **EpiSelect** fits cross-domain loss-scaling laws to account for how training on one domain affects predictions on others, then adjusts sampling weights to maximize the predicted proxy gain. **EpiGen** trains a synthetic-data generator with REINFORCE. Its reward is the reduction in learner loss on a buffer of earlier samples after training on a new generated batch. Evaluating earlier samples rewards improvements that extend beyond the new batch itself. The authors report gains in zero-shot downstream evaluation for EpiSelect and in downstream fine-tuning for EpiGen.
+
+These methods make compression-based measures usable during training. Requential coding constructs an explicit model code; EpiSelect and EpiGen optimize online proxies whose relationship to the formal minimum defining $$S_T$$ remains open.
 
 ---
 
@@ -489,4 +490,3 @@ Three follow-up papers develop the compression method, data-selection applicatio
 11. <a id="ref-silver2018"></a>D. Silver et al. A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play. *Science*, 362(6419):1140–1144, 2018.
 12. <a id="ref-jiang2025"></a>Y. Jiang, A. Zhou, Z. Feng, S. Malladi, J. Z. Kolter. [Adaptive Data Optimization: Dynamic Sample Selection with Scaling Laws](https://openreview.net/forum?id=aqok1UX7Z1). ICLR, 2025.
 13. <a id="ref-su2026"></a>E. Su, A. Potapczynski, S. Qiu, E. Hughes, A. G. Wilson. [Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746). arXiv:2608.11746, 2026.
-14. <a id="ref-zhanglevin2026"></a>Y. Zhang, M. Levin. [Intelligence from Learnable Novelty](https://arxiv.org/abs/2607.18433). arXiv:2607.18433, 2026.

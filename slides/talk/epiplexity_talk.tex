@@ -511,38 +511,42 @@ CIFAR-5M & $9\times10^7$ & $2.3\times10^{10}$ & $0.4\%$ \\
 \end{itemize}
 \end{frame}
 % ============================================================ FOLLOW-UP WORK
-\begin{frame}{Follow-up work: compression, data and learning signals}
+\begin{frame}{Follow-up work from Wilson's group}
 \small
 \begin{block}{Qiu et al. (2026): \href{https://arxiv.org/abs/2607.11883}{\textbf{Requential Coding}}}
-Encode a student model through teacher-guided sample selections.
-Use the shorter codes to obtain generalization bounds for large language models.
+A teacher selects examples drawn from the student's predictive distribution. Recording the selection indices reconstructs the student's training trajectory; the coding cost depends on teacher--student disagreement. This yields PAC--Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models can have shorter codes.
 \end{block}
 \begin{block}{Su et al. (2026): \href{https://arxiv.org/abs/2608.11746}{\textbf{EpiSelect and EpiGen}}}
-Use an online epiplexity proxy to reweight data domains and reward synthetic-data generation; evaluate transfer to downstream tasks.
+\textbf{EpiSelect} fits cross-domain loss-scaling laws and adjusts sampling weights to maximize predicted gains in an online epiplexity proxy. \textbf{EpiGen} trains a synthetic-data generator with a policy-gradient reward: the reduction in learner loss on earlier samples after training on a new batch. Both methods report improved downstream performance.
 \end{block}
-\begin{block}{Zhang and Levin (2026): \href{https://arxiv.org/abs/2607.18433}{\textbf{Intelligence from Learnable Novelty}}}
-A fixed random network with a fitted linear readout gives a fast, differentiable structure score. Apply it to cellular automata, image representations and exploration.
-\end{block}
-\src{The reservoir score uses a fixed model capacity; it is not an exact evaluation of the time-bounded $S_T$. Titles link to the papers.}
+\src{Requential coding constructs a model code. EpiSelect and EpiGen optimize online proxies; their link to the formal $S_T$ remains open. Titles link to the papers.}
 \end{frame}
 % ============================================================ LITERATURE
-\begin{frame}[t]{Literature}
-\begin{thebibliography}{6}\setlength{\itemsep}{0.65em}
+\begin{frame}[t]{Literature: epiplexity and follow-up work}
+\begin{thebibliography}{6}\setlength{\itemsep}{0.55em}
 \normalsize
 \bibitem[Finzi et al.(2026)]{finzi2026}
-M.~Finzi et al. (2026).\\
+Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J.~Zico Kolter, Andrew Gordon Wilson (2026).\\
 \href{https://arxiv.org/abs/2601.03220v2}{\color{myblue}\textbf{From Entropy to Epiplexity}}.
 \bibitem[Qiu et al.(2026)]{qiu2026}
-S.~Qiu et al. (2026).\\
+Shikai Qiu, Marc Finzi, Yujia Zheng, Kun Zhang, Andrew Gordon Wilson (2026).\\
 \href{https://arxiv.org/abs/2607.11883}{\color{myblue}\textbf{Requential Coding}}.
+\bibitem[Su et al.(2026)]{su2026}
+Ellen Su, Andres Potapczynski, Shikai Qiu, Edward Hughes, Andrew Gordon Wilson (2026).\\
+\href{https://arxiv.org/abs/2608.11746}{\color{myblue}\textbf{Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization}}.
+\end{thebibliography}
+\end{frame}
+\begin{frame}[t]{Literature: background}
+\begin{thebibliography}{6}\setlength{\itemsep}{0.7em}
+\normalsize
 \bibitem[Li and Vit\'anyi(2008)]{livitanyi2008}
-M.~Li and P.~Vit\'anyi (2008).\\
+Ming Li and Paul Vit\'anyi (2008).\\
 \href{https://doi.org/10.1007/978-0-387-49820-1}{\color{myblue}\textbf{An Introduction to Kolmogorov Complexity and Its Applications}}.
 \bibitem[Wolfram(2002)]{wolfram2002}
-S.~Wolfram (2002).\\
+Stephen Wolfram (2002).\\
 \href{https://www.wolframscience.com/nks/}{\color{myblue}\textbf{A New Kind of Science}}.
 \bibitem[Jiang et al.(2025)]{jiang2025}
-Y.~Jiang et al. (ICLR, 2025).\\
+Yiding Jiang, Allan Zhou, Zhili Feng, Sadhika Malladi, J.~Zico Kolter (ICLR, 2025).\\
 \href{https://arxiv.org/abs/2410.11820}{\color{myblue}\textbf{Adaptive Data Optimization: Dynamic Sample Selection with Scaling Laws}}.
 \end{thebibliography}
 \end{frame}
