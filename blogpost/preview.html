@@ -160,6 +160,7 @@
 
 
 
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -437,7 +438,7 @@ L_Q(P)&amp;:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
 <p>The input flag selects one of two routines in the same program. Evaluation receives a supplied observation; sampling receives random bits. Both routines must implement the same distribution \(P\). A function \(T\) is time-constructible if \(\mathcal{U}\) can compute \(T(n)\) from \(n\) within \(O(T(n))\) steps.</p>
 <p>For example, an autoregressive network with fixed parameters \(\theta\) supplies conditional probabilities \(p_\theta(x_j\mid x_{&lt;j})\). For evaluation, give it the observed prefixes and multiply those probabilities:</p>
 \[P_\theta(x)=\prod_{j=1}^n p_\theta(x_j\mid x_{&lt;j}).\]
-<p>For sampling, draw the first symbol from \(p_\theta(x_1)\), then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound; this network example explains the shared mechanism.</p>
+<p>For sampling, draw the first symbol from \(p_\theta(x_1)\), then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound.</p>
 <h3 id="epiplexity-and-time-bounded-entropy">Epiplexity and time-bounded entropy</h3>
 <p>A program in \(\mathcal{P}_T\) gives a <strong>two-part code</strong> for data. First transmit the program describing a useful model; then transmit the residual data using that model. Arithmetic coding of \(x\) with a model \(P\) has ideal length \(-\log_2 P(x)\) bits, up to coding overhead. The best program under the time bound splits the information in \(X\) into a model part and a residual part.</p>
 <blockquote>

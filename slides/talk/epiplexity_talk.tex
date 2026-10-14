@@ -187,7 +187,7 @@ P_\theta(x)=\prod_{j=1}^{n}p_\theta(x_j\mid x_{<j}).
 \end{block}
 $\PT$ contains such programs on a fixed prefix-free universal Turing machine; $|\prog|$ is the program length in bits.
 \par\smallskip
-\src{Definition~7, \citet{finzi2026}: exact finite-binary probabilities; $T$ is non-decreasing and time-constructible. The autoregressive example illustrates the two routines.}
+\src{Definition~7, \citet{finzi2026}: exact finite-binary probabilities; $T$ is non-decreasing and time-constructible.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity: the two-part description}
@@ -241,7 +241,6 @@ A constant-length program generates either pattern in linear time.
 \[
 S_T(X)=O(1),\qquad H_T(X)=O(1).
 \]
-Here both the model description and the residual data code are small.
 \end{block}
 \end{frame}
 % ============================================================ THEORY
@@ -281,7 +280,7 @@ $H_T(Y\mid X)\ne H_T(X,Y)-H_T(X)$.
 \src{Definition~11, \citet{finzi2026}.}
 \end{frame}
 % ============================================================ METHOD
-\begin{frame}{Compute budget: reconstruct the model, then evaluate data}
+\begin{frame}{Compute budget for training and evaluation}
 \small
 Fix an architecture and optimiser. Let $N$ be the parameter count, $D$ the training-token count and $\Dt$ the evaluation-token count.
 \[
@@ -291,40 +290,40 @@ Fix an architecture and optimiser. Let $N$ be the parameter count, $D$ the train
 \begin{itemize}\setlength{\itemsep}{0.6em}
 \item A dense forward pass costs roughly $2N$ FLOPs per token: one multiplication and one addition per parameter.
 \item Backpropagation computes gradients for activations and weights: roughly $4N$ FLOPs per token, twice the forward pass.
-\item Replaying training reconstructs the coded model; evaluating it supplies the data-code length. Sweep $N,D$ and select the shortest two-part code within the budget.
 \end{itemize}
+For each $(N,D)$ satisfying the budget, estimate the model-code length and add the validation loss (bits per token) multiplied by $\Dt$. Retain the run with the smallest sum.
 \par\medskip
 \src{Section~4, \citet{finzi2026}. Approximate dense-network accounting; attention, optimiser and coding overheads require separate accounting when material.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Prequential coding: transmit data and reproduce training}
 \small
-Both sides share the initial training state $\theta_0$ and deterministic update rule $A$ (including optimiser state, schedule and random seed). Let $Z_i$ be the next training batch.
+Both sides share the initial training state $\theta_0$ (weights and optimiser state), update rule $A$, schedule and random seed. Let $Z_i$ be the next training batch and $P_i=P_{\theta_i}$ the model before its update.
 \begin{enumerate}\setlength{\itemsep}{0.6em}
-\item \textbf{Encoder:} arithmetic-code $Z_i$ under $P_{\theta_i}$; transmit the resulting bits.
-\item \textbf{Decoder:} use its identical $P_{\theta_i}$ and those bits to recover exactly $Z_i$.
+\item \textbf{Encoder:} arithmetic-code $Z_i$ under $P_i$; transmit the resulting bits.
+\item \textbf{Decoder:} use its identical $P_i$ and those bits to recover exactly $Z_i$.
 \item \textbf{Both:} compute $\theta_{i+1}=A(\theta_i,Z_i)$, then repeat.
 \end{enumerate}
 \[
-L_{\mathrm{preq}}=\sum_{i=0}^{M-1}-\log_2 P_{\theta_i}(Z_i).
+L_{\mathrm{preq}}=\sum_{i=0}^{M-1}-\log_2 P_i(Z_i).
 \]
-The message reconstructs the exact training batches \emph{and} the final state $\theta_M$. The initial weights need not be transmitted if generated from the shared seed.
+The message reconstructs the exact training batches \emph{and} the final state $\theta_M$.
 \par\medskip
 \src{Ideal lengths omit arithmetic-coding and setup overhead. Prequential approach: \href{https://doi.org/10.2307/2981683}{Dawid (1984)}; neural-network coding: \href{https://arxiv.org/abs/1802.07044}{Blier and Ollivier (2018)}.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Prequential estimate: separate model and data costs}
+\begin{frame}{Estimating model bits from the training-loss curve}
 \small
-The sequential code includes unpredictable data as well as the learned model. To estimate the model part, subtract the data-code length under the final model:
+The prequential message recovers both training data and final model $P_M$. The paper estimates the model's description length by subtracting the cost of encoding the same data with $P_M$:
 \[
 \begin{aligned}
-L_{\mathrm{final}}&=\sum_{i=0}^{M-1}-\log_2 P_{\theta_M}(Z_i),\\
+L_{\mathrm{final}}&=\sum_{i=0}^{M-1}-\log_2 P_M(Z_i),\\
 \widehat K_{\mathrm{preq}}&=L_{\mathrm{preq}}-L_{\mathrm{final}}.
 \end{aligned}
 \]
 \begin{columns}[c]
 \begin{column}{0.58\textwidth}
-For an i.i.d. stream, each pre-update loss estimates prediction loss on a fresh batch. The difference is the area above the final-loss baseline, measured in bits.
+For batch $Z_i$, the loss gap is $-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)$. Summing these gaps gives the blue area above the final-loss baseline, in bits.
 
 \medskip
 This subtraction is a \textbf{heuristic estimate}: it does not construct a separately decodable model code.
@@ -335,7 +334,7 @@ This subtraction is a \textbf{heuristic estimate}: it does not construct a separ
 \end{column}
 \end{columns}
 \par\smallskip
-\src{Section~4.1 and Fig.~2a, \citet{finzi2026}. Blue: prequential area; red: teacher--student gap. Overfitting can distort a final-training-loss baseline.}
+\src{Section~4.1 and Fig.~2a, \citet{finzi2026}. Overfitting can distort a final-training-loss baseline.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Requential coding: transmit selected training samples}
@@ -343,34 +342,36 @@ This subtraction is a \textbf{heuristic estimate}: it does not construct a separ
 \textbf{Goal:} reconstruct a student trained on synthetic data, without transmitting the original data or the teacher's weights.
 
 \smallskip
-The encoder has teacher $Q_i$. Both sides share student $P_{\theta_i}$, update rule $A$ and random seed $s$.
+At step $i$, the encoder has a teacher $Q_i$ trained on real data. Both sides have the same student $P_i=P_{\theta_i}$, update rule $A$ and random seed $s$.
 \begin{enumerate}\setlength{\itemsep}{0.45em}
-\item The seed defines indexed proposals $Y_i^{(j)}\sim P_{\theta_i}$, reproducible from $(s,i,j)$.
-\item The encoder uses \textbf{relative entropy coding}: proposals are reweighted using $Q_i(Y_i^{(j)})/P_{\theta_i}(Y_i^{(j)})$ to select $J_i$ with $\widetilde Z_i=Y_i^{(J_i)}\sim Q_i$. Transmit a prefix code for $J_i$.
-\item The decoder recovers $J_i$ and regenerates $\widetilde Z_i$ from $(s,i,J_i)$ and its current student.
+\item Generate indexed candidate batches $Y_i^{(1)},Y_i^{(2)},\ldots\sim P_i$. Each candidate is reproducible from $(s,i,j)$, where $j$ is its index.
+\item Using $Q_i$ and $P_i$, the encoder selects an index $J_i$ by \textbf{relative entropy coding}. The selected batch, denoted $\widetilde Z_i=Y_i^{(J_i)}$, has distribution $Q_i$.
+\item Transmit a prefix code for $J_i$. The decoder recovers the index and regenerates the selected batch using $(s,i,J_i)$ and $P_i$.
 \item Both compute $\theta_{i+1}=A(\theta_i,\widetilde Z_i)$.
 \end{enumerate}
 \par\smallskip
-\src{\citet{qiu2026}, Section~3.1; \href{https://proceedings.mlr.press/v162/theis22a.html}{Theis and Ahmed (2022)}. An explicit rejection-sampling example is in the backup slide. The decoder needs neither the teacher nor the original data.}
+\src{\citet{qiu2026}, Section~3.1; \href{https://proceedings.mlr.press/v162/theis22a.html}{Theis and Ahmed (2022)}. The backup gives a selection rule via rejection sampling.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Requential coding: why the message can be short}
+\begin{frame}{Requential coding: the cost of a sample index}
 \small
-The sample is \emph{chosen at random}, rather than fixed in advance. Shared student-generated proposals make the communication cost depend on teacher--student disagreement:
+The decoder generates the selected batch from its index $J_i$. Only the index needs to be transmitted.
+
+\begin{block}{When teacher and student agree}
+If $Q_i=P_i$, use the first shared proposal. A fixed message suffices, even when a batch contains many random bits.
+\end{block}
+For fixed teacher $Q_i$ and student $P_i$, let $\ell_i$ be the index-message length in bits. Their KL divergence is
 \[
-\KL_i:=\E_{Z\sim Q_i}\!\left[\log_2\frac{Q_i(Z)}{P_{\theta_i}(Z)}\right].
+d_i:=\KL(Q_i\Vert P_i)=\E_{Z\sim Q_i}\!\left[\log_2\frac{Q_i(Z)}{P_i(Z)}\right].
 \]
-The expected number of transmitted bits at step $i$, conditional on the prior history $\mathcal F_i$, satisfies
+Relative entropy coding bounds the expected communication cost:
 \[
-\E[\ell_i\mid\mathcal F_i]\le\KL_i+2\log_2(1+\KL_i)+\kappa,
+\E[\ell_i]\le d_i+2\log_2(1+d_i)+\kappa,
 \qquad\kappa<5.21.
 \]
-\textbf{Example:} if teacher and student are both uniform, use the first shared proposal. No sample values need be sent, even when their entropy is large.
-
-\medskip
-The shared setup and index messages reconstruct the final student. When the overhead is small, $\widehat K_{\mathrm{req}}\approx\sum_i\KL_i$. Evaluating this estimate can use teacher samples directly; an actual index search can be expensive.
+Add the message lengths over all training steps to obtain the student-model code. Its leading estimate is $\widehat K_{\mathrm{req}}=\sum_i d_i$; the logarithmic overhead matters for small batches.
 \par\smallskip
-\src{Expected-length bound for the REC construction in \citet{qiu2026}, Appendix~A.1; it need not hold for simple rejection sampling. The teacher's support must be contained in the student's support.}
+\src{\citet{qiu2026}, Appendix~A.1: conditional expected length, assuming $P_i(z)>0$ when $Q_i(z)>0$. Simple rejection sampling need not achieve this bound.}
 \end{frame}
 % ============================================================ EXPERIMENTS
 \begin{frame}{Cellular automata: simple dynamics, different model parts}
@@ -609,7 +610,7 @@ U_J\le\frac{Q(Y^{(J)})}{B\,P(Y^{(J)})}.
 For a proposal, $\Pr(Y=z,\text{ accept})=P(z)\,Q(z)/(BP(z))=Q(z)/B$. Conditioning on acceptance therefore gives distribution $Q$.
 
 \medskip
-This illustrates selection and decoding. More sophisticated REC constructions provide the KL-based length bound on the main slide.
+More sophisticated REC constructions provide the KL-based length bound on the main slide.
 \par\smallskip
 \src{\citet{qiu2026}, Fig.~2 and Section~2; \href{https://proceedings.mlr.press/v162/theis22a.html}{Theis and Ahmed (2022)}. Simple rejection sampling can have a much larger coding cost.}
 \end{frame}

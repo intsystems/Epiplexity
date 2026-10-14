@@ -147,7 +147,7 @@ $$
 P_\theta(x)=\prod_{j=1}^n p_\theta(x_j\mid x_{<j}).
 $$
 
-For sampling, draw the first symbol from $$p_\theta(x_1)$$, then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound; this network example explains the shared mechanism.
+For sampling, draw the first symbol from $$p_\theta(x_1)$$, then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound.
 
 ### Epiplexity and time-bounded entropy
 
