@@ -139,7 +139,15 @@ The quantity built from this restriction is **epiplexity** (from *epistemic comp
 >
 > The probabilities sum to one. $$\mathcal{P}_T$$ is the set of all such programs; $$\lvert\mathrm{P}\rvert$$ is the length of $$\mathrm{P}$$ in bits.
 
-The program $$\mathrm{P}$$ specifies the probability distribution $$P$$ used in both modes. A function $$T$$ is time-constructible if $$\mathcal{U}$$ can compute $$T(n)$$ from $$n$$ within $$O(T(n))$$ steps. The definition requires both likelihood evaluation and sampling. For a finite sequence, an autoregressive model evaluates the joint probability through its conditional probabilities and samples sequentially from those same conditionals.
+The input flag selects one of two routines in the same program. Evaluation receives a supplied observation; sampling receives random bits. Both routines must implement the same distribution $$P$$. A function $$T$$ is time-constructible if $$\mathcal{U}$$ can compute $$T(n)$$ from $$n$$ within $$O(T(n))$$ steps.
+
+For example, an autoregressive network with fixed parameters $$\theta$$ supplies conditional probabilities $$p_\theta(x_j\mid x_{<j})$$. For evaluation, give it the observed prefixes and multiply those probabilities:
+
+$$
+P_\theta(x)=\prod_{j=1}^n p_\theta(x_j\mid x_{<j}).
+$$
+
+For sampling, draw the first symbol from $$p_\theta(x_1)$$, then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound; this network example explains the shared mechanism.
 
 ### Epiplexity and time-bounded entropy
 
@@ -250,11 +258,13 @@ Epiplexity can therefore grow without bound. The authors acknowledge the limits 
 
 ### From programs to training runs
 
-A search over all programs is intractable. The authors restrict $$\mathcal{P}_T$$ to neural networks of one architecture trained by one optimiser. They measure time in floating-point operations (FLOPs). A network with $$N$$ parameters trained on $$D$$ tokens needs about $$6ND$$ FLOPs; evaluating it on the $$\mathcal{D}$$ tokens of the dataset $$X$$ needs $$2N\mathcal{D}$$. A training run is admissible under the bound $$T$$ when
+A search over all programs is intractable. The authors restrict the search to neural networks of one architecture trained by one optimiser and measure compute in floating-point operations (FLOPs). Let $$N$$ be the parameter count, $$D$$ the training-token count and $$\mathcal D$$ the evaluation-token count. Their dense-network approximation assigns roughly $$2N$$ FLOPs per token to a forward pass: one multiplication and one addition per parameter. Backpropagation computes gradients with respect to both activations and weights and costs roughly two forward passes, or $$4N$$ FLOPs per token. Replaying training therefore costs about $$6ND$$ FLOPs, and forward-only evaluation costs $$2N\mathcal D$$. The budget condition is
 
 $$
 6ND+2N\mathcal{D}\le T.
 $$
+
+This is approximate accounting for reconstructing the trained model and evaluating it. Attention, optimiser updates and coding overheads require separate accounting when they contribute materially.
 
 The authors call $$X$$ the *test dataset*: we choose the training data freely, while $$X$$ is the data whose information we measure.
 
@@ -262,7 +272,9 @@ Writing out the weights of a trained network overestimates the information in th
 
 ### Prequential coding: the area under the loss curve
 
-Let $$Z_0,\dots,Z_{M-1}$$ be i.i.d. training examples. Let $$P_i$$ be the network after training on the first $$i$$ examples, so $$P_0$$ is the initial model. Sender and receiver agree on the initialisation, update rule and random seed. The **prequential code** ([Dawid, 1984](#ref-dawid1984)) encodes $$Z_i$$ before updating the model on it. Its ideal contribution is
+Let $$Z_0,\dots,Z_{M-1}$$ be i.i.d. training batches. Let $$\theta_i$$ denote the complete training state after $$i$$ updates, including weights and optimiser state; write $$P_i=P_{\theta_i}$$. Sender and receiver share $$\theta_0$$, a deterministic update rule $$A$$, its schedule and random seed. The **prequential approach** predates epiplexity ([Dawid, 1984](#ref-dawid1984)); its use for neural-network coding is described by [Blier and Ollivier (2018)](#ref-blier2018).
+
+At each step, the encoder arithmetic-codes the exact batch $$Z_i$$ under $$P_i$$ and transmits the bits. The decoder uses its identical $$P_i$$ and the received bits to recover $$Z_i$$. Only after this recovery do both sides compute $$\theta_{i+1}=A(\theta_i,Z_i)$$. This maintains identical training states at every step. The ideal contribution of the batch is
 
 $$
 \ell_i=-\log_2 P_i(Z_i)=\log_2\frac{1}{P_i(Z_i)}
@@ -300,9 +312,21 @@ This is the discrete area between the predictive-loss curve and the final-model 
 
 The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In practice, a held-out final loss provides a safer baseline for the area estimate. Subtracting two code lengths does not construct a model-only code or certify its decoding time: $$\widehat K_{\mathrm{preq}}$$ is a heuristic proxy, and finite-sample estimates need not even be positive.
 
-### Requential coding: transmitting only the disagreement
+### Requential coding: reconstructing a student from sample indices
 
-The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) is an explicit code with a known decoding time. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on the real data. A *student* network $$P^{\mathrm{s}}_i$$ trains only on samples $$\widetilde{Z}_i\sim P^{\mathrm{t}}_i$$ generated by the teacher. Sender and receiver hold identical copies of the student. At step $$i$$, both sides use shared randomness to generate proposals $$Y_i^{(0)},Y_i^{(1)},\ldots\sim P_i^{\mathrm{s}}$$. The sender uses the teacher distribution to select an index; the decoder regenerates that proposal from the index and the shared randomness. The selection rule makes the accepted sample have distribution $$P_i^{\mathrm{t}}$$, while the message records only the index. The expected log-likelihood ratio of a teacher sample is
+The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) reconstructs a student trained on synthetic samples, without transmitting the teacher's weights or the original data. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on real data. Sender and receiver share a *student* $$P^{\mathrm{s}}_i$$ with identical initial training state, update rule and random seed. At step $$i$$, the seed defines indexed proposals $$Y_i^{(j)}\sim P_i^{\mathrm{s}}$$. A counter-based random generator keyed by the seed, step $$i$$ and proposal index $$j$$ lets the receiver regenerate a proposal directly without producing the earlier proposals.
+
+The sender uses relative entropy coding to choose an index $$J_i$$ so that $$\widetilde Z_i=Y_i^{(J_i)}$$ has the teacher distribution $$P_i^{\mathrm t}$$. It transmits a prefix code for $$J_i$$. The receiver decodes the index and regenerates the chosen batch; both copies of the student then apply the same update $$\theta^{\mathrm s}_{i+1}=A(\theta^{\mathrm s}_i,\widetilde Z_i)$$. The receiver never needs the teacher. Repeating these steps reconstructs the final student, rather than the original teacher.
+
+To see how sample selection can change a distribution, consider simple rejection sampling at one step. Write $$P$$ for the student and $$Q$$ for the teacher. Assume $$P(z)>0$$ whenever $$Q(z)>0$$, and choose $$B\ge\max_z Q(z)/P(z)$$. Draw proposals $$Y^{(j)}\sim P$$ and independent uniforms $$U_j\sim\mathrm{Uniform}[0,1]$$, and accept the first index satisfying
+
+$$
+U_j\le\frac{Q(Y^{(j)})}{B P(Y^{(j)})}.
+$$
+
+For a proposal, $$\Pr(Y=z,\text{ accept})=P(z)Q(z)/(B P(z))=Q(z)/B$$. Summing over $$z$$ gives acceptance probability $$1/B$$; dividing therefore yields conditional distribution $$Q(z)$$ for the accepted proposal. Communicating its index is enough to identify the sample to the receiver. This illustrates the mechanism, but simple rejection sampling need not achieve the short KL-based message bound below. More sophisticated relative entropy coding constructions provide that bound ([Theis and Ahmed, 2022](#ref-theis2022)).
+
+The expected log-likelihood ratio of a teacher sample is
 
 $$
 \mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log_2\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
@@ -349,7 +373,8 @@ The decoder reconstructs the **student**, without the teacher or the original tr
 
 |          | Prequential | Requential |
 | :-- | :-- | :-- |
-| Code     | heuristic, decoding time not guaranteed | explicit, decoded in $$6ND$$ FLOPs |
+| What is decoded | Exact training data and final model; the subtracted model-part estimate has no separate decoder | Student reconstructed from shared setup and sample-index messages |
+| Main decoding work | Replay the agreed training procedure | Regenerate selected samples and replay student training |
 | Training | one network | teacher and student, 2 to 10 times slower |
 | Estimate | several times larger | smaller |
 
@@ -514,7 +539,7 @@ These methods make compression-based measures usable during training. Requential
 
 1. <a id="ref-finzi2026"></a>M. Finzi, S. Qiu, Y. Jiang, P. Izmailov, J. Z. Kolter, A. G. Wilson. [From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence](https://arxiv.org/abs/2601.03220). arXiv:2601.03220v2, 2026. [Code](https://github.com/shikaiqiu/epiplexity).
 2. <a id="ref-qiu2026"></a>S. Qiu, M. Finzi, Y. Zheng, K. Zhang, A. G. Wilson. [Requential Coding: Pushing the Limits of Model Compression with Self-Generated Training Data](https://arxiv.org/abs/2607.11883). arXiv:2607.11883, 2026.
-3. <a id="ref-dawid1984"></a>A. P. Dawid. Present position and potential developments: some personal views. Statistical theory: the prequential approach. *Journal of the Royal Statistical Society, Series A*, 147(2):278–292, 1984.
+3. <a id="ref-dawid1984"></a>A. Philip Dawid. [Present Position and Potential Developments: Some Personal Views. Statistical Theory: The Prequential Approach](https://doi.org/10.2307/2981683). *Journal of the Royal Statistical Society, Series A*, 147(2), 1984.
 4. <a id="ref-theis2022"></a>L. Theis, N. Y. Ahmed. [Algorithms for the Communication of Samples](https://arxiv.org/abs/2110.12805). ICML, 2022.
 5. <a id="ref-zhang2020"></a>X. Zhang, X. Li, D. Dou, J. Wu. [Measuring Information Transfer in Neural Networks](https://arxiv.org/abs/2009.07624). arXiv:2009.07624, 2020.
 6. <a id="ref-livitanyi2008"></a>M. Li, P. Vitányi. [An Introduction to Kolmogorov Complexity and Its Applications](https://doi.org/10.1007/978-0-387-49820-1). Springer, 2008.
@@ -525,3 +550,4 @@ These methods make compression-based measures usable during training. Requential
 11. <a id="ref-silver2018"></a>D. Silver et al. A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play. *Science*, 362(6419):1140–1144, 2018.
 12. <a id="ref-jiang2025"></a>Y. Jiang, A. Zhou, Z. Feng, S. Malladi, J. Z. Kolter. [Adaptive Data Optimization: Dynamic Sample Selection with Scaling Laws](https://openreview.net/forum?id=aqok1UX7Z1). ICLR, 2025.
 13. <a id="ref-su2026"></a>E. Su, A. Potapczynski, S. Qiu, E. Hughes, A. G. Wilson. [Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746). arXiv:2608.11746, 2026.
+14. <a id="ref-blier2018"></a>Léonard Blier, Yann Ollivier. [The Description Length of Deep Learning Models](https://arxiv.org/abs/1802.07044). NeurIPS, 2018.
