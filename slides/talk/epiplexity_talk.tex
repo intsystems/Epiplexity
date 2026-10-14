@@ -38,8 +38,6 @@
 \newcommand{\Poly}{\mathrm{Poly}}
 \newcommand{\prog}{\mathrm{P}}
 \DeclareMathOperator*{\argmin}{arg\,min}
-% the claim a slide closes on
-\newcommand{\take}[1]{\par\vspace{0.35em}{\color{myblue}\hrule height 0.6pt}\vspace{0.25em}\noindent\textbf{#1}\par}
 % one sentence of provenance under a figure
 \newcommand{\src}[1]{{\scriptsize\color{black!60}#1\par}}
 
@@ -67,9 +65,7 @@ Yet language-model loss can differ between forward and reverse text.
 \begin{block}{3. Likelihood modelling targets the data distribution}
 Yet prediction can require inference absent from the generating procedure.
 \end{block}
-\medskip
-The question: what changes when computation is limited?
-\par\smallskip
+\smallskip
 \src{Section~5, \citet{finzi2026}. These are apparent tensions, not contradictions of the classical results.}
 \end{frame}
 % ------------------------------------------------------------
@@ -107,15 +103,53 @@ An alternating string is specified by its rule and length. Most uniform $n$-bit 
 \src{$K(x)$ is uncomputable in general. Definition~1 and Section~2.1, \citet{finzi2026}.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Paradox 3: matching a distribution does not fix an algorithm}
+\begin{frame}{Paradox 1: deterministic computation and new information}
+\small
+For discrete $X$ and a fixed computable transformation $f$,
+\[
+H(f(X))\le H(X),\qquad K(f(x))\le K(x)+K(f)+c.
+\]
+The output has a description: specify the input and the program for $f$, then run it. These bounds do not restrict how long that computation takes.
+
+\begin{block}{Example: expanding a random seed}
+A pseudorandom generator transforms $k$ seed bits into $n>k$ output bits. The output still has entropy at most $k$ and a description of length at most $k+K(G)+O(\log_2 k)$. Yet a secure generator makes it indistinguishable from uniform $n$-bit data by efficient tests.
+\end{block}
+Similarly, a self-play algorithm with a fixed random seed can have a short description while requiring extensive computation to produce a useful policy. Describing the algorithm does not make its output available within a limited budget.
+
+\medskip
+\src{Section~5.1 and Theorem~12, \citet{finzi2026}. The PRG result concerns unpredictable information; the cellular-automaton experiment also studies model structure.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Paradox 2: equal information, different prediction costs}
+\small
+The chain rule gives the same joint entropy in either order:
+\[
+H(X)+H(Y\mid X)=H(X,Y)=H(Y)+H(X\mid Y).
+\]
+Each order describes the same pair. The identity does not bound the cost of evaluating or sampling from the conditional distributions.
+
+\begin{block}{Example: an efficiently computable bijection}
+Let $X$ be uniform on $n$-bit strings and $Y=f(X)$. Since $f$ is a bijection, $Y$ is also uniform and both conditional entropies are zero.
+\begin{itemize}\setlength{\itemsep}{0.4em}
+\item \textbf{Input first:} encode $X$ in $n$ bits, then compute $Y=f(X)$.
+\item \textbf{Output first:} encode $Y$ in $n$ bits, then recover $X=f^{-1}(Y)$.
+\end{itemize}
+If $f$ is a one-way permutation, inversion is hard for efficient algorithms even though the inverse exists and is unique.
+\end{block}
+Prediction order can therefore affect what a model can compute. The paper studies this with cellular-automaton pairs and reordered chess data.
+
+\smallskip
+\src{Section~5.2 and Theorem~13, \citet{finzi2026}. One-wayness is a computational assumption, not a consequence of bijectivity.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Paradox 3: distribution matching and inference}
 \small
 Let $Q$ be the data distribution and $P$ a candidate model. Population negative log-likelihood is
 \[
 L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)]
       =H(Q)+\KL(Q\Vert P).
 \]
-$H(Q)$ is fixed; Kullback--Leibler (KL) divergence is non-negative and vanishes exactly when $P=Q$.
-Thus matching $Q$ minimizes loss, if $Q$ is available in the model class.
+$H(Q)$ is fixed. Kullback--Leibler (KL) divergence is non-negative, so $P=Q$ minimizes loss when $Q$ belongs to the model class. This constrains probabilities, not the algorithm that computes them.
 
 \medskip
 \begin{columns}[T]
@@ -130,37 +164,10 @@ The model sees the clues and must assign probabilities to possible culprits.
 \end{block}
 \end{column}
 \end{columns}
-\take{Matching probabilities need not reproduce the generator's computations.}
+\medskip
+The predictor must infer the culprit from evidence; the generator already knows it. Likelihood training can therefore require computations absent from the generating procedure.
+\par\smallskip
 \src{$H(Q)=H(Y)$ for $Y\sim Q$. Example adapted from Section~5.3.1, \citet{finzi2026}.}
-\end{frame}
-% ------------------------------------------------------------
-\begin{frame}{Paradox 3: one sample versus a probability}
-\small
-Let $Z$ be uniform on $\{0,1\}^n$. The mask $m$ hides $h$ bits; $f$ is a deterministic transformation.
-The observed pair is $X=m(Z)$, $Y=f(Z)$.
-
-\begin{columns}[T]
-\begin{column}{0.40\textwidth}
-\begin{block}{Generate a pair}
-Sample one complete $z$, then compute $m(z)$ and $f(z)$.
-\end{block}
-\centering
-\includegraphics[width=0.92\linewidth]{figs/hidden_bits_illustration.pdf}
-\end{column}
-\begin{column}{0.56\textwidth}
-\begin{block}{Evaluate a conditional probability}
-Given only $x$, account for all hidden completions:
-\[
-Q(y\mid x)=\frac{1}{2^h}
-\sum_{z:\,m(z)=x}\mathbf 1\{f(z)=y\}.
-\]
-Each completion has weight $2^{-h}$; the indicator selects those producing $y$.
-\end{block}
-Direct enumeration evaluates $f$ on $2^h$ states. A learned predictor may use a more efficient representation.
-\end{column}
-\end{columns}
-\take{Matching probabilities can require additional computation.}
-\src{Section~5.3.1 and Appendix~G, \citet{finzi2026}. Enumeration is one method, not a lower bound.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
 \begin{frame}{Why introduce a computation bound?}
@@ -389,7 +396,6 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \end{column}
 \end{columns}
 \src{Left: rollouts, time downward. Right: $S_T$ and $H_T$ against compute in FLOPs. Table: our estimates from the plots at $10^{17}$ FLOPs. Source: Fig.~3 of \citet{finzi2026}.}
-\take{Under this protocol, rule 54 has the largest estimated model part.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Epiplexity need not increase with compute}
@@ -412,12 +418,11 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \src{Two-part code and $S_T$ against compute in FLOPs. Source: Fig.~6 of \citet{finzi2026}.}
 \end{column}
 \end{columns}
-\take{More compute can select a smaller model part; $S_T$ need not grow with $T$.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Paradox 3 in the experiment: hidden inputs}
 \small
-\textbf{Setting.} The hidden-state construction with $n=32$, $h=0,\ldots,5$ and $f$ given by four rule~30 updates. Transformer; requential code.
+\textbf{Setting.} Sample $Z\sim U_{32}$; hide $h=0,\ldots,5$ bits to give $X=m(Z)$; predict $Y=f(Z)$, where $f$ applies four rule~30 updates. Transformer; requential code.
 
 \smallskip
 \begin{columns}[c]
@@ -431,11 +436,12 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \end{column}
 \end{columns}
 \src{Left: the data. Right: training loss against compute in FLOPs (dashed: $h$ bits) and $S_T$ for each $h$. Source: Fig.~5 of \citet{finzi2026}.}
-\begin{itemize}
-\item As $h$ increases, approaching the reported $h$-bit loss baseline requires more training compute; the estimated model part also increases.
-\item This is empirical evidence of additional inference. It does not identify the learned algorithm or prove a complexity lower bound.
-\end{itemize}
-\take{A compact sampling procedure need not be a compact, efficient likelihood model.}
+\[
+Q(y\mid x)=2^{-h}\sum_{z:\,m(z)=x}\mathbf 1\{f(z)=y\}.
+\]
+Generating a pair uses one complete state; direct probability evaluation enumerates $2^h$ completions. As $h$ increases, the experiment requires more training compute and gives a larger model-part estimate.
+\par\smallskip
+\src{Enumeration is one algorithm, not a complexity lower bound; the experiment does not identify the learned algorithm.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Experiment: the order of chess data}
@@ -458,7 +464,6 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \item At large compute, reverse order gives higher $H_T$ and $S_T$.
 \item After fine-tuning, reverse-order models reach $0.28$ board-evaluation accuracy versus $0.21$ for forward-order models; puzzle accuracy is similar.
 \end{itemize}
-\take{This supports the authors' hypothesis that reverse ordering develops more useful board-state representations.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Application: structure in natural data}
@@ -487,12 +492,11 @@ CIFAR-5M & $9\times10^7$ & $2.3\times10^{10}$ & $0.4\%$ \\
 
 \smallskip
 \begin{itemize}\setlength{\itemsep}{0.2em}
-\item Under this protocol, text has the largest estimated model part; pixel images have the largest residual part.
 \item These measurements compare representations at a fixed token count, rather than equal bytes or semantic content.
+\item The estimates depend on the tokenisation, model family and compute budget.
 \end{itemize}
 \end{column}
 \end{columns}
-\take{This ranking is relative to the tokenisation, model family and compute budget.}
 \end{frame}
 % ============================================================ SUMMARY
 \begin{frame}{Conclusions and limitations}

@@ -27,11 +27,9 @@ _The [paper](https://arxiv.org/abs/2601.03220) and the [code](https://github.com
 2. **Total information does not depend on prediction order.** Yet language-model loss can differ when text is modelled forward or in reverse. A description that exists mathematically may be much harder for a particular model to use in one order.
 3. **Likelihood modelling targets the data distribution.** This is sometimes taken to mean that a model can only reproduce the generating procedure. Yet assigning probabilities to observations can require inference that the generator never performs.
 
-The third point is easiest to see with a mystery story. The author chooses a culprit, then writes the clues and the reveal. A model predicting the reveal sees the clues, but not the author's choice. To assign good probabilities to possible culprits, it must use the evidence. The distribution of stories can be the same even though generation and prediction perform different computations. This is the paper's illustration of **induction**: inferring unobserved variables from observed data.
-
 These are not contradictions of classical theorems. In particular, an improvement in model capabilities does not imply an increase in Shannon entropy, and matching a distribution does not uniquely determine an algorithm. The question is which regularities an observer can use within its computational budget. This also matters for data selection: datasets of the same size can yield models with different downstream performance.
 
-We first define Shannon entropy and Kolmogorov complexity, then explain the distribution–algorithm distinction, introduce epiplexity, and examine its estimators and experiments.
+We first define Shannon entropy and Kolmogorov complexity, explain the three tensions, then introduce epiplexity and examine its estimators and experiments.
 
 ---
 
@@ -52,8 +50,6 @@ The distinction is easiest with two examples:
 
 These measures describe uncertainty or compressibility. They do not say whether a particular learner can discover a pattern within a finite compute budget. A model trained on random API keys learns little beyond their frequencies; a model trained on a compact algorithm can learn reusable circuits even when the algorithm itself is short. Figure 1 illustrates the distinction.
 
-> **Keep this distinction in mind:** Shannon entropy describes uncertainty in a distribution; Kolmogorov complexity measures the shortest program for one string. Epiplexity measures the program part of the best two-part code available under a computation bound.
-
 ![Random and structural information in three kinds of data, and information created by computation](/images/blog/epiplexity/fig1.png)
 
 *Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final-loss baseline; the green area is the cumulative excess loss above that baseline, used as a proxy for the model part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.*
@@ -68,7 +64,35 @@ We can now make the classical statements behind the opening precise:
 
 Here $$c$$ is a constant independent of $$x$$; $$Q$$ is the distribution of the data. The first two statements concern classical information measures. The third concerns the optimum of a population prediction objective; it says nothing about the internal algorithm of a model attaining that optimum.
 
-### Paradox 3: what distribution matching does and does not imply
+### Paradox 1: a short description can require extensive computation
+
+For a discrete random variable $$X$$ and a deterministic computable transformation $$f$$,
+
+$$
+H(f(X))\le H(X),\qquad K(f(x))\le K(x)+K(f)+c.
+$$
+
+The entropy inequality follows because $$f(X)$$ is fixed once $$X$$ is known: the chain rule gives $$H(X)=H(f(X))+H(X\mid f(X))$$, and conditional entropy is non-negative. The complexity inequality follows by composing a program for $$x$$ with a program for $$f$$. Neither argument bounds how long that program takes to run.
+
+A pseudorandom generator illustrates the distinction. It expands a uniformly random $$k$$-bit seed into $$n>k$$ bits. Its output has Shannon entropy at most $$k$$ and a description consisting of the seed and the generator program. Yet, assuming cryptographic security, efficient statistical tests cannot distinguish it from uniform $$n$$-bit data. The output can therefore be unpredictable to a bounded observer without having higher Shannon entropy.
+
+Self-play raises a related question about useful structure. Once the algorithm and random seed are specified, its output is determined. But a learner given that short specification may lack the budget to run the training procedure. A trained policy can provide usable predictions that the specification alone does not provide within the same budget. The formal result below concerns pseudorandomness; the cellular-automaton experiments separately examine estimated model structure.
+
+### Paradox 2: exact conditional probabilities may be expensive
+
+The chain rule gives
+
+$$
+H(X)+H(Y\mid X)=H(X,Y)=H(Y)+H(X\mid Y).
+$$
+
+Both orders describe the same pair, provided the exact conditional distributions can be used. This identity does not bound the cost of evaluating or sampling from those distributions.
+
+Let $$X$$ be uniform on $$n$$-bit strings and $$Y=f(X)$$ for an efficiently computable bijection $$f$$. Then $$Y$$ is also uniform, and $$H(Y\mid X)=H(X\mid Y)=0$$: each variable uniquely determines the other. Encoding the input first requires $$n$$ bits for $$X$$ followed by computation of $$f(X)$$. Encoding the output first also has entropy $$n$$, but recovering the input requires computing $$f^{-1}(Y)$$. If $$f$$ is a one-way permutation, efficient inversion is hard despite the unique inverse.
+
+This is a difference in computation, not in the classical joint entropy. Under a time bound, it can affect the conditional models available in each direction. The paper proves an asymmetry for one-way permutations and tests prediction order empirically with cellular automata and chess data.
+
+### Paradox 3: distribution matching does not specify an algorithm
 
 Let $$Y\sim Q$$ and let $$P$$ be a candidate probability model. Add and subtract $$-\log_2 Q(Y)$$ in the expected loss:
 
@@ -83,9 +107,7 @@ $$
 
 Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the two distributions agree. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. Consequently, population loss is minimized at $$P=Q$$ when $$Q$$ is in the model class. A restricted class or finite-data training need not attain that optimum.
 
-The identity constrains probabilities, not the computations used to obtain them. A sampler can choose an unobserved state and generate one observation from it. A likelihood model must evaluate the probability of an observation supplied to it, which may involve summing over many possible hidden states. The mystery-story predictor likewise has to reason from the clues, whereas the author already knows the culprit. Matching the distribution remains the objective in both cases.
-
-The paper discusses two sources of additional structure under computational restrictions. **Induction** involves inference about hidden variables. **Emergence** involves predicting the outcomes of repeated dynamics using patterns at a larger scale, when replaying the dynamics is too costly for the observer. These are explanations supported by the paper's examples and experiments; the paper does not prove a general lower bound on the extra epiplexity required. We return to both in the experiments below.
+The identity constrains probabilities, not the algorithm used to compute them. In the paper's mystery-story example, the author chooses a culprit before writing the clues. A predictor sees the clues and must infer the culprit to predict the reveal. The two procedures can represent the same distribution while performing different computations. The paper calls inference about hidden variables **induction**. We examine its hidden-input experiment later, alongside **emergence**: predicting long-run dynamics through larger-scale patterns when direct simulation is too costly.
 
 ---
 
