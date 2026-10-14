@@ -51,7 +51,7 @@
 Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J.~Zico Kolter, Andrew Gordon Wilson\\[0.2em]
 {\small Carnegie Mellon University, New York University}\\[0.2em]
 {\small arXiv:2601.03220, version~2, 16 March 2026}\\[2.2em]
-Speaker: Alex Kravatsky
+Speaker: Alexey Kravatskiy
 \end{frame}
 % ============================================================ PARADOXES
 \begin{frame}{Three apparent paradoxes of information}
@@ -282,15 +282,16 @@ $H_T(Y\mid X)\ne H_T(X,Y)-H_T(X)$.
 % ============================================================ METHOD
 \begin{frame}{Compute budget for training and evaluation}
 \small
-The experiments restrict the search to models trained with a chosen architecture and optimiser. Their FLOP budget counts replaying training and evaluating the target data. Let $N$ count parameters, $D$ training tokens and $\Dt$ evaluation tokens.
+The experiments restrict the search to models trained with a chosen architecture and optimiser. To decode the empirical two-part code, first reconstruct the weights by replaying training, then evaluate the target data with those weights. Let $N$ count parameters, $D$ training tokens and $\Dt$ evaluation tokens.
 \[
-\underbrace{(2ND+4ND)}_{\text{forward + backward during training}}
+\underbrace{6ND}_{\text{replay training: }2ND+4ND}
 +\underbrace{2N\Dt}_{\text{evaluation: forward only}}\le T.
 \]
 \begin{itemize}\setlength{\itemsep}{0.6em}
 \item A dense forward pass costs roughly $2N$ FLOPs per token: one multiplication and one addition per parameter.
 \item Backpropagation computes gradients for activations and weights: roughly $4N$ FLOPs per token, twice the forward pass.
 \end{itemize}
+The terms add because the decoder performs these stages in sequence. Sampling does not involve training; after the weights are reconstructed, it is a separate call that must satisfy its own sampling bound.
 For each $(N,D)$ satisfying the budget, estimate the model-code length and add the validation loss (bits per token) multiplied by $\Dt$. Retain the run with the smallest sum.
 \par\medskip
 \src{Sections~3--4 and Appendix~B.1, \citet{finzi2026}. This is empirical compute accounting. Formal membership in $\PT$ requires both evaluation and sampling to satisfy the bound separately.}
