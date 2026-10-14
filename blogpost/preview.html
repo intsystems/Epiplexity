@@ -149,6 +149,7 @@
 
 
 
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -693,6 +694,14 @@ Q(y\mid x)
 <p>Epiplexity is the model part of the shortest two-part description available under a time bound. This restriction permits phenomena excluded by the corresponding unbounded statements: deterministic computation can increase the time-bounded quantities, prediction order can matter, and prediction can require a more elaborate model than generation. The empirical procedures approximate the model part using cumulative excess prequential loss or a requential student code, then select a model by total description length. The ranking of datasets is therefore relative to the specified observer and budget.</p>
 <p>For machine learning, predictive loss and estimated model description length provide complementary measurements. Two datasets with the same final loss can yield different model parts. Epiplexity is therefore a candidate criterion for data selection, while transfer performance must still be evaluated on the intended downstream tasks.</p>
 <hr />
+<h2 id="follow-up-work">Follow-up work</h2>
+<p>Three follow-up papers develop the compression method, data-selection applications and faster structure estimates:</p>
+<ul>
+<li><strong><a href="https://arxiv.org/abs/2607.11883">Qiu et al. (2026), Requential Coding</a>:</strong> construct a student-model code from teacher-guided sample selections, as described above. They use the shorter codes to obtain PAC-Bayes generalization bounds for large language models and study how compressibility changes with model size and repeated training epochs.</li>
+<li><strong><a href="https://arxiv.org/abs/2608.11746">Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization</a>:</strong> introduce <strong>EpiSelect</strong>, which fits loss scaling laws to adapt data-domain sampling weights, and <strong>EpiGen</strong>, which rewards a synthetic-data generator for improvements in learner predictions on a buffer of prior samples. They report gains on downstream tasks. Both methods optimize a tractable online proxy; the paper leaves open whether maximizing it also maximizes the formal \(S_T\).</li>
+<li><strong><a href="https://arxiv.org/abs/2607.18433">Zhang and Levin (2026), Intelligence from Learnable Novelty</a>:</strong> propose a fast, differentiable structure score using a fixed random feature network and a linear readout fitted by ridge regression. They apply it to cellular-automaton dynamics, unsupervised image representations and intrinsic rewards for reinforcement-learning exploration. This score depends on a fixed model capacity and regularization; its relationship to the original time-bounded minimum over programs should not be assumed exact.</li>
+</ul>
+<hr />
 <h2 id="references">References</h2>
 <ol type="1">
 <li><a id="ref-finzi2026"></a>M. Finzi, S. Qiu, Y. Jiang, P. Izmailov, J. Z. Kolter, A. G. Wilson. <a href="https://arxiv.org/abs/2601.03220">From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence</a>. arXiv:2601.03220v2, 2026. <a href="https://github.com/shikaiqiu/epiplexity">Code</a>.</li>
@@ -700,13 +709,15 @@ Q(y\mid x)
 <li><a id="ref-dawid1984"></a>A. P. Dawid. Present position and potential developments: some personal views. Statistical theory: the prequential approach. <em>Journal of the Royal Statistical Society, Series A</em>, 147(2):278–292, 1984.</li>
 <li><a id="ref-theis2022"></a>L. Theis, N. Y. Ahmed. <a href="https://arxiv.org/abs/2110.12805">Algorithms for the Communication of Samples</a>. ICML, 2022.</li>
 <li><a id="ref-zhang2020"></a>X. Zhang, X. Li, D. Dou, J. Wu. <a href="https://arxiv.org/abs/2009.07624">Measuring Information Transfer in Neural Networks</a>. arXiv:2009.07624, 2020.</li>
-<li><a id="ref-livitanyi2008"></a>M. Li, P. Vitányi. <em>An Introduction to Kolmogorov Complexity and Its Applications</em>. Springer, 2008.</li>
+<li><a id="ref-livitanyi2008"></a>M. Li, P. Vitányi. <a href="https://doi.org/10.1007/978-0-387-49820-1">An Introduction to Kolmogorov Complexity and Its Applications</a>. Springer, 2008.</li>
 <li><a id="ref-blum1982"></a>M. Blum, S. Micali. How to generate cryptographically strong sequences of pseudo random bits. FOCS, 1982.</li>
-<li><a id="ref-wolfram2002"></a>S. Wolfram. <em>A New Kind of Science</em>. Wolfram Media, 2002.</li>
+<li><a id="ref-wolfram2002"></a>S. Wolfram. <a href="https://www.wolframscience.com/nks/">A New Kind of Science</a>. Wolfram Media, 2002.</li>
 <li><a id="ref-zhang2024"></a>S. Zhang, A. Patel, S. A. Rizvi, N. Liu, S. He, A. Karbasi, E. Zappala, D. van Dijk. <a href="https://arxiv.org/abs/2410.02536">Intelligence at the Edge of Chaos</a>. arXiv:2410.02536, 2024.</li>
 <li><a id="ref-papadopoulos2024"></a>V. Papadopoulos, J. Wenger, C. Hongler. <a href="https://arxiv.org/abs/2401.17505">Arrows of Time for Large Language Models</a>. ICML, 2024.</li>
 <li><a id="ref-silver2018"></a>D. Silver et al. A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play. <em>Science</em>, 362(6419):1140–1144, 2018.</li>
 <li><a id="ref-jiang2025"></a>Y. Jiang, A. Zhou, Z. Feng, S. Malladi, J. Z. Kolter. <a href="https://openreview.net/forum?id=aqok1UX7Z1">Adaptive Data Optimization: Dynamic Sample Selection with Scaling Laws</a>. ICLR, 2025.</li>
+<li><a id="ref-su2026"></a>E. Su, A. Potapczynski, S. Qiu, E. Hughes, A. G. Wilson. <a href="https://arxiv.org/abs/2608.11746">Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization</a>. arXiv:2608.11746, 2026.</li>
+<li><a id="ref-zhanglevin2026"></a>Y. Zhang, M. Levin. <a href="https://arxiv.org/abs/2607.18433">Intelligence from Learnable Novelty</a>. arXiv:2607.18433, 2026.</li>
 </ol>
 
 </div>
