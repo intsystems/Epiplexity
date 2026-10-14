@@ -156,6 +156,7 @@
 
 
 
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -430,7 +431,7 @@ L_Q(P)&amp;:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
 </ul>
 <p>The probabilities sum to one. \(\mathcal{P}_T\) is the set of all such programs; \(\lvert\mathrm{P}\rvert\) is the length of \(\mathrm{P}\) in bits.</p>
 </blockquote>
-<p>Roman \(\mathrm{P}\) denotes the program and italic \(P\) the distribution it computes. A function \(T\) is time-constructible if \(\mathcal{U}\) can compute \(T(n)\) from \(n\) within \(O(T(n))\) steps. The definition requires both modes because a useful model of data does both: it scores an observation and generates new ones. A transformer with a softmax output does both within a fixed number of forward passes, as do most sequence models.</p>
+<p>The program \(\mathrm{P}\) specifies the probability distribution \(P\) used in both modes. A function \(T\) is time-constructible if \(\mathcal{U}\) can compute \(T(n)\) from \(n\) within \(O(T(n))\) steps. The definition requires both likelihood evaluation and sampling. For a finite sequence, an autoregressive model evaluates the joint probability through its conditional probabilities and samples sequentially from those same conditionals.</p>
 <h3 id="epiplexity-and-time-bounded-entropy">Epiplexity and time-bounded entropy</h3>
 <p>A program in \(\mathcal{P}_T\) gives a <strong>two-part code</strong> for data. First transmit the program describing a useful model; then transmit the residual data using that model. Arithmetic coding of \(x\) with a model \(P\) has ideal length \(-\log_2 P(x)\) bits, up to coding overhead. The best program under the time bound splits the information in \(X\) into a model part and a residual part.</p>
 <blockquote>

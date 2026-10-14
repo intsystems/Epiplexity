@@ -139,7 +139,7 @@ The quantity built from this restriction is **epiplexity** (from *epistemic comp
 >
 > The probabilities sum to one. $$\mathcal{P}_T$$ is the set of all such programs; $$\lvert\mathrm{P}\rvert$$ is the length of $$\mathrm{P}$$ in bits.
 
-Roman $$\mathrm{P}$$ denotes the program and italic $$P$$ the distribution it computes. A function $$T$$ is time-constructible if $$\mathcal{U}$$ can compute $$T(n)$$ from $$n$$ within $$O(T(n))$$ steps. The definition requires both modes because a useful model of data does both: it scores an observation and generates new ones. A transformer with a softmax output does both within a fixed number of forward passes, as do most sequence models.
+The program $$\mathrm{P}$$ specifies the probability distribution $$P$$ used in both modes. A function $$T$$ is time-constructible if $$\mathcal{U}$$ can compute $$T(n)$$ from $$n$$ within $$O(T(n))$$ steps. The definition requires both likelihood evaluation and sampling. For a finite sequence, an autoregressive model evaluates the joint probability through its conditional probabilities and samples sequentially from those same conditionals.
 
 ### Epiplexity and time-bounded entropy
 

@@ -144,29 +144,29 @@ Prediction order can therefore affect what a model can compute. The paper studie
 % ------------------------------------------------------------
 \begin{frame}{Paradox 3: can prediction require more than generation?}
 \small
-Likelihood training aims to match the data distribution $Q$. If $Q$ is in the model class, it minimizes the expected prediction loss:
+Likelihood training minimizes
 \[
 L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)].
 \]
-\textbf{The apparent implication:} to predict such data, a model should need only the computations used to generate them.
+When the model class contains the data distribution $Q$, the minimum is attained at $P=Q$.
 
 \medskip
-\textbf{Why this is questionable:} consider predicting the culprit's name before the reveal in a mystery story.
+Does matching the distribution require only reproducing the generator's computations? Consider a mystery story:
 
 \begin{columns}[T]
 \begin{column}{0.47\textwidth}
 \begin{block}{The author generates the story}
-Choose the culprit first, then write clues consistent with that choice. There is no need to solve the mystery.
+Choose the culprit, then write consistent clues. The culprit is already known.
 \end{block}
 \end{column}
 \begin{column}{0.47\textwidth}
 \begin{block}{The model predicts the reveal}
-Only the clues are available. Good predictions require inferring which culprit they support, a task the author did not perform.
+Given only the clues, assign probabilities to possible culprits before the reveal.
 \end{block}
 \end{column}
 \end{columns}
 \medskip
-Matching probabilities does not prescribe the generator's algorithm. Under a computation bound, prediction can require additional inference procedures. The paper calls this \textbf{induction}.
+Prediction requires inference from clues to culprit; generation does not. The paper calls this \textbf{induction}: inference about unobserved variables. Under a time bound, it may require a different algorithm from the generator's.
 \par\smallskip
 \src{Section~5.3 and the mystery-story example in Section~5.3.1, \citet{finzi2026}.}
 \end{frame}
@@ -174,15 +174,17 @@ Matching probabilities does not prescribe the generator's algorithm. Under a com
 \begin{frame}{Time-bounded probabilistic models}
 \small
 Fix a prefix-free universal Turing machine $\mathcal U$ and a time bound $T(n)$.
-A program $\prog\in\PT$ implements a distribution $P$ on $\{0,1\}^n$ with two modes:
+An admissible program $\prog$ specifies a distribution $P$ on $\{0,1\}^n$ and supports:
 \begin{itemize}\setlength{\itemsep}{0.7em}
 \item \textbf{Evaluation:} given $x$, return $P(x)$ within $T(n)$ steps.
 \item \textbf{Sampling:} given independent random bits, generate $x\sim P$ within $T(n)$ steps.
 \end{itemize}
 
 \medskip
-The returned probabilities must sum to one and agree with the sampling distribution.
-Roman $\prog$ denotes the program; italic $P$ denotes its distribution. $|\prog|$ is the program length in bits.
+Both modes use the same distribution $P$, with $\sum_x P(x)=1$.
+
+\smallskip
+$\PT$ is the set of admissible programs; $|\prog|$ is the program length in bits.
 
 \medskip
 \src{Definition~7, \citet{finzi2026}. The formal bound is non-decreasing and time-constructible.}
