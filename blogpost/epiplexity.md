@@ -60,9 +60,9 @@ We can now make the classical statements behind the opening precise:
 | :-- | :-- |
 | A deterministic map $$f$$ adds no information: $$H(f(X))\le H(X)$$ and $$K(f(x))\le K(x)+K(f)+c$$ | Pseudorandom generators create randomness; self-play and synthetic data improve models |
 | Information does not depend on the order of prediction: $$H(X)+H(Y\mid X)=H(Y)+H(X\mid Y)$$ | Language models compress English text better left to right than in reverse ([Papadopoulos et al., 2024](#ref-papadopoulos2024)) |
-| Population negative log-likelihood is minimized by $$P=Q$$ when the model class contains the data distribution $$Q$$ | Matching those probabilities may require inference or representations absent from the sampling procedure |
+| Expected negative log-likelihood under $$Q$$ is minimized by $$P=Q$$ when the model class contains $$Q$$ | Matching those probabilities may require inference or representations absent from the sampling procedure |
 
-Here $$c$$ is a constant independent of $$x$$; $$Q$$ is the distribution of the data. The first two statements concern classical information measures. The third concerns the optimum of a population prediction objective; it says nothing about the internal algorithm of a model attaining that optimum.
+Here $$c$$ is a constant independent of $$x$$; $$Q$$ is the distribution of the data. The first two statements concern classical information measures. The third concerns expected prediction loss under $$Q$$; it says nothing about the internal algorithm of a model attaining that optimum.
 
 ### Paradox 1: a short description can require extensive computation
 
@@ -74,9 +74,9 @@ $$
 
 The entropy inequality follows because $$f(X)$$ is fixed once $$X$$ is known: the chain rule gives $$H(X)=H(f(X))+H(X\mid f(X))$$, and conditional entropy is non-negative. The complexity inequality follows by composing a program for $$x$$ with a program for $$f$$. Neither argument bounds how long that program takes to run.
 
-A pseudorandom generator illustrates the distinction. It expands a uniformly random $$k$$-bit seed into $$n>k$$ bits. Its output has Shannon entropy at most $$k$$ and a description consisting of the seed and the generator program. Yet, assuming cryptographic security, efficient statistical tests cannot distinguish it from uniform $$n$$-bit data. The output can therefore be unpredictable to a bounded observer without having higher Shannon entropy.
+A pseudorandom generator illustrates the distinction. It expands a uniformly random $$k$$-bit seed into $$n>k$$ bits. Its output has Shannon entropy at most $$k$$ and a description consisting of the seed and the generator program. Assuming cryptographic security, no randomized test whose runtime is bounded by a polynomial in $$k$$ distinguishes the output from uniform $$n$$-bit data with non-negligible advantage. Here an advantage is negligible if it eventually becomes smaller than $$k^{-m}$$ for every fixed $$m>0$$. The output can therefore be unpredictable to a bounded observer without having higher Shannon entropy.
 
-Self-play raises a related question about useful structure. Once the algorithm and random seed are specified, its output is determined. But a learner given that short specification may lack the budget to run the training procedure. A trained policy can provide usable predictions that the specification alone does not provide within the same budget. The formal result below concerns pseudorandomness; the cellular-automaton experiments separately examine estimated model structure.
+AlphaZero raises a related question about useful structure. It learns a policy and a value function through self-play ([Silver et al., 2018](#ref-silver2018)). Specifying the algorithm and random seed can take far fewer bits than storing the resulting network, but reconstructing that network requires running the training procedure. A trained network makes predictions available without repeating the entire training computation. The formal result below concerns pseudorandomness; the cellular-automaton experiments separately examine estimated model structure.
 
 ### Paradox 2: exact conditional probabilities may be expensive
 
@@ -88,7 +88,7 @@ $$
 
 Both orders describe the same pair, provided the exact conditional distributions can be used. This identity does not bound the cost of evaluating or sampling from those distributions.
 
-Let $$X$$ be uniform on $$n$$-bit strings and $$Y=f(X)$$ for an efficiently computable bijection $$f$$. Then $$Y$$ is also uniform, and $$H(Y\mid X)=H(X\mid Y)=0$$: each variable uniquely determines the other. Encoding the input first requires $$n$$ bits for $$X$$ followed by computation of $$f(X)$$. Encoding the output first also has entropy $$n$$, but recovering the input requires computing $$f^{-1}(Y)$$. If $$f$$ is a one-way permutation, efficient inversion is hard despite the unique inverse.
+Let $$X$$ be uniform on $$n$$-bit strings and $$Y=f(X)$$ for a bijection $$f$$ computable in polynomial time. Then $$Y$$ is also uniform, and $$H(Y\mid X)=H(X\mid Y)=0$$: each variable uniquely determines the other. Encoding the input first requires $$n$$ bits for $$X$$ followed by computation of $$f(X)$$. Encoding the output first also has entropy $$n$$, but recovering the input requires computing $$f^{-1}(Y)$$. If $$f$$ is a one-way permutation, no randomized algorithm with runtime polynomial in $$n$$ inverts it with non-negligible success probability over uniform inputs, despite the unique inverse.
 
 This is a difference in computation, not in the classical joint entropy. Under a time bound, it can affect the conditional models available in each direction. The paper proves an asymmetry for one-way permutations and tests prediction order empirically with cellular automata and chess data.
 
@@ -105,9 +105,15 @@ L_Q(P)&:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
 \end{aligned}
 $$
 
-Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the two distributions agree. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. Consequently, population loss is minimized at $$P=Q$$ when $$Q$$ is in the model class. A restricted class or finite-data training need not attain that optimum.
+Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the two distributions agree. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. Consequently, expected loss under $$Q$$ is minimized at $$P=Q$$ when $$Q$$ is in the model class. A restricted class or finite-data training need not attain that optimum.
 
-The identity constrains probabilities, not the algorithm used to compute them. In the paper's mystery-story example, the author chooses a culprit before writing the clues. A predictor sees the clues and must infer the culprit to predict the reveal. The two procedures can represent the same distribution while performing different computations. The paper calls inference about hidden variables **induction**. We examine its hidden-input experiment later, alongside **emergence**: predicting long-run dynamics through larger-scale patterns when direct simulation is too costly.
+To connect the objective to the paper's mystery-story example, let $$Y=(C,R)$$ consist of clues $$C$$ followed by a reveal $$R$$ identifying the culprit. The model factorization gives
+
+$$
+-\log_2 P(C,R)=-\log_2 P(C)-\log_2 P(R\mid C).
+$$
+
+Thus the expected story loss includes the loss for predicting the reveal from the clues. At the distribution-matching optimum, $$P(R\mid C)=Q(R\mid C)$$ for clues with positive $$Q$$-probability. The author generates the story in a different order: choose the culprit first, then write compatible clues. The predictor receives only the clues and must assign probabilities to possible culprits. The objective specifies the probabilities it should assign; it does not prescribe the author's generating algorithm. The paper calls inference about hidden variables **induction**. We examine its hidden-input experiment later, alongside **emergence**: predicting long-run dynamics through larger-scale patterns when direct simulation is too costly.
 
 ---
 
@@ -207,7 +213,7 @@ Theorem 2 concerns random information only. Evidence that computation also creat
 
 ### Paradox 2: the order of prediction matters
 
-A **one-way permutation** is a bijection $$f$$ of $$\{0,1\}^n$$, computable in polynomial time, that efficient algorithms cannot invert. Formally, every probabilistic polynomial-time algorithm $$A$$ with polynomial advice has $$\Pr_{x\sim U_n}[A(f(x))=x]<n^{-m}$$ for every $$m>0$$ and all large $$n$$.
+A **one-way permutation** is a bijection $$f$$ of $$\{0,1\}^n$$, computable in polynomial time, for which inversion has negligible success probability for every randomized polynomial-time algorithm. In the paper's non-uniform setting, the algorithm also receives an advice string of polynomial length, fixed for each $$n$$ independently of the sampled input. Formally, every such algorithm $$A$$ has $$\Pr_{x\sim U_n}[A(f(x))=x]<n^{-m}$$ for every $$m>0$$ and all large $$n$$.
 
 > **Theorem 3** (Thm. 13 of the paper). Let $$f$$ be a one-way permutation, $$X=U_n$$ and $$Y=f(X)$$. Then
 >

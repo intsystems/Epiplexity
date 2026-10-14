@@ -112,12 +112,12 @@ H(f(X))\le H(X),\qquad K(f(x))\le K(x)+K(f)+c.
 The output has a description: specify the input and the program for $f$, then run it. These bounds do not restrict how long that computation takes.
 
 \begin{block}{Example: expanding a random seed}
-A pseudorandom generator transforms $k$ seed bits into $n>k$ output bits. The output still has entropy at most $k$ and a description of length at most $k+K(G)+O(\log_2 k)$. Yet a secure generator makes it indistinguishable from uniform $n$-bit data by efficient tests.
+A pseudorandom generator transforms $k$ seed bits into $n>k$ output bits. The output still has entropy at most $k$ and a description of length at most $k+K(G)+O(\log_2 k)$. For a secure generator, no randomized test with runtime polynomial in $k$ distinguishes the output from uniform data with non-negligible advantage.
 \end{block}
-Similarly, a self-play algorithm with a fixed random seed can have a short description while requiring extensive computation to produce a useful policy. Describing the algorithm does not make its output available within a limited budget.
+AlphaZero learns a policy and a value function through self-play. Specifying its algorithm and random seed can take far fewer bits than storing the trained network, but reconstructing that network requires running the training procedure.
 
 \medskip
-\src{Section~5.1 and Theorem~12, \citet{finzi2026}. The PRG result concerns unpredictable information; the cellular-automaton experiment also studies model structure.}
+\src{Negligible advantage: eventually smaller than $k^{-m}$ for every fixed $m>0$. Section~5.1 and Theorem~12, \citet{finzi2026}; the theorem uses polynomial-length advice independent of the sampled seed.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Paradox 2: equal information, different prediction costs}
@@ -128,64 +128,52 @@ H(X)+H(Y\mid X)=H(X,Y)=H(Y)+H(X\mid Y).
 \]
 Each order describes the same pair. The identity does not bound the cost of evaluating or sampling from the conditional distributions.
 
-\begin{block}{Example: an efficiently computable bijection}
+\begin{block}{Example: a bijection computable in polynomial time}
 Let $X$ be uniform on $n$-bit strings and $Y=f(X)$. Since $f$ is a bijection, $Y$ is also uniform and both conditional entropies are zero.
 \begin{itemize}\setlength{\itemsep}{0.4em}
 \item \textbf{Input first:} encode $X$ in $n$ bits, then compute $Y=f(X)$.
 \item \textbf{Output first:} encode $Y$ in $n$ bits, then recover $X=f^{-1}(Y)$.
 \end{itemize}
-If $f$ is a one-way permutation, inversion is hard for efficient algorithms even though the inverse exists and is unique.
+One-wayness means that no randomized algorithm with runtime polynomial in $n$ recovers $X$ from $f(X)$ with non-negligible probability over uniform $X$.
 \end{block}
 Prediction order can therefore affect what a model can compute. The paper studies this with cellular-automaton pairs and reordered chess data.
 
 \smallskip
-\src{Section~5.2 and Theorem~13, \citet{finzi2026}. One-wayness is a computational assumption, not a consequence of bijectivity.}
+\src{Section~5.2 and Theorem~13, \citet{finzi2026}. The theorem also allows polynomial-length advice independent of the sampled input; one-wayness is an assumption.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Paradox 3: distribution matching and inference}
 \small
-Let $Q$ be the data distribution and $P$ a candidate model. Population negative log-likelihood is
+Let $Q$ be the data distribution and $P$ a candidate model. The expected negative log-likelihood under $Q$ is
 \[
 L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)]
       =H(Q)+\KL(Q\Vert P).
 \]
-$H(Q)$ is fixed. Kullback--Leibler (KL) divergence is non-negative, so $P=Q$ minimizes loss when $Q$ belongs to the model class. This constrains probabilities, not the algorithm that computes them.
+$H(Q)$ is fixed. The Kullback--Leibler (KL) divergence is non-negative, so $P=Q$ minimizes this loss when $Q$ belongs to the model class.
 
-\medskip
+\smallskip
+Now let $Y=(C,R)$ be a story: clues $C$, followed by a reveal $R$ identifying the culprit. Its model probability factors as
+\[
+P(C,R)=P(C)P(R\mid C).
+\]
+Matching the story distribution therefore requires correct probabilities for the reveal given the clues.
+
 \begin{columns}[T]
 \begin{column}{0.47\textwidth}
 \begin{block}{Generating a mystery story}
-The author chooses a culprit, then writes the clues and the reveal.
+The author chooses the culprit $R$, then writes compatible clues $C$. The culprit is already known during generation.
 \end{block}
 \end{column}
 \begin{column}{0.47\textwidth}
 \begin{block}{Predicting the reveal}
-The model sees the clues and must assign probabilities to possible culprits.
+The model receives $C$ and evaluates $P(R\mid C)$. It must use the clues to assign probabilities to possible culprits.
 \end{block}
 \end{column}
 \end{columns}
-\medskip
-The predictor must infer the culprit from evidence; the generator already knows it. Likelihood training can therefore require computations absent from the generating procedure.
 \par\smallskip
-\src{$H(Q)=H(Y)$ for $Y\sim Q$. Example adapted from Section~5.3.1, \citet{finzi2026}.}
+\src{Example adapted from Section~5.3.1, \citet{finzi2026}.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
-\begin{frame}{Why introduce a computation bound?}
-\small
-\begin{block}{A short program can require a long computation}
-A simulator and its initial conditions can specify a complex trajectory. Reproducing it may still require more computation than the observer can perform.
-\end{block}
-
-\medskip
-Neither Shannon entropy nor unbounded Kolmogorov complexity restricts the runtime of a predictive model.
-
-\medskip
-The paper therefore restricts the admissible models to programs that evaluate probabilities and generate samples within time $T$.
-
-\medskip
-Within this class, it separates the description of the model from the description of data given the model.
-\end{frame}
-% ------------------------------------------------------------
 \begin{frame}{Time-bounded probabilistic models}
 \small
 Fix a prefix-free universal Turing machine $\mathcal U$ and a time bound $T(n)$.
@@ -263,7 +251,7 @@ Here both the model description and the residual data code are small.
 \begin{itemize}\setlength{\itemsep}{0.65em}
 \item \textbf{Pseudorandom generator.} $G$ maps $k$ random seed bits to $n>k$ output bits.
       $H(G(U_k))\le k$, yet for a secure generator $H_{\Poly}(G(U_k))\approx n$ and $S_{\Poly}(G(U_k))=O(1)$.
-\item \textbf{One-way function.} Computing $f(x)$ is efficient; finding a preimage of $f(x)$ is hard for efficient algorithms.
+\item \textbf{One-way function.} Computing $f(x)$ takes polynomial time. No randomized polynomial-time algorithm finds a preimage with non-negligible probability over uniformly sampled inputs.
       For a one-way \emph{permutation}, the paper proves that the two factorization orders have different time-bounded entropies.
 \end{itemize}
 
