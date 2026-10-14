@@ -55,27 +55,22 @@ Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J.~Zico Kolter, Andrew Gor
 {\small arXiv:2601.03220, version~2, 16 March 2026}\\[2.2em]
 Speaker: Alex Kravatsky
 \end{frame}
-% ============================================================ MOTIVATION
-\begin{frame}{Motivation: evaluating pretraining data}
-\begin{columns}[T]
-\begin{column}{0.50\textwidth}
+% ============================================================ PARADOXES
+\begin{frame}{Three apparent paradoxes of information}
 \small
-Pretraining is intended to improve performance on tasks beyond the training distribution.
-
-\medskip
-Dataset size and final predictive loss do not quantify how much reusable structure a model acquires.
-
-\begin{block}{The paper's question}
-How can we measure structural information in data relative to a fixed computational budget?
+\begin{block}{1. Deterministic computation cannot increase information}
+Yet self-play and synthetic data can improve a model's capabilities.
 \end{block}
-\end{column}
-\begin{column}{0.46\textwidth}
-\centering
-\includegraphics[width=\linewidth,trim=0 0 660 40,clip]{figs/fig1.pdf}
-\raggedright
-\src{Schematic loss curves. Dashed line: final loss. Green area: cumulative excess loss above that baseline, used as a structural-information proxy. Fig.~1, \citet{finzi2026}.}
-\end{column}
-\end{columns}
+\begin{block}{2. Total information does not depend on prediction order}
+Yet language-model loss can differ between forward and reverse text.
+\end{block}
+\begin{block}{3. Likelihood modelling targets the data distribution}
+Yet prediction can require inference absent from the generating procedure.
+\end{block}
+\medskip
+The question: what changes when computation is limited?
+\par\smallskip
+\src{Section~5, \citet{finzi2026}. These are apparent tensions, not contradictions of the classical results.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Shannon entropy and Kolmogorov complexity}
@@ -110,6 +105,62 @@ An alternating string is specified by its rule and length. Most uniform $n$-bit 
 \end{columns}
 \medskip
 \src{$K(x)$ is uncomputable in general. Definition~1 and Section~2.1, \citet{finzi2026}.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Paradox 3: matching a distribution does not fix an algorithm}
+\small
+Let $Q$ be the data distribution and $P$ a candidate model. Population negative log-likelihood is
+\[
+L_Q(P)=\E_{Y\sim Q}[-\log_2 P(Y)]
+      =H(Q)+\KL(Q\Vert P).
+\]
+$H(Q)$ is fixed; Kullback--Leibler (KL) divergence is non-negative and vanishes exactly when $P=Q$.
+Thus matching $Q$ minimizes loss, if $Q$ is available in the model class.
+
+\medskip
+\begin{columns}[T]
+\begin{column}{0.47\textwidth}
+\begin{block}{Generating a mystery story}
+The author chooses a culprit, then writes the clues and the reveal.
+\end{block}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{block}{Predicting the reveal}
+The model sees the clues and must assign probabilities to possible culprits.
+\end{block}
+\end{column}
+\end{columns}
+\take{Matching probabilities need not reproduce the generator's computations.}
+\src{$H(Q)=H(Y)$ for $Y\sim Q$. Example adapted from Section~5.3.1, \citet{finzi2026}.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Paradox 3: one sample versus a probability}
+\small
+Let $Z$ be uniform on $\{0,1\}^n$. The mask $m$ hides $h$ bits; $f$ is a deterministic transformation.
+The observed pair is $X=m(Z)$, $Y=f(Z)$.
+
+\begin{columns}[T]
+\begin{column}{0.40\textwidth}
+\begin{block}{Generate a pair}
+Sample one complete $z$, then compute $m(z)$ and $f(z)$.
+\end{block}
+\centering
+\includegraphics[width=0.92\linewidth]{figs/hidden_bits_illustration.pdf}
+\end{column}
+\begin{column}{0.56\textwidth}
+\begin{block}{Evaluate a conditional probability}
+Given only $x$, account for all hidden completions:
+\[
+Q(y\mid x)=\frac{1}{2^h}
+\sum_{z:\,m(z)=x}\mathbf 1\{f(z)=y\}.
+\]
+Each completion has weight $2^{-h}$; the indicator selects those producing $y$.
+\end{block}
+Direct enumeration evaluates $f$ on $2^h$ states. A learned predictor may use a more efficient representation.
+\end{column}
+\end{columns}
+\take{Matching probabilities can require additional computation.}
+\src{Section~5.3.1 and Appendix~G, \citet{finzi2026}. Enumeration is one method, not a lower bound.}
 \end{frame}
 % ============================================================ FORMAL PROBLEM STATEMENT
 \begin{frame}{Why introduce a computation bound?}
@@ -341,9 +392,32 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \take{Under this protocol, rule 54 has the largest estimated model part.}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Hidden variables: generation and prediction differ}
+\begin{frame}{Epiplexity need not increase with compute}
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}
 \small
-\textbf{Setting.} Hide $h$ bits of a random $Z\in\{0,1\}^{32}$; predict four rule~30 updates of $Z$ from the visible bits.
+\textbf{Setting.} ECA rule~54, $64$ updates. The non-looped model predicts the final state; the looped model also predicts intermediate states.
+
+\medskip
+\begin{itemize}\setlength{\itemsep}{0.2em}
+\item Below $10^{15}$ FLOPs, the non-looped model gives the shorter estimated code; its model part reaches $1.45\times10^7$ bits.
+\item Above that budget, the looped model gives the shorter code. Repeated application of the simple dynamics becomes preferable.
+\item The authors interpret this as emergence: limited compute favours prediction from large-scale patterns.
+\end{itemize}
+\end{column}
+\begin{column}{0.44\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figs/eca_emergence.pdf}
+\raggedright
+\src{Two-part code and $S_T$ against compute in FLOPs. Source: Fig.~6 of \citet{finzi2026}.}
+\end{column}
+\end{columns}
+\take{More compute can select a smaller model part; $S_T$ need not grow with $T$.}
+\end{frame}
+% ------------------------------------------------------------
+\begin{frame}{Paradox 3 in the experiment: hidden inputs}
+\small
+\textbf{Setting.} The hidden-state construction with $n=32$, $h=0,\ldots,5$ and $f$ given by four rule~30 updates. Transformer; requential code.
 
 \smallskip
 \begin{columns}[c]
@@ -358,10 +432,10 @@ $H_T(Y\mid X)$, bits & $\approx0$ & $10^8$ & $1.5\times10^7$ \\
 \end{columns}
 \src{Left: the data. Right: training loss against compute in FLOPs (dashed: $h$ bits) and $S_T$ for each $h$. Source: Fig.~5 of \citet{finzi2026}.}
 \begin{itemize}
-\item Generation uses the complete state $Z$. Prediction conditions on only its visible bits.
-\item As $h$ increases, reaching a loss near $h$ bits requires more compute, and the estimated model part increases.
+\item As $h$ increases, approaching the reported $h$-bit loss baseline requires more training compute; the estimated model part also increases.
+\item This is empirical evidence of additional inference. It does not identify the learned algorithm or prove a complexity lower bound.
 \end{itemize}
-\take{Prediction requires a distribution over hidden states; generation does not.}
+\take{A compact sampling procedure need not be a compact, efficient likelihood model.}
 \end{frame}
 % ------------------------------------------------------------
 \begin{frame}{Experiment: the order of chess data}
@@ -465,9 +539,9 @@ $H_T(X)=n+O(1)$. A constant-length uniform model gives $\MDL_T(X)\le n+c$; since
 The cumulative excess loss above the final-model baseline:
 $\sum_i[-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)]$.
 \end{block}
-\item What does changing $T$ change?
+\item If $P=Q$, must the model use the same algorithm as the generator?
 \begin{block}{Answer}
-It enlarges the admissible model class. The minimum total $\MDL_T$ cannot increase, while the selected model length $S_T$ may rise or fall.
+No. Equality fixes probabilities. A generator can sample one hidden state, while likelihood evaluation may require summing over many possible states.
 \end{block}
 \end{enumerate}
 \end{frame}
@@ -488,26 +562,5 @@ If one-way functions secure against probabilistic polynomial-time algorithms wit
 \end{theorem}
 \end{frame}
 % ------------------------------------------------------------
-\begin{frame}{Backup: epiplexity need not increase with compute}
-\begin{columns}[T]
-\begin{column}{0.52\textwidth}
-\small
-\textbf{Setting.} ECA rule~54, $64$ updates. The non-looped model predicts the final state; the looped model simulates each update.
 
-\medskip
-\begin{itemize}\setlength{\itemsep}{0.2em}
-\item Below $10^{15}$ FLOPs, the non-looped model gives the shorter code; its model part reaches $1.45\times10^7$ bits.
-\item Above that bound, the looped model wins because the rule is a compact model.
-\item Thus epiplexity need not increase with the budget; growth is expected to be more typical for natural data.
-\end{itemize}
-\end{column}
-\begin{column}{0.44\textwidth}
-\centering
-\includegraphics[width=\linewidth]{figs/eca_emergence.pdf}
-\raggedright
-\src{Two-part code and $S_T$ against compute in FLOPs. Source: Fig.~6 of \citet{finzi2026}.}
-\end{column}
-\end{columns}
-\take{With less compute the best model is a longer program: $S_T$ need not grow with $T$.}
-\end{frame}
 \end{document}

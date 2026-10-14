@@ -146,6 +146,9 @@
 
 
 
+
+
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -334,16 +337,16 @@
 <div class="blog-post__content" itemprop="articleBody">
 <p><strong>Based on the paper by Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J. Zico Kolter and Andrew Gordon Wilson (Carnegie Mellon University, New York University), arXiv:2601.03220, version 2, March 2026</strong></p>
 <p><em>The <a href="https://arxiv.org/abs/2601.03220">paper</a> and the <a href="https://github.com/shikaiqiu/epiplexity">code</a> are public.</em></p>
-<h2 id="motivation">Motivation</h2>
-<p>Start with a practical question: why can pretraining on two datasets of the same size produce very different results on new tasks? The paper motivates this question with the broad transfer observed after text pretraining. A useful measure should distinguish unpredictable details from reusable predictive structure.</p>
-<p>AlphaZero makes the question vivid. It never saw a human game of chess: it received the rules and a reinforcement-learning procedure, then generated training positions by self-play. These ingredients are compact to specify, yet the trained network contains task-relevant strategies. The example asks which regularities the computation made available to the learner.</p>
-<p>The same gap appears in practical questions of machine learning:</p>
-<ul>
-<li>Pretraining on text improves robotics control, theorem proving and time-series forecasting. Pretraining on as many bytes of images gives a much narrower gain. Which property of text is responsible?</li>
-<li>Synthetic data improves language models, although the data processing inequality states that a deterministic transformation cannot add information.</li>
-<li>Once high-quality text is exhausted, by which measure should we choose or generate new pretraining data?</li>
-</ul>
-<p><a href="#ref-finzi2026">Finzi et al. (2026)</a> argue that these questions need a measure of information relative to an observer with bounded computation. We first make the classical notions explicit, then add the computational restriction, define the new quantity, and finally discuss estimators and experiments.</p>
+<h2 id="three-apparent-paradoxes-of-information">Three apparent paradoxes of information</h2>
+<p><a href="https://arxiv.org/html/2601.03220v2#S5">Finzi et al. (2026), Section 5</a> introduce three apparent tensions between classical information measures and observations in machine learning. They motivate a measure relative to an observer with bounded computation.</p>
+<ol type="1">
+<li><strong>Deterministic computation cannot increase information.</strong> Yet self-play and synthetic data can improve model capabilities. AlphaZero, for example, generated its training games from the rules and a reinforcement-learning procedure. The procedure is compact to specify, but running it produces a network with useful chess strategies.</li>
+<li><strong>Total information does not depend on prediction order.</strong> Yet language-model loss can differ when text is modelled forward or in reverse. A description that exists mathematically may be much harder for a particular model to use in one order.</li>
+<li><strong>Likelihood modelling targets the data distribution.</strong> This is sometimes taken to mean that a model can only reproduce the generating procedure. Yet assigning probabilities to observations can require inference that the generator never performs.</li>
+</ol>
+<p>The third point is easiest to see with a mystery story. The author chooses a culprit, then writes the clues and the reveal. A model predicting the reveal sees the clues, but not the author’s choice. To assign good probabilities to possible culprits, it must use the evidence. The distribution of stories can be the same even though generation and prediction perform different computations. This is the paper’s illustration of <strong>induction</strong>: inferring unobserved variables from observed data.</p>
+<p>These are not contradictions of classical theorems. In particular, an improvement in model capabilities does not imply an increase in Shannon entropy, and matching a distribution does not uniquely determine an algorithm. The question is which regularities an observer can use within its computational budget. This also matters for data selection: datasets of the same size can yield models with different downstream performance.</p>
+<p>We first define Shannon entropy and Kolmogorov complexity, then explain the distribution–algorithm distinction, introduce epiplexity, and examine its estimators and experiments.</p>
 <hr />
 <h2 id="two-classical-notions-of-information">Two classical notions of information</h2>
 <p>Two classical measures answer different questions. For a discrete random variable \(X\) with probability distribution \(p(x)=\Pr[X=x]\), the <strong>Shannon entropy</strong> is</p>
@@ -360,7 +363,7 @@
 </blockquote>
 <p><img src="images/fig1.png" alt="Random and structural information in three kinds of data, and information created by computation" /></p>
 <p><em>Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final-loss baseline; the green area is the cumulative excess loss above that baseline, used as a proxy for the model part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.</em></p>
-<p>The paper turns this missing resource into three <strong>paradoxes</strong>: statements that hold for an unlimited observer but can fail for a computationally bounded learner.</p>
+<p>We can now make the classical statements behind the opening precise:</p>
 <table>
 <thead>
 <tr>
@@ -378,19 +381,30 @@
 <td style="text-align: left;">Language models compress English text better left to right than in reverse (<a href="#ref-papadopoulos2024">Papadopoulos et al., 2024</a>)</td>
 </tr>
 <tr>
-<td style="text-align: left;">Likelihood training reproduces the generator: \(\arg\min_P\mathbb{E}_{X\sim Q}[-\log_2 P(X)]=Q\)</td>
-<td style="text-align: left;">In the Game of Life a local rule generates gliders; a predictor with bounded time learns gliders as objects</td>
+<td style="text-align: left;">Population negative log-likelihood is minimized by \(P=Q\) when the model class contains the data distribution \(Q\)</td>
+<td style="text-align: left;">Matching those probabilities may require inference or representations absent from the sampling procedure</td>
 </tr>
 </tbody>
 </table>
-<p>Here \(c\) is a constant independent of \(x\); \(Q\) is the distribution of the data. The classical statements are mathematically correct in their usual settings. The apparent conflict comes from asking a finite learner to find or use a description that exists in principle. Epiplexity resolves that mismatch by bounding the observer’s running time.</p>
+<p>Here \(c\) is a constant independent of \(x\); \(Q\) is the distribution of the data. The first two statements concern classical information measures. The third concerns the optimum of a population prediction objective; it says nothing about the internal algorithm of a model attaining that optimum.</p>
+<h3 id="paradox-3-what-distribution-matching-does-and-does-not-imply">Paradox 3: what distribution matching does and does not imply</h3>
+<p>Let \(Y\sim Q\) and let \(P\) be a candidate probability model. Add and subtract \(-\log_2 Q(Y)\) in the expected loss:</p>
+\[\begin{aligned}
+L_Q(P)&amp;:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
+&amp;=\mathbb E_Q[-\log_2 Q(Y)]
+ +\mathbb E_Q\!\left[\log_2\frac{Q(Y)}{P(Y)}\right]\\
+&amp;=H(Q)+\mathrm{KL}(Q\Vert P).
+\end{aligned}\]
+<p>Here \(H(Q)=H(Y)\), and the second term is the <strong>Kullback–Leibler (KL) divergence</strong>. It is non-negative and equals zero exactly when the two distributions agree. If \(P\) assigns zero probability to an event of positive \(Q\)-probability, the loss and divergence are infinite. Consequently, population loss is minimized at \(P=Q\) when \(Q\) is in the model class. A restricted class or finite-data training need not attain that optimum.</p>
+<p>The identity constrains probabilities, not the computations used to obtain them. A sampler can choose an unobserved state and generate one observation from it. A likelihood model must evaluate the probability of an observation supplied to it, which may involve summing over many possible hidden states. The mystery-story predictor likewise has to reason from the clues, whereas the author already knows the culprit. Matching the distribution remains the objective in both cases.</p>
+<p>The paper discusses two sources of additional structure under computational restrictions. <strong>Induction</strong> involves inference about hidden variables. <strong>Emergence</strong> involves predicting the outcomes of repeated dynamics using patterns at a larger scale, when replaying the dynamics is too costly for the observer. These are explanations supported by the paper’s examples and experiments; the paper does not prove a general lower bound on the extra epiplexity required. We return to both in the experiments below.</p>
 <hr />
 <h2 id="information-for-an-observer-with-bounded-time">Information for an observer with bounded time</h2>
 <h3 id="a-model-that-runs-in-bounded-time">A model that runs in bounded time</h3>
 <p>Definition 1 fixes the models available to the observer: probability models that can score an observation and generate a new one within a time bound. The observer is not allowed to hide an unlimited computation inside its model.</p>
 <p>The quantity built from this restriction is <strong>epiplexity</strong> (from <em>epistemic complexity</em>): the amount of structure that the bounded observer can extract and use.</p>
 <blockquote>
-<p><strong>Definition 1</strong> (time-bounded probabilistic model; Def. 7 of the paper). Let \(\mathcal{U}\) be a fixed universal Turing machine with self-delimiting programs: no program is a proper prefix of another. Let \(T:\mathbb{N}\to\mathbb{N}\) be a non-decreasing time-constructible function. A program \(\mathrm{P}\) is a <em>\(T\)-time probabilistic model</em> over \(\{0,1\}^n\) if \(\mathcal{U}\) runs it in two modes, each halting within \(T(n)\) steps:</p>
+<p><strong>Definition 1</strong> (time-bounded probabilistic model; Def. 7 of the paper). Let \(\mathcal{U}\) be a fixed prefix-free universal Turing machine: no program is a proper prefix of another. Let \(T:\mathbb{N}\to\mathbb{N}\) be a non-decreasing time-constructible function. A program \(\mathrm{P}\) is a <em>\(T\)-time probabilistic model</em> over \(\{0,1\}^n\) if \(\mathcal{U}\) runs it in two modes, each halting within \(T(n)\) steps:</p>
 <ul>
 <li><em>evaluation</em>: on input \((0,x)\) with \(x\in\{0,1\}^n\) it outputs a probability \(P(x)\in[0,1]\) with a finite binary expansion;</li>
 <li><em>sampling</em>: on input \((1,u)\), for an infinite string \(u\) of random bits, it outputs \(x\in\{0,1\}^n\) with probability \(P(x)\).</li>
@@ -585,18 +599,32 @@ L_{\mathrm{preq}}
 </table>
 <p><em>Values at \(10^{17}\) FLOPs, our estimates from Figure 5.</em></p>
 <p>Rules 15, 30 and 54 define programs of equal length and equal running time. Rule 15 is periodic with a simple inverse. The loss saturates quickly; the data contain little information of either kind. Rule 30 is chaotic. The loss makes no progress; the information is maximal and entirely random. Rule 54 is complex but partly predictable. The loss decreases steadily as compute grows; the model extracts millions of bits of structure. <a href="#ref-zhang2024">Zhang et al. (2024)</a> found that models trained on class IV rules transfer best to downstream tasks, in line with the high epiplexity of rule 54.</p>
-<h3 id="induction-prediction-requires-more-structure-than-generation">Induction: prediction requires more structure than generation</h3>
-<p>Paradox 3 states that likelihood training only reproduces the generating process. The authors construct data whose best predictor must contain more than the generator.</p>
+<h3 id="emergence-when-more-compute-means-less-structure">Emergence: when more compute means less structure</h3>
+<p><strong>Setting.</strong> The data are 64 updates of rule 54. A non-looped transformer predicts the final state directly. A looped transformer predicts intermediate states as well, dividing the computation into shorter prediction intervals. Its code accounts for the intermediate tokens; it is trained to approximate the dynamics.</p>
+<p><img src="images/eca-emergence.png" alt="Two-part code and epiplexity of looped and non-looped models against compute" /></p>
+<p><em>Figure 6. Two-part code and \(S_T\) against compute in FLOPs for the non-looped and looped models. Source: Fig. 6 of the paper.</em></p>
+<p>In Figure 6, below about \(10^{15}\) FLOPs the non-looped model gives the shorter estimated two-part code. Its estimated model part rises with compute. The authors interpret this as learning patterns at a larger scale, such as travelling structures called gliders and their interactions; the plot itself measures code length, not the internal representation. Above that budget, the looped model gives the shorter code, and both the total and the selected model part decrease sharply. These are empirical code estimates, rather than the exact program lengths in the formal definition.</p>
+<p>This is the emergence aspect of Paradox 3: predicting many steps of simple dynamics within a limited budget can favour a model of their large-scale regularities. With enough compute, replaying shorter intervals can become preferable. The example also shows that epiplexity need not increase with \(T\). The authors describe the fall as uncommon because simulation is feasible here; they expect growth to be more typical for natural data at moderate compute.</p>
+<h3 id="paradox-3-in-the-experiment-inference-about-hidden-inputs">Paradox 3 in the experiment: inference about hidden inputs</h3>
+<p>The hidden-state example makes the gap between a sampling procedure and likelihood evaluation explicit. A generator has access to the complete state; a predictor receives only part of it. The distribution-matching objective is unchanged.</p>
 <p><strong>Setting.</strong> \(Z\) is uniform on \(\{0,1\}^{32}\). The map \(f\) is 4 updates of rule 30; the mask \(m\) deletes the first \(h\) bits of \(Z\). The model receives \(m(Z)\) and predicts \(f(Z)\). A transformer with 3 layers and width 256 trains for 20 000 steps with the requential code.</p>
+<p>Write \(X=m(Z)\) and \(Y=f(Z)\). Given \(X=x\), exactly \(2^h\) complete states remain possible, each with conditional probability \(2^{-h}\). Grouping the states according to their output gives</p>
+\[\begin{aligned}
+Q(y\mid x)
+&amp;=\sum_{z:\,m(z)=x}\Pr(Z=z\mid X=x)\,\mathbf 1\{f(z)=y\}\\
+&amp;=2^{-h}\sum_{z:\,m(z)=x}\mathbf 1\{f(z)=y\}.
+\end{aligned}\]
+<p>The indicator is one for a completion producing \(y\) and zero otherwise. Generating a pair requires sampling one \(z\) and evaluating \(f\) once. Directly evaluating the displayed probability by enumeration requires up to \(2^h\) evaluations of \(f\). Enumeration is one algorithm, not a proof that every algorithm has exponential cost. A predictor can approximate these probabilities without recovering the actual hidden bits or explicitly listing all completions.</p>
+<p>Because \(Y\) is deterministic given \(Z\), conditional Shannon entropy satisfies</p>
+\[H(Y\mid X)=H(Z\mid X)-H(Z\mid X,Y)
+          =h-H(Z\mid X,Y)\le h.\]
+<p>Equality holds when \(Y\) distinguishes the hidden completions for each observed \(x\). If several completions give the same output, the entropy is smaller. Thus \(h\) is a natural baseline, rather than an automatic consequence of hiding \(h\) bits for any transformation.</p>
 <p><img src="images/hidden-bits-illustration.png" alt="The hidden-bits task: generation and prediction" /></p>
 <p><img src="images/induction-hard.png" alt="Training loss against compute for h from 0 to 5, and epiplexity for each h" /></p>
-<p><em>Figure 6. Top: the data. The generator computes \(m(Z)\) and \(f(Z)\) from \(Z\); the predictor receives only \(m(Z)\). Bottom: training loss against compute (dashed lines: \(h\) bits) and the measured epiplexity for each \(h\). Source: Fig. 5 of the paper.</em></p>
-<p>The generator computes \(f\) forward and never inverts anything. A good predictor has to infer the \(h\) hidden bits of \(Z\): an inference step absent from the generator. In Figure 6 the loss converges to \(h\) bits, the entropy of the hidden bits, after compute that grows exponentially with \(h\). Epiplexity grows with \(h\). A second task, a Markov chain with part of the transition matrix hidden, shows the same effect: partly hidden matrices produce higher epiplexity than fully visible or fully hidden ones.</p>
-<h3 id="emergence-when-more-compute-means-less-structure">Emergence: when more compute means less structure</h3>
-<p><strong>Setting.</strong> The data are 64 updates of rule 54. A non-looped transformer predicts the final state directly. A looped transformer generates the intermediate states one after another: the exact simulation.</p>
-<p><img src="images/eca-emergence.png" alt="Two-part code and epiplexity of looped and non-looped models against compute" /></p>
-<p><em>Figure 7. Two-part code and \(S_T\) against compute in FLOPs for the non-looped and looped models. Source: Fig. 6 of the paper.</em></p>
-<p>In Figure 7, below about \(10^{15}\) FLOPs the non-looped model gives the shorter code. The epiplexity of this model rises with compute: it learns emergent patterns of rule 54, such as gliders and the rules of collisions between them. Above that bound the looped model gives the shorter code. The two-part code drops to almost zero and epiplexity falls. A model with less compute needs a longer program; epiplexity need not grow with \(T\). The authors call this case uncommon, because here brute-force simulation is feasible. For natural data at moderate compute they expect epiplexity to grow with compute.</p>
+<p><em>Figure 7. Top: the data. The generator computes \(m(Z)\) and \(f(Z)\) from \(Z\); the predictor receives only \(m(Z)\). Bottom: training loss against compute (dashed lines: \(h\) bits) and the measured epiplexity for each \(h\). Source: Fig. 5 of the paper.</em></p>
+<p>In Figure 7, the authors report convergence near the \(h\)-bit baseline, with training compute increasing approximately exponentially across the tested values of \(h\). The estimated model part increases as well. This supports the interpretation that prediction uses additional inference, but the loss curves alone do not identify the learned algorithm or establish an asymptotic complexity lower bound.</p>
+<p>A second task makes the distinction clearer: the generator samples a sequence using a random Markov transition matrix, then withholds some of that matrix from the predictor. The predictor must use the supplied entries and estimate missing transition probabilities from the sequence. The generator performs no such estimation because it already has the matrix. The authors find a larger estimated model part when both strategies are needed than when the matrix is fully visible or fully hidden (<a href="https://arxiv.org/html/2601.03220v2#S5.SS3.SSS1">Section 5.3.1</a>).</p>
+<p>This distinction also applies beyond autoregressive prediction. For a latent-variable model, sampling can proceed by drawing \(Z\) and then drawing \(Y\) given \(Z\), while likelihood evaluation requires the marginal \(Q(y)=\sum_z Q(y\mid z)Q(z)\) (an integral for continuous latents). Efficient approximations may use an inference procedure for the posterior of \(Z\) given \(Y\). The paper discusses this connection in <a href="https://arxiv.org/html/2601.03220v2#A7">Appendix G</a>.</p>
 <h3 id="chess-the-order-of-the-data">Chess: the order of the data</h3>
 <p><strong>Setting.</strong> Lichess games as characters. In the forward order each game is written as the moves followed by the final board in FEN, a one-line text encoding of a position. In the reverse order the board comes first. Transformers of 1 to 160 million parameters train on up to \(5\times10^9\) tokens with the requential code.</p>
 <p><img src="images/chess-entropy-and-epi.png" alt="Time-bounded entropy and epiplexity of the two orders against compute" /></p>
