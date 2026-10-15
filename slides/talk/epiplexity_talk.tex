@@ -2,7 +2,7 @@
 % figs/ holds the vector figures of the arXiv v2 source (byte-identical to v1), unchanged; slides crop them with `trim'.
 % Statement and figure numbers ("Thm. 9 of the paper", "Fig. 3") follow v2; v2 kept the v1 numbering.
 % Build (twice): pdflatex epiplexity_talk.tex
-% Audience questions include their answers after the main discussion.
+% Audience questions appear after the main discussion as mini-test material.
 \documentclass[aspectratio=169,notheorems]{beamer}
 \usetheme{default}
 \usefonttheme{professionalfonts}
@@ -565,22 +565,12 @@ Lucas Theis and Noureldin Y.~Ahmed (ICML, 2022).\\
 \end{thebibliography}
 \end{frame}
 % ============================================================ QUESTIONS
-\begin{frame}{Questions for the audience: answers}
+\begin{frame}{Questions for the audience}
 \small
 \begin{enumerate}\setlength{\itemsep}{0.7em}
 \item Let $X\sim U_n$. Which quantity is close to $n$: $S_T(X)$ or $H_T(X)$?
-\begin{block}{Answer}
-$H_T(X)=n+O(1)$. A constant-length uniform model gives $\MDL_T(X)\le n+c$; since $H_T(X)\ge n$, the selected model has $S_T(X)\le c$.
-\end{block}
 \item In the prequential estimate, which part of the training-loss curve approximates the epiplexity?
-\begin{block}{Answer}
-The cumulative excess loss above the final-model baseline:
-$\sum_i[-\log_2 P_{\theta_i}(Z_i)+\log_2 P_{\theta_M}(Z_i)]$.
-\end{block}
 \item If $P=Q$, must the model use the same algorithm as the generator?
-\begin{block}{Answer}
-No. The author chooses a culprit, then writes the clues. The predictor receives the clues and infers the culprit. The same story distribution can require different computations for generation and prediction.
-\end{block}
 \end{enumerate}
 \end{frame}
 % ============================================================ BACKUP

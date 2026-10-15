@@ -3,7 +3,7 @@ edit: true
 title: "From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data?"
 lang: en
 date: 2026-09-29
-read_time: 20
+read_time: 32
 authors:
   - Alex Kravatsky
 summary: "Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest program for one object. Epiplexity adds a compute budget and measures the model part of a two-part description. Prequential and requential coding provide practical estimates of that model part."
@@ -27,15 +27,15 @@ _The [paper](https://arxiv.org/abs/2601.03220) and the [code](https://github.com
 2. **Total information does not depend on prediction order.** Yet language-model loss can differ when text is modelled forward or in reverse. A description that exists mathematically may be much harder for a particular model to use in one order.
 3. **Likelihood modelling targets the data distribution.** This is sometimes taken to mean that a model can only reproduce the generating procedure. Yet assigning probabilities to observations can require inference that the generator never performs.
 
-These are not contradictions of classical theorems. In particular, an improvement in model capabilities does not imply an increase in Shannon entropy, and matching a distribution does not uniquely determine an algorithm. The question is which regularities an observer can use within its computational budget. This also matters for data selection: datasets of the same size can yield models with different downstream performance.
+These are not contradictions of classical theorems. An improvement in model capabilities does not imply an increase in Shannon entropy, and matching a distribution does not uniquely determine an algorithm. The issue is that a bounded observer may be unable to use every regularity that exists mathematically. This also matters for data selection: datasets of the same size can yield models with different downstream performance.
 
-We first define Shannon entropy and Kolmogorov complexity, explain the three tensions, then introduce epiplexity and examine its estimators and experiments.
+The rest of the post follows that distinction. We first define the two classical quantities, then show why computation creates the three apparent tensions. Only after that do we introduce epiplexity as a measure relative to a bounded observer and explain how the paper estimates it.
 
----
+* * *
 
 ## Two classical notions of information
 
-Two classical measures answer different questions. For a discrete random variable $$X$$ with probability distribution $$p(x)=\Pr[X=x]$$, the **Shannon entropy** is
+The two measures quantify different objects. Shannon entropy asks how uncertain a draw from a known distribution is. Kolmogorov complexity asks how concise one realized object can be. For a discrete random variable $$X$$ with probability distribution $$p(x)=\Pr[X=x]$$, the **Shannon entropy** is
 
 $$
 H(X)=\mathbb{E}\bigl[-\log_2 p(X)\bigr].
@@ -43,12 +43,11 @@ $$
 
 For every binary prefix code, the expected code length is at least $$H(X)$$; block codes can approach this lower bound per sample. The **Kolmogorov complexity** $$K(x)$$ of one realised string $$x$$ is the length of the shortest self-delimiting program that makes a fixed prefix-free universal Turing machine $$\mathcal{U}$$ output $$x$$ and halt ([Li and Vitányi, 2008](#ref-livitanyi2008)).
 
-The distinction is easiest with two examples:
+The distinction is easiest with two examples. A uniform draw has high uncertainty before it is observed, and a typical realized draw also has high Kolmogorov complexity. An alternating string can be completely determined by a short rule once its length is known, even though a distribution that chooses between two alternating strings still has one bit of entropy.
 
-- **Random bits:** high Shannon entropy and, for a typical realised string, high Kolmogorov complexity. There is little to predict and no short program to discover.
-- **A fixed repeated pattern:** a distribution concentrated on one alternating string has zero entropy. The string also has low complexity: a program only needs the repetition rule and the length. A pattern alone does not determine entropy; the distribution matters.
+Entropy therefore describes uncertainty in a distribution, whereas Kolmogorov complexity describes the shortest effective description of one outcome. Neither quantity says whether a particular learner can discover a reusable pattern within a finite compute budget.
 
-These measures describe uncertainty or compressibility. They do not say whether a particular learner can discover a pattern within a finite compute budget. A model trained on random API keys learns little beyond their frequencies; a model trained on a compact algorithm can learn reusable circuits even when the algorithm itself is short. Figure 1 illustrates the distinction.
+Training on random API keys gives a model little beyond frequency estimates; training on data generated by a compact algorithm may yield reusable circuits even when the generator has a short description. Figure 1 illustrates why a third quantity is useful: the amount of structure that a particular learner can extract.
 
 ![Random and structural information in three kinds of data, and information created by computation](/images/blog/epiplexity/fig1.png)
 
@@ -62,7 +61,7 @@ We can now make the classical statements behind the opening precise:
 | Information does not depend on the order of prediction: $$H(X)+H(Y\mid X)=H(Y)+H(X\mid Y)$$ | Language models compress English text better left to right than in reverse ([Papadopoulos et al., 2024](#ref-papadopoulos2024)) |
 | Expected negative log-likelihood under $$Q$$ is minimized by $$P=Q$$ when the model class contains $$Q$$ | Matching those probabilities may require inference or representations absent from the sampling procedure |
 
-Here $$c$$ is a constant independent of $$x$$; $$Q$$ is the distribution of the data. The first two statements concern classical information measures. The third concerns expected prediction loss under $$Q$$; it says nothing about the internal algorithm of a model attaining that optimum.
+Here $$c$$ is a constant independent of $$x$$, and $$Q$$ is the data distribution. The first two rows concern classical information measures. The third concerns expected prediction loss under $$Q$$. It identifies the best distribution, but says nothing about the algorithm a model uses to represent or evaluate it.
 
 ### Paradox 1: a short description can require extensive computation
 
@@ -76,7 +75,7 @@ The entropy inequality follows because $$f(X)$$ is fixed once $$X$$ is known: th
 
 A pseudorandom generator illustrates the distinction. It expands a uniformly random $$k$$-bit seed into $$n>k$$ bits. Its output has Shannon entropy at most $$k$$ and a description consisting of the seed and the generator program. Assuming cryptographic security, no randomized test whose runtime is bounded by a polynomial in $$k$$ distinguishes the output from uniform $$n$$-bit data with non-negligible advantage. Here an advantage is negligible if it eventually becomes smaller than $$k^{-m}$$ for every fixed $$m>0$$. The output can therefore be unpredictable to a bounded observer without having higher Shannon entropy.
 
-AlphaZero raises a related question about useful structure. It learns a policy and a value function through self-play ([Silver et al., 2018](#ref-silver2018)). Specifying the algorithm and random seed can take far fewer bits than storing the resulting network, but reconstructing that network requires running the training procedure. A trained network makes predictions available without repeating the entire training computation. The formal result below concerns pseudorandomness; the cellular-automaton experiments separately examine estimated model structure.
+A related computational issue appears in AlphaZero. It learns a policy and a value function through self-play ([Silver et al., 2018](#ref-silver2018)). The algorithm and random seed may require far fewer bits to specify than the resulting network, but reconstructing the network requires running the training procedure. Once trained, the network makes its predictions without repeating that computation. The formal result below concerns pseudorandomness; the cellular-automaton experiments measure model structure empirically.
 
 ### Paradox 2: exact conditional probabilities may be expensive
 
@@ -96,7 +95,7 @@ This is a difference in computation, not in the classical joint entropy. Under a
 
 Likelihood training aims to match the distribution of the data. If the model class contains the true distribution, that distribution minimizes expected prediction loss. It is tempting to take this further: perhaps the model only needs to reproduce the computations used to generate the data, and cannot acquire an inference procedure absent from the generator. This is the expectation questioned in [Section 5.3 of the paper](https://arxiv.org/html/2601.03220v2#S5.SS3).
 
-Consider a mystery story. The author chooses the culprit first, then writes clues consistent with that choice. The author does not have to solve the mystery. A model predicting the culprit's name before the reveal faces a different task: only the clues are available, so it must assign probabilities to possible culprits based on the evidence. Successful prediction can require inference that was unnecessary during generation. This is the paper's illustration of **induction**, meaning inference about unobserved variables from observations.
+Consider a mystery story. The author chooses the culprit first, then writes clues consistent with that choice. The author does not have to solve the mystery. A model predicting the name of the culprit before the reveal faces a different task: only the clues are available, so it must assign probabilities to possible culprits from the evidence. Successful prediction can require inference that was unnecessary during generation. This is **induction**: inference about unobserved variables from observations.
 
 The two procedures can represent the same distribution of stories. What differs is which information is available when a computation is performed. Matching a distribution fixes probabilities, but does not specify an algorithm for calculating them. With unlimited computation, a predictor might enumerate possible hidden states. With a restricted budget, it may need to learn another procedure for inference. The paper investigates this possibility empirically; distribution matching alone is not a general theorem that the predictor must have greater program length than the generator.
 
@@ -121,8 +120,9 @@ $$
 
 The story loss therefore includes predicting the reveal from the clues. At the distribution-matching optimum, $$P(R\mid C)=Q(R\mid C)$$ for clues with positive $$Q$$-probability. Merely generating a new story with a newly chosen culprit does not evaluate this probability for the clues already observed.
 
-We return to induction in the hidden-input experiment. The paper also studies **emergence**: when direct simulation of long-run dynamics exceeds the observer's budget, prediction may rely on larger-scale patterns not explicitly represented in the local generating rules.
----
+The hidden-input experiment revisits induction. A separate experiment studies **emergence**: when direct simulation of long-run dynamics exceeds the observer's budget, prediction may rely on larger-scale patterns that are not explicit in the local generating rules.
+
+* * *
 
 ## Information for an observer with bounded time
 
@@ -190,7 +190,7 @@ For image classification, $$X$$ is the image and $$Y$$ its label. The decoder al
 
 Unlike Shannon entropy, these quantities obey no chain rule: in general $$H_T(Y,X)-H_T(X)\ne H_T(Y\mid X)$$. Paradox 2 rests on this asymmetry.
 
----
+* * *
 
 ## The theory
 
@@ -228,7 +228,7 @@ Theorem 2 concerns random information only. Evidence that computation also creat
 
 ### Paradox 2: the order of prediction matters
 
-A **one-way permutation** is a bijection $$f$$ of $$\{0,1\}^n$$, computable in polynomial time, for which inversion has negligible success probability for every randomized polynomial-time algorithm. In the paper's non-uniform setting, the algorithm also receives an advice string of polynomial length, fixed for each $$n$$ independently of the sampled input. Formally, every such algorithm $$A$$ has $$\Pr_{x\sim U_n}[A(f(x))=x]<n^{-m}$$ for every $$m>0$$ and all large $$n$$.
+A **one-way permutation** is a bijection $$f$$ of $$\{0,1\}^n$$, computable in polynomial time, for which inversion has negligible success probability for every randomized polynomial-time algorithm. In the non-uniform setting used by the paper, the algorithm also receives an advice string of polynomial length, fixed for each $$n$$ independently of the sampled input. Formally, every such algorithm $$A$$ has $$\Pr_{x\sim U_n}[A(f(x))=x]<n^{-m}$$ for every $$m>0$$ and all large $$n$$.
 
 > **Theorem 3** (Thm. 13 of the paper). Let $$f$$ be a one-way permutation, $$X=U_n$$ and $$Y=f(X)$$. Then
 >
@@ -252,7 +252,7 @@ The authors check this with an **elementary cellular automaton** (ECA): a row of
 
 This proves that epiplexity can grow without bound. The logarithmic lower bound does not cap the epiplexity of these distributions; it may grow faster. The proof is non-constructive and does not identify a particular distribution realizing the bound.
 
----
+* * *
 
 ## Measuring epiplexity with neural networks
 
@@ -312,13 +312,13 @@ For a loss curve measured in bits per token, multiply each loss gap by the numbe
 
 *Figure 3. Training loss against the number of training tokens. The blue area is the prequential estimate $$\lvert\mathrm{P}_{\mathrm{preq}}\rvert$$. The red area between the student and teacher curves is the requential estimate $$\lvert\mathrm{P}_{\mathrm{req}}\rvert$$ of the next section. Source: Fig. 2a of the paper.*
 
-This subtraction is a **heuristic**, not a proved bound on the model's description length. Both code lengths only upper-bound their respective Kolmogorov terms; subtracting upper bounds need not bound their difference. Moreover, the unbounded chain rule does not provide a decoder that runs within $$T$$. Finite-sample estimates need not even be positive.
+This subtraction is a **heuristic**, not a proved bound on the description length of the model. Both code lengths only upper-bound their respective Kolmogorov terms; subtracting upper bounds need not bound their difference. Moreover, the unbounded chain rule does not provide a decoder that runs within $$T$$. Finite-sample estimates need not even be positive.
 
 The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In Appendix B.1, the authors approximate the final-training-data loss using scaled held-out loss, assuming a small generalization gap in their one-epoch experiments. For the adaptive-data experiment, they compute the final-training-data loss directly.
 
 ### Requential coding: reconstructing a student from sample indices
 
-The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) reconstructs a student trained on synthetic samples, without transmitting the teacher's weights or the original data. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on real data. Sender and receiver share a *student* $$P^{\mathrm{s}}_i$$ with identical initial training state, update rule and random seed. At step $$i$$, the seed defines indexed proposals $$Y_i^{(j)}\sim P_i^{\mathrm{s}}$$. A counter-based random generator keyed by the seed, step $$i$$ and proposal index $$j$$ lets the receiver regenerate a proposal directly without producing the earlier proposals.
+The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) reconstructs a student trained on synthetic samples, without transmitting teacher weights or the original data. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on real data. Sender and receiver share a *student* $$P^{\mathrm{s}}_i$$ with identical initial training state, update rule and random seed. At step $$i$$, the seed defines indexed proposals $$Y_i^{(j)}\sim P_i^{\mathrm{s}}$$. A counter-based random generator keyed by the seed, step $$i$$ and proposal index $$j$$ lets the receiver regenerate a proposal directly without producing the earlier proposals.
 
 The sender uses **relative entropy coding** ([Theis and Ahmed, 2022](#ref-theis2022)) to choose an index $$J_i$$ so that $$\widetilde Z_i=Y_i^{(J_i)}$$ has the teacher distribution $$P_i^{\mathrm t}$$. It transmits a prefix code for $$J_i$$. The receiver decodes the index and regenerates the chosen batch; both copies of the student then apply the same update $$\theta^{\mathrm s}_{i+1}=A(\theta^{\mathrm s}_i,\widetilde Z_i)$$. Repeating these steps reconstructs the final student.
 
@@ -346,11 +346,11 @@ $$
 -\mathbb{E}_{P_i^{\mathrm t}}[-\log_2 P_i^{\mathrm t}(Z)].
 $$
 
-Thus KL is the student's excess loss on **teacher samples**, above the teacher's own entropy. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.
+Thus KL is the excess loss of the student on **teacher samples**, above the entropy of the teacher. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.
 
-Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using the decoder's shared proposals. Ordinary lossless coding communicates a particular sample already fixed by the sender. The shared randomness and the freedom to select the sample are what make the KL rate possible.
+Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using shared proposals at the decoder. Ordinary lossless coding communicates a particular sample already fixed by the sender. Shared randomness and freedom to select the sample make the KL rate possible.
 
-The relative entropy coding theorem bounds the expected logarithm of the selected proposal index by $$\mathrm{KL}_i+O(1)$$ ([Theis and Ahmed, 2022](#ref-theis2022)). To send the index without requiring the decoder to know KL, [Qiu et al. (2026), Appendix A.1](https://arxiv.org/html/2607.11883v1#A1.SS1) use a universal prefix-free integer code. Its length is bounded by $$\log_2 J+2\log_2(1+\log_2 J)+1$$ for index $$J\ge1$$. Taking expectations and applying Jensen's inequality gives
+The relative entropy coding result bounds the expected logarithm of the selected proposal index by $$\mathrm{KL}_i+O(1)$$ ([Theis and Ahmed, 2022](#ref-theis2022)). To send the index without requiring the decoder to know KL, [Qiu et al. (2026), Appendix A.1](https://arxiv.org/html/2607.11883v1#A1.SS1) use a universal prefix-free integer code. The code length is bounded by $$\log_2 J+2\log_2(1+\log_2 J)+1$$ for index $$J\ge1$$. Taking expectations and applying Jensen's inequality gives
 
 $$
 \mathbb{E}[\ell_i\mid\mathcal F_i]
@@ -373,7 +373,7 @@ The setup includes the initialisation, update rule, shared seed and schedule. A 
 
 When $$2\log_2(1+\mathrm{KL}_i)+\kappa$$ is small relative to $$\mathrm{KL}_i$$, the leading estimate is $$\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i$$. At small block sizes the overhead can dominate, so the full bound should also be reported.
 
-The decoder reconstructs the **student**, without the teacher or the original training data. Its main cost is replaying student training, approximately $$6ND$$ FLOPs under the paper's dense-model accounting, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.
+The decoder reconstructs the **student**, without the teacher or the original training data. Its main cost is replaying student training, approximately $$6ND$$ FLOPs under the dense-model accounting in the paper, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.
 
 |          | Prequential | Requential |
 | :-- | :-- | :-- |
@@ -394,7 +394,7 @@ The prequential procedure estimates a model part; the requential procedure const
 
 Under standard scaling assumptions the authors derive typical trends. Epiplexity grows with the compute bound $$T$$ while time-bounded entropy falls. With unlimited compute, epiplexity grows with the size $$\mathcal{D}$$ of the dataset while time-bounded entropy per token falls. These trends are typical only; the emergence experiment below is a counterexample.
 
----
+* * *
 
 ## Experiments
 
@@ -498,25 +498,25 @@ In Figure 8, at large compute the reverse order gives both higher time-bounded e
 
 *Our estimates from Figure 9.*
 
-In these experiments, estimated epiplexity is a small fraction of the total two-part code length. At the stated token count and compute budget, text has the largest estimated model part; CIFAR-5M has the largest total code length and the smallest model part. More than 99% of its code length is assigned to residual pixel values. This ranking is relative to the paper's tokenisation, model family and compute budget; it is not an intrinsic ordering of text and images.
+In these experiments, estimated epiplexity is a small fraction of the total two-part code length. At the stated token count and compute budget, text has the largest estimated model part; CIFAR-5M has the largest total code length and the smallest model part. More than 99% of its code length is assigned to residual pixel values. This ranking is relative to the tokenisation, model family and compute budget used in the paper; it does not order text and images intrinsically.
 
 Published scaling laws give the same ordering: extrapolated to $$T=10^{25}$$ FLOPs and $$10^{12}$$ tokens, they place language first and pixel images last. Epiplexity also agrees with a result on data selection. Adaptive data optimisation ([Jiang et al., 2025](#ref-jiang2025)) reweights data domains during pretraining; the data it selects have higher prequential epiplexity than natural sampling, along with better downstream accuracy.
 
----
+* * *
 
 ## Limitations
 
-The authors acknowledge these limits:
+The paper has two direct limitations:
 
 - Epiplexity measures the amount of structure, independent of the usefulness of that structure for a given task. The authors stress that it is no guarantee of OOD performance.
 - The prequential estimate is a heuristic; the requential estimate is 2 to 10 times slower.
 
-The released code and the experiments show further limits:
+The released code and experiments add two practical limits:
 
 - Every estimate depends on the architecture, optimiser, bound $$T$$ and evaluation size $$\mathcal D$$. Comparing datasets requires a common observer and protocol. Comparing architectures treats the observer as the experimental variable and requires common data, evaluation criteria and compute accounting.
 - All experiments use transformers.
 
----
+* * *
 
 ## Conclusion
 
@@ -524,16 +524,16 @@ Epiplexity is the model part of the shortest two-part description available unde
 
 For machine learning, predictive loss and estimated model description length provide complementary measurements. Two datasets with the same final loss can yield different model parts. Epiplexity is therefore a candidate criterion for data selection, while transfer performance must still be evaluated on the intended downstream tasks.
 
----
+* * *
 
 ## Follow-up work
 
-The most direct follow-up work comes from Andrew Gordon Wilson's group:
+The most direct follow-up work comes from the group led by Andrew Gordon Wilson:
 
-- **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** a teacher selects examples drawn from the student's predictive distribution. Recording the selection indices, together with shared randomness and the training algorithm, lets a decoder reconstruct the student's training trajectory. The coding cost depends on teacher–student disagreement, rather than the entropy of the original data. The authors obtain PAC-Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models and ensembles can have shorter codes; repeated training epochs can increase the code length and indicate overfitting.
+- **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** a teacher selects examples drawn from a student predictive distribution. Recording the selection indices, together with shared randomness and the training algorithm, lets a decoder reconstruct the training trajectory of that student. The coding cost depends on teacher–student disagreement, rather than the entropy of the original data. The authors obtain PAC-Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models and ensembles can have shorter codes; repeated training epochs can increase the code length and indicate overfitting.
 - **[Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746):** introduce two online uses of an epiplexity proxy. **EpiSelect** fits cross-domain loss-scaling laws to account for how training on one domain affects predictions on others, then adjusts sampling weights to maximize the predicted proxy gain. **EpiGen** trains a synthetic-data generator with REINFORCE. Its reward is the reduction in learner loss on a buffer of earlier samples after training on a new generated batch. Evaluating earlier samples rewards improvements that extend beyond the new batch itself. The authors report gains in zero-shot downstream evaluation for EpiSelect and in downstream fine-tuning for EpiGen.
 
----
+* * *
 
 ## References
 
