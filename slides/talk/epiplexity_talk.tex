@@ -228,11 +228,15 @@ Expected data-code length using that model.
 Assume the length $n$ is specified and the time bound permits the models below.
 
 \begin{block}{Uniform bits: $X\sim U_n$}
-A constant-length program assigns $P(x)=2^{-n}$ to every $n$-bit string.
+A constant-length program assigns $P(x)=2^{-n}$ to every $n$-bit string, so
 \[
-\MDL_T(X)\le n+c,\qquad H_T(X)\ge H(X)=n.
+\MDL_T(X)\le n+c.
 \]
-Consequently $S_T(X)\le c$: a large data-code length can accompany a small model description.
+If some $P(x)=0$, the loss is infinite. Otherwise $\prod_xP(x)\le(2^{-n})^{2^n}$; taking $-\log_2$ and dividing by $2^n$ gives
+\[
+\mathbb E_{U_n}[-\log_2P(U_n)]\ge n.
+\]
+Hence $n\le H_T(X)\le n+c$ and $S_T(X)\le c$.
 \end{block}
 
 \begin{block}{Alternating strings: two equally likely outcomes}

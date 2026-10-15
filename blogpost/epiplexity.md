@@ -165,7 +165,14 @@ The sum $$\mathrm{MDL}_T(X):=S_T(X)+H_T(X)$$ is the minimum description length (
 
 In plain language: **how much of the data can this learner explain with a reusable model, and how much still looks random to it?** The answer changes when the allowed compute or the model family changes.
 
-- **Uniform random bits.** Let $$U_n$$ be uniform on $$\{0,1\}^n$$, with the length $$n$$ available to the model and $$T(n)$$ sufficient to evaluate and sample the uniform distribution. A program of constant length $$c_2$$ assigns $$P(x)=2^{-n}$$ to every string; the two-part code with this program has length $$n+c_2$$. Hence $$\mathrm{MDL}_T(U_n)\le n+c_2$$. By the Gibbs inequality, no model codes $$U_n$$ in fewer than $$n$$ bits on average: $$H_T(U_n)\ge H(U_n)=n$$. Therefore $$S_T(U_n)\le c_2$$: the model part is constant, while the residual code grows linearly with $$n$$.
+- **Uniform random bits.** Let $$U_n$$ be uniform on $$\{0,1\}^n$$, with the length $$n$$ available to the model and $$T(n)$$ sufficient to evaluate and sample the uniform distribution. A program of constant length $$c_2$$ assigns $$P(x)=2^{-n}$$ to every string, so $$\mathrm{MDL}_T(U_n)\le n+c_2$$. For any normalized model $$P$$, if some $$P(x)=0$$ then the expected log-loss is infinite. Otherwise, $$\prod_x P(x)\le (2^{-n})^{2^n}$$ because $$\sum_xP(x)=1$$. Taking $$-\log_2$$ and dividing by $$2^n$$ gives
+
+  $$
+  \frac{1}{2^n}\sum_x -\log_2 P(x)\;\ge\; n.
+  $$
+
+Thus every admissible model has data cost at least $$n$$. The selected two-part code therefore satisfies $$n\le H_T(U_n)\le n+c_2$$ and $$S_T(U_n)\le c_2$$: the residual code grows linearly with $$n$$, while the model part stays bounded by a constant.
+
 - **Two alternating strings.** Let $$X$$ be $$0101\ldots$$ or $$1010\ldots$$, each with probability $$\tfrac12$$. Take $$T(n)=\Theta(n)$$. A program of constant size assigns probability $$\tfrac12$$ to $$0101\ldots$$ and to $$1010\ldots$$ within linear time. Both $$S_T(X)$$ and $$H_T(X)$$ are $$O(1)$$.
 
 Only the total is monotone in the bound: $$\mathrm{MDL}_{T'}(X)\le\mathrm{MDL}_T(X)$$ whenever $$T'\ge T$$. Epiplexity itself can rise or fall with $$T$$; an experiment below shows it falling.
