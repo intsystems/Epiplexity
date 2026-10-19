@@ -16,6 +16,12 @@ dynamic = ["version"]
 dependencies = [
     "torch>=2.0",
     "numpy>=1.24",
+    # episynth: generators, windows, Moirai port, training, GIFT-Eval evaluation
+    "scipy>=1.11",
+    "scikit-learn>=1.3",
+    "pydantic>=2.0",
+    "safetensors>=0.4",
+    "pyarrow>=14",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +33,8 @@ dev = [
     "matplotlib>=3.7",
     "jupyter>=1.0",
 ]
+# episynth checks against the original generators (Mix, Don't Pick) need their libraries
+checks = ["fbm==0.3.0", "timesynth @ git+https://github.com/TimeSynth/TimeSynth.git"]
 
 [project.urls]
 Repository = "https://github.com/intsystems/Epiplexity"
@@ -50,3 +58,9 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# episynth: shapes and sizes carry the names of the docstrings (B, S, P, L, T, K)
+"src/episynth/**" = ["N803", "N806", "N812"]
+"src/episynth/evaluation/gift_eval.py" = ["SIM905"]
+"tests/episynth/**" = ["N806"]

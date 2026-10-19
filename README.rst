@@ -48,6 +48,8 @@ Repository layout
 .. code-block:: text
 
     src/epimeter/   the package: estimators, models, samplers, training, eval
+    src/episynth/   time-series track: synthetic generators, task windows, Moirai port, training with
+                    per-window loss logging, GIFT-Eval evaluation (overview in src/episynth/README.md)
     tests/          pytest
     code/           experiment code and demo
     doc/            Sphinx documentation
