@@ -147,8 +147,18 @@ def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0
     return rho, float(lo), float(hi)
 
 
-def correlation_table(predictors: Mapping[str, Mapping[str, float]], quality: Mapping[str, float], **kwargs) -> dict[str, dict[str, float]]:
-    """Корреляции Спирмена каждого предсказателя с качеством по общим объектам: `rho`, `lo`, `hi`, `n`."""
+def correlation_table(predictors: Mapping[str, Mapping[str, float]], quality: Mapping[str, float], **kwargs: int | float) -> dict[str, dict[str, float]]:
+    """Корреляции Спирмена каждого предсказателя с качеством по общим объектам.
+
+    Args:
+        predictors: Значения предсказателей по именам объектов.
+        quality: Качество по тем же именам объектов.
+        **kwargs: Параметры :func:`spearman_ci`: ``n_boot`` и ``seed`` (int),
+            ``level`` (float). Передаются без изменения.
+
+    Returns:
+        Словарь по предсказателям с полями ``rho``, ``lo``, ``hi`` и ``n``.
+    """
     out = {}
     for name, pred in predictors.items():
         keys = sorted(set(pred) & set(quality))
