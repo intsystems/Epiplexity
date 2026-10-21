@@ -1,0 +1,446 @@
+[
+  {
+    "key": "epiplexity",
+    "url": "https://arxiv.org/abs/2601.03220",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence"
+      ],
+      [
+        "citation_author",
+        "Finzi, Marc"
+      ],
+      [
+        "citation_author",
+        "Qiu, Shikai"
+      ],
+      [
+        "citation_author",
+        "Jiang, Yiding"
+      ],
+      [
+        "citation_author",
+        "Izmailov, Pavel"
+      ],
+      [
+        "citation_author",
+        "Kolter, J. Zico"
+      ],
+      [
+        "citation_author",
+        "Wilson, Andrew Gordon"
+      ],
+      [
+        "citation_date",
+        "2026/01/06"
+      ],
+      [
+        "citation_online_date",
+        "2026/03/16"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2601.03220"
+      ],
+      [
+        "citation_arxiv_id",
+        "2601.03220"
+      ]
+    ]
+  },
+  {
+    "key": "episelect",
+    "url": "https://arxiv.org/abs/2608.11746",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization"
+      ],
+      [
+        "citation_author",
+        "Su, Ellen"
+      ],
+      [
+        "citation_author",
+        "Potapczynski, Andres"
+      ],
+      [
+        "citation_author",
+        "Qiu, Shikai"
+      ],
+      [
+        "citation_author",
+        "Hughes, Edward"
+      ],
+      [
+        "citation_author",
+        "Wilson, Andrew Gordon"
+      ],
+      [
+        "citation_date",
+        "2026/08/12"
+      ],
+      [
+        "citation_online_date",
+        "2026/08/12"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2608.11746"
+      ],
+      [
+        "citation_arxiv_id",
+        "2608.11746"
+      ]
+    ]
+  },
+  {
+    "key": "mix_dont_pick",
+    "url": "https://arxiv.org/abs/2606.09912",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "Mix, Don&#39;t Pick: Why Synthetic Corpus Composition Matters for Time Series Foundation Model Pretraining"
+      ],
+      [
+        "citation_author",
+        "Nagpal, Aaryan"
+      ],
+      [
+        "citation_author",
+        "Sanyal, Debdeep"
+      ],
+      [
+        "citation_author",
+        "Mandal, Murari"
+      ],
+      [
+        "citation_author",
+        "Kumar, Dhruv"
+      ],
+      [
+        "citation_author",
+        "Deshpande, Saurabh"
+      ],
+      [
+        "citation_date",
+        "2026/06/06"
+      ],
+      [
+        "citation_online_date",
+        "2026/06/06"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2606.09912"
+      ],
+      [
+        "citation_arxiv_id",
+        "2606.09912"
+      ]
+    ]
+  },
+  {
+    "key": "moirai",
+    "url": "https://arxiv.org/abs/2402.02592",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "Unified Training of Universal Time Series Forecasting Transformers"
+      ],
+      [
+        "citation_author",
+        "Woo, Gerald"
+      ],
+      [
+        "citation_author",
+        "Liu, Chenghao"
+      ],
+      [
+        "citation_author",
+        "Kumar, Akshat"
+      ],
+      [
+        "citation_author",
+        "Xiong, Caiming"
+      ],
+      [
+        "citation_author",
+        "Savarese, Silvio"
+      ],
+      [
+        "citation_author",
+        "Sahoo, Doyen"
+      ],
+      [
+        "citation_date",
+        "2024/02/04"
+      ],
+      [
+        "citation_online_date",
+        "2024/05/22"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2402.02592"
+      ],
+      [
+        "citation_arxiv_id",
+        "2402.02592"
+      ]
+    ]
+  },
+  {
+    "key": "gift_eval",
+    "url": "https://arxiv.org/abs/2410.10393",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "GIFT-Eval: A Benchmark For General Time Series Forecasting Model Evaluation"
+      ],
+      [
+        "citation_author",
+        "Aksu, Taha"
+      ],
+      [
+        "citation_author",
+        "Woo, Gerald"
+      ],
+      [
+        "citation_author",
+        "Liu, Juncheng"
+      ],
+      [
+        "citation_author",
+        "Liu, Xu"
+      ],
+      [
+        "citation_author",
+        "Liu, Chenghao"
+      ],
+      [
+        "citation_author",
+        "Savarese, Silvio"
+      ],
+      [
+        "citation_author",
+        "Xiong, Caiming"
+      ],
+      [
+        "citation_author",
+        "Sahoo, Doyen"
+      ],
+      [
+        "citation_date",
+        "2024/10/14"
+      ],
+      [
+        "citation_online_date",
+        "2024/11/11"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2410.10393"
+      ],
+      [
+        "citation_arxiv_id",
+        "2410.10393"
+      ]
+    ]
+  },
+  {
+    "key": "chronos",
+    "url": "https://arxiv.org/abs/2403.07815",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "Chronos: Learning the Language of Time Series"
+      ],
+      [
+        "citation_author",
+        "Ansari, Abdul Fatir"
+      ],
+      [
+        "citation_author",
+        "Stella, Lorenzo"
+      ],
+      [
+        "citation_author",
+        "Turkmen, Caner"
+      ],
+      [
+        "citation_author",
+        "Zhang, Xiyuan"
+      ],
+      [
+        "citation_author",
+        "Mercado, Pedro"
+      ],
+      [
+        "citation_author",
+        "Shen, Huibin"
+      ],
+      [
+        "citation_author",
+        "Shchur, Oleksandr"
+      ],
+      [
+        "citation_author",
+        "Rangapuram, Syama Sundar"
+      ],
+      [
+        "citation_author",
+        "Arango, Sebastian Pineda"
+      ],
+      [
+        "citation_author",
+        "Kapoor, Shubham"
+      ],
+      [
+        "citation_author",
+        "Zschiegner, Jasper"
+      ],
+      [
+        "citation_author",
+        "Maddix, Danielle C."
+      ],
+      [
+        "citation_author",
+        "Wang, Hao"
+      ],
+      [
+        "citation_author",
+        "Mahoney, Michael W."
+      ],
+      [
+        "citation_author",
+        "Torkkola, Kari"
+      ],
+      [
+        "citation_author",
+        "Wilson, Andrew Gordon"
+      ],
+      [
+        "citation_author",
+        "Bohlke-Schneider, Michael"
+      ],
+      [
+        "citation_author",
+        "Wang, Yuyang"
+      ],
+      [
+        "citation_date",
+        "2024/03/12"
+      ],
+      [
+        "citation_online_date",
+        "2024/11/04"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2403.07815"
+      ],
+      [
+        "citation_arxiv_id",
+        "2403.07815"
+      ]
+    ]
+  },
+  {
+    "key": "pfn",
+    "url": "https://arxiv.org/abs/2112.10510",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "Transformers Can Do Bayesian Inference"
+      ],
+      [
+        "citation_author",
+        "M\u00fcller, Samuel"
+      ],
+      [
+        "citation_author",
+        "Hollmann, Noah"
+      ],
+      [
+        "citation_author",
+        "Arango, Sebastian Pineda"
+      ],
+      [
+        "citation_author",
+        "Grabocka, Josif"
+      ],
+      [
+        "citation_author",
+        "Hutter, Frank"
+      ],
+      [
+        "citation_date",
+        "2021/12/20"
+      ],
+      [
+        "citation_online_date",
+        "2024/08/13"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2112.10510"
+      ],
+      [
+        "citation_arxiv_id",
+        "2112.10510"
+      ]
+    ]
+  },
+  {
+    "key": "in_context",
+    "url": "https://arxiv.org/abs/2401.15530",
+    "status": "retrieved",
+    "metadata": [
+      [
+        "citation_title",
+        "An Information-Theoretic Analysis of In-Context Learning"
+      ],
+      [
+        "citation_author",
+        "Jeon, Hong Jun"
+      ],
+      [
+        "citation_author",
+        "Lee, Jason D."
+      ],
+      [
+        "citation_author",
+        "Lei, Qi"
+      ],
+      [
+        "citation_author",
+        "Van Roy, Benjamin"
+      ],
+      [
+        "citation_date",
+        "2024/01/28"
+      ],
+      [
+        "citation_online_date",
+        "2024/01/28"
+      ],
+      [
+        "citation_pdf_url",
+        "https://arxiv.org/pdf/2401.15530"
+      ],
+      [
+        "citation_arxiv_id",
+        "2401.15530"
+      ]
+    ]
+  }
+]

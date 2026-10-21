@@ -1,5 +1,13 @@
 # Plan: epiplexity on one GPU (fall 2026)
 
+> **Status: OUTDATED (21 October 2026).** This folder preserves an earlier
+> `epimeter` estimator roadmap, member assignments, milestones, and venue notes.
+> It is not the current implementation plan. The current work is the `episynth`
+> time-series code and the technical report based on its saved experiments:
+> [`src/episynth/README.md`](../src/episynth/README.md),
+> [`technical_report/README.md`](../technical_report/README.md).
+> The four-estimator list and dates below are historical.
+
 The team has four members and uses one repository and one paper for two courses:
 
 - the Bayesian course (BMM, [schedule](https://github.com/intsystems/BMM/blob/main-26-27/schedule.md),

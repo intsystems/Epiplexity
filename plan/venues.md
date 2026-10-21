@@ -1,5 +1,8 @@
 # Venues
 
+> **OUTDATED (21 October 2026).** Historical venue research retained with the
+> [superseded plan](README.md). The dates and recommendations below are not a current schedule.
+
 Checked on 23.09.2026. "Confirmed" means the date was taken from the official page, linked in the
 same row. "Estimated" means the date is the previous edition's, because the 2027 page has not
 published it yet. All deadlines are 23:59 AoE unless noted otherwise.

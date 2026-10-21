@@ -1,0 +1,10 @@
+{
+  "pages": 7,
+  "includes_bibliography_and_appendix": true,
+  "bibliography_entries": 12,
+  "unresolved_references": false,
+  "overfull_boxes": false,
+  "pdf_sha256": "f0b8b2c1e30d1865667aeb1bdeba5f5400cb8f21a416938bd9126a218af915d6",
+  "tex_sha256": "b46e4b20242c172871dd2927607e74834de96b2e4a0380c7880d021fa621bc79",
+  "bib_sha256": "6dfc7f0fe9c9175937198b42ae78889da06e063f7a5a830b5837ff6fe53d0903"
+}

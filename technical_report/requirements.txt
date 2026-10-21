@@ -1,0 +1,9 @@
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.1
+pydantic==2.12.3
+safetensors==0.6.2
+pyarrow==20.0.0
+matplotlib==3.10.7
+pytest==8.4.2
+torch==2.8.0

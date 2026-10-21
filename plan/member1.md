@@ -1,5 +1,8 @@
 # Member 1: prequential code and the compute sweep
 
+> **OUTDATED (21 October 2026).** Historical assignment from the
+> [superseded plan](README.md); current scope: [`episynth` and its technical report](../technical_report/README.md).
+
 **Role.** Owner of the central estimator: the prequential area of Eq. (2) in
 [`notes/epiplexity.pdf`](../notes/epiplexity.pdf) (Section 3.1). The same member recovers $S_T$
 from a sweep over widths and depths (Section 3.3). Every other estimator is compared with this one.

@@ -1,0 +1,661 @@
+{
+  "source_commit": "7d2b001d972169efdb19e3c8e256a182ba4c09f8",
+  "run_count": 23,
+  "primary_runs": 22,
+  "waveform_repeats": 1,
+  "total_training_windows": 501992448,
+  "configs_per_run": 55,
+  "export_precision": "six significant digits per step",
+  "max_area_rounding_bound_nats": 12799.83616,
+  "archived_area_comparisons": [
+    {
+      "series": 1,
+      "generator": "kernelsynth",
+      "archived_mnats": 68.4,
+      "recomputed_mnats": 68.42404154901277
+    },
+    {
+      "series": 1,
+      "generator": "ets",
+      "archived_mnats": 26.7,
+      "recomputed_mnats": 26.743446394782303
+    },
+    {
+      "series": 1,
+      "generator": "waveform",
+      "archived_mnats": 70.9,
+      "recomputed_mnats": 70.91126186360013
+    },
+    {
+      "series": 1,
+      "generator": "sde",
+      "archived_mnats": 11.0,
+      "recomputed_mnats": 10.974972113657177
+    },
+    {
+      "series": 1,
+      "generator": "stepfunction",
+      "archived_mnats": 49.5,
+      "recomputed_mnats": 49.48791747918408
+    },
+    {
+      "series": 1,
+      "generator": "tsi",
+      "archived_mnats": 64.8,
+      "recomputed_mnats": 64.84963360687948
+    },
+    {
+      "series": 1,
+      "generator": "arima",
+      "archived_mnats": 24.2,
+      "recomputed_mnats": 24.20399474996698
+    },
+    {
+      "series": 1,
+      "generator": "fbm",
+      "archived_mnats": 9.6,
+      "recomputed_mnats": 9.646178194775432
+    },
+    {
+      "series": 1,
+      "generator": "garch",
+      "archived_mnats": 16.6,
+      "recomputed_mnats": 16.569601813466743
+    },
+    {
+      "series": 1,
+      "generator": "chaotic",
+      "archived_mnats": 126.2,
+      "recomputed_mnats": 126.22848628391203
+    },
+    {
+      "series": 1,
+      "generator": "timesynth",
+      "archived_mnats": 15.3,
+      "recomputed_mnats": 15.277352251019582
+    },
+    {
+      "series": 2,
+      "generator": "kernelsynth",
+      "archived_mnats": 926.1,
+      "recomputed_mnats": 926.1372990032115
+    },
+    {
+      "series": 2,
+      "generator": "ets",
+      "archived_mnats": 138.6,
+      "recomputed_mnats": 138.5987500858879
+    },
+    {
+      "series": 2,
+      "generator": "waveform",
+      "archived_mnats": 1061.2,
+      "recomputed_mnats": 1061.1686932712107
+    },
+    {
+      "series": 2,
+      "generator": "sde",
+      "archived_mnats": 34.6,
+      "recomputed_mnats": 34.62376075166797
+    },
+    {
+      "series": 2,
+      "generator": "stepfunction",
+      "archived_mnats": 588.3,
+      "recomputed_mnats": 588.2629237960468
+    },
+    {
+      "series": 2,
+      "generator": "tsi",
+      "archived_mnats": 765.9,
+      "recomputed_mnats": 765.8742190186734
+    },
+    {
+      "series": 2,
+      "generator": "arima",
+      "archived_mnats": 154.5,
+      "recomputed_mnats": 154.45474604021692
+    },
+    {
+      "series": 2,
+      "generator": "fbm",
+      "archived_mnats": 40.6,
+      "recomputed_mnats": 40.628046961110115
+    },
+    {
+      "series": 2,
+      "generator": "garch",
+      "archived_mnats": 100.9,
+      "recomputed_mnats": 100.90284245354987
+    },
+    {
+      "series": 2,
+      "generator": "chaotic",
+      "archived_mnats": 1956.6,
+      "recomputed_mnats": 1956.6098161697864
+    },
+    {
+      "series": 2,
+      "generator": "timesynth",
+      "archived_mnats": 114.9,
+      "recomputed_mnats": 114.93294288514304
+    }
+  ],
+  "point_baseline_max_relative_difference": {
+    "MASE[0.5]": 4.1839239156658864e-08,
+    "sMAPE[0.5]": 6.584819259149414e-08,
+    "ND[0.5]": 1.695582981164786e-07,
+    "MAE[0.5]": 8.679751561072008e-08,
+    "MSE[0.5]": 1.2811254466492842e-07
+  },
+  "bootstrap": {
+    "unit": "generator family",
+    "replicates": 10000,
+    "seed": 0,
+    "interval": "95% percentile"
+  },
+  "gzip_q16_crps_correlations": [
+    {
+      "series": 1,
+      "rho": -0.5878787878787878,
+      "lo": -1.0,
+      "hi": 0.24531977456505705,
+      "n": 10
+    },
+    {
+      "series": 2,
+      "rho": -0.4666666666666666,
+      "lo": -0.9875,
+      "hi": 0.325,
+      "n": 10
+    }
+  ],
+  "per_window_loss_vectors_used": false,
+  "heldout_standard_errors_available": false,
+  "files": [
+    {
+      "path": "experiments/episynth/reference/gift_eval_leaderboard/gift_eval_seasonal_naive.csv",
+      "sha256": "baad2a1bb196f51a42c4641e8ffd81565713fcdd51fce05c948d985fb20e9539"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/analysis/epiplexity_variants.md",
+      "sha256": "9675f3d0cde3527d2a7c4d7a6c6f96ca5dcef3855355b66d1d67f6571b93fb2a"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/seasonal_naive/summary.csv",
+      "sha256": "a93094dcf9451cb8d0c1c270e3c738e73a3479cea8ccec551ac8cb0869f8aeaa"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_arima/summary.csv",
+      "sha256": "5c8be1d0332b9ed1f5c5a691176e59e7af2694a2d9bc3e194a94242758ddb2a6"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_chaotic/summary.csv",
+      "sha256": "c794ec640388f4e9f1d13c17a1241a241ca8d83d16517868fc42870b615cc367"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_ets/summary.csv",
+      "sha256": "1dd83e3515058a560968ea0a9069c4557adf8e29c79325e0f1832a89301e29fa"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_fbm/summary.csv",
+      "sha256": "a50d820be9217d6c7104317be71979ea8b1d6e7345380e36d0b40b0c23330a05"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_garch/summary.csv",
+      "sha256": "ab6815b5131269c5fbffb66a1e75de95cdcdf19f2af2281887238fd65dd9a102"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_kernelsynth/summary.csv",
+      "sha256": "726ca06b5c252aa99444d3075585c281cfe04722d566f8944488bb828af1feba"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_sde/summary.csv",
+      "sha256": "7ee522589bcaf03861dbebb4b7bbbfa276b4d104ff625427bb6d172a2c883e3c"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_stepfunction/summary.csv",
+      "sha256": "4d2323e3d28a7ef4411c20b43d6d6b1df5f5cec39fc813c318622e3e285c7d68"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_timesynth/summary.csv",
+      "sha256": "a89462adfeb94a4c3920694eac9b925dad42e2bdd55f930b051e13f320fd050e"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_tsi/summary.csv",
+      "sha256": "f1341eeb71358aa2764c5e6e6855b1fe052ac4e8e79342a6f24087d95b120c5c"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/eval/series_waveform/summary.csv",
+      "sha256": "55425574169dcc0b12e92cac6b2743a862c9de68807a9b31db6d96d2611a7eb4"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/gzip_baseline.json",
+      "sha256": "8ff262edf240c23dc9f20df94e30fbb1d77c08a49f2c9dc4a461b4294402d03e"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_arima/config.json",
+      "sha256": "546017bac94327e5c060f9056fccca7415264cbfa52c7e300ca4964e9d558f66"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_arima/heldout.jsonl",
+      "sha256": "4610d12283de68e6f57b090e576b4ad3992a4c39b3534e4d4e4ea5ed137cbc23"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_arima/run.json",
+      "sha256": "b665a6a638df340ac24036b097947b6c30d3e4673a59c1a97dec004ca07b65e1"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_arima/train_curve.csv",
+      "sha256": "ed1f24dd02471ea593db77892835b68e517e4afddd71921347308b593b1648f4"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_chaotic/config.json",
+      "sha256": "ea6363371f88266eb6fb59b9010ab7278055243efc84de8f95193ea5f28d84da"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_chaotic/heldout.jsonl",
+      "sha256": "bf1a2e73030499126464382c0739b067573800b261a56a83114251b87fbe12cd"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_chaotic/run.json",
+      "sha256": "2370e7911779d61551333f730c40a1ef5798787129cbb12a7db0e31bcf9055fa"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_chaotic/train_curve.csv",
+      "sha256": "be774b76d534ce718f4fd3a21d0c27ac2073cf181cf7ac6335c66d0c558f271a"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_ets/config.json",
+      "sha256": "04afb042676557b062c996a428924f92e712f17a643fb4306ae86a77fd5918ed"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_ets/heldout.jsonl",
+      "sha256": "bf67c6cd6f13f77f609fe48c10cd8e50d566b429fc7f297f938f92e39a1f05a8"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_ets/run.json",
+      "sha256": "70fbec20b682d6d2142aa8fef98b82def2f5f442cad9caa2dbd1a68782758130"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_ets/train_curve.csv",
+      "sha256": "70b1eef14d1d5c92785c5112cbe0f2002f7318609d41c77a1bb4937818ce3097"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_fbm/config.json",
+      "sha256": "b17d436992d4dfd36c7ce1269c1127dab8ece5ce0e8c94894ac10c27a9f5f5a9"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_fbm/heldout.jsonl",
+      "sha256": "fefbda5e624c7f972c0e93699e3bbc01fa1511a700157680af0c03bfb2b67032"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_fbm/run.json",
+      "sha256": "a0b747d5ab03d6de11ccc782fd882ed34e9135dbc6ed05c659d47175d95e5815"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_fbm/train_curve.csv",
+      "sha256": "3f36fcdadef63ce06a02e9312510e9b677358397b98df9213ee61f5386ff3eab"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_garch/config.json",
+      "sha256": "ffa9c12d9a21bbd2e10abf5fa46e43aeb279942c5ade8299a59873e751254c8f"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_garch/heldout.jsonl",
+      "sha256": "c118b44fd52480ec118fa1fc6c373c17c65ae0429f9a6659607e99e76fab9662"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_garch/run.json",
+      "sha256": "95fd892c7bbf6672212860e4565850cd1e2738bf05188bdfe45ec71cd25d01ec"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_garch/train_curve.csv",
+      "sha256": "42682c5ac40cdac5ccbce920309ac0d167bf7081d8657f8348c2e764c3f4ec75"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_kernelsynth/config.json",
+      "sha256": "f27e66c4c0ef0de1d1ea151e86f3ca2b90833bac9d0623b29e86961a30240deb"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_kernelsynth/heldout.jsonl",
+      "sha256": "313911224be9f2871707c5e318111e5cfcaccfb5a83f7abe8f9f1ab7e52241c8"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_kernelsynth/run.json",
+      "sha256": "9a5d194b898dce4ee4c09534bdd24b74067c483ce1214236cc7e2ba7ed10b92f"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_kernelsynth/train_curve.csv",
+      "sha256": "8ca995111fadd3c92cd8b6c2407fb9f223cd027860ec71d52935f4f422266460"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_sde/config.json",
+      "sha256": "84c6db24c29ca123a8c5e4b12efc7859f5e36b1128351ec3c0f4cca96c697f20"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_sde/heldout.jsonl",
+      "sha256": "f6e0ee4f58838823f0157d2bdfda0c725c8accadb3aa671b7811e0e43bbb6da2"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_sde/run.json",
+      "sha256": "5d24ed0fde4595c2b684c9ea7367eadcd472b22520b792537dd995310567d019"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_sde/train_curve.csv",
+      "sha256": "92f9cb3c213970e8a3c1555f02f0ecf2235b1d3830122460b1a190b56cddc98a"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_stepfunction/config.json",
+      "sha256": "e2a85bea7c157f14bf0fe02b2c977b8e151de9c6accefa346e3ff086d82acace"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_stepfunction/heldout.jsonl",
+      "sha256": "c005f3f720426f288924ff43a599d45241acee1b79ec1834607f647036bc1dc4"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_stepfunction/run.json",
+      "sha256": "6521dd30a139c29df181175c75588988a17def3e5247eea6087e00f1a5d64983"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_stepfunction/train_curve.csv",
+      "sha256": "048ffd6260546e385922fd662adb9da363a96a2488b5ce541498b9b7e4b6dbd6"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_timesynth/config.json",
+      "sha256": "a8230cbe127433867b995eca0f02acc69ed52bbd954933195b6441b2d913eab3"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_timesynth/heldout.jsonl",
+      "sha256": "b60a06daa761f4b5dee14e08158ee812bf4a43091adc54ad6d29de2724189800"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_timesynth/run.json",
+      "sha256": "1db86acb7967ddba1a71821c359d46b24fbdd193f225a7e1dbe6a8c884a7b1e0"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_timesynth/train_curve.csv",
+      "sha256": "67543f2e4105ff940310c9d58576224419e96d56e3956da05ed241e5dfb36fe1"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_tsi/config.json",
+      "sha256": "904e380f63eed1b5eded69e25e6b80d97dc4f9268973324149f03bff11919b64"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_tsi/heldout.jsonl",
+      "sha256": "e23b4bb9baddb7ed5062ce669129fdc3758a64f84352838165e652aad77b0308"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_tsi/run.json",
+      "sha256": "8ff439b6435f1f7abc01362fb2eb5663d6e7c4199c10d65c0c1fca2421c514af"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_tsi/train_curve.csv",
+      "sha256": "4165b9c70fa44a82468f9318b2d11c1581fa02fa38206b58508bf2fbb58b5d15"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_waveform/config.json",
+      "sha256": "776028adfd11c9601db2d52c86a2d5c0cf4cb258b500b3e6fe7bbeafb661264c"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_waveform/heldout.jsonl",
+      "sha256": "8c8ff2f70ee0fcf329faa39dd67e4bd408b106eace1342fd04701f5d81875383"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_waveform/run.json",
+      "sha256": "cbfa168780a0c13242be401032d1c054eb9231afb885b47fde7255385833ce52"
+    },
+    {
+      "path": "experiments/episynth/series1_2026-10-19/runs/series_waveform/train_curve.csv",
+      "sha256": "47ecb1eff1b916d56668e17306fb10c8af38505475f8e8a19a44de9dac804e04"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/analysis/epiplexity_variants.md",
+      "sha256": "57f71f3533d165d15449c1cda92e9c06c795aae35343ccf68482f416448442bd"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_arima/summary.csv",
+      "sha256": "653de7ddccfe7c1845806d011f0f167ec46470428a1fa6d1ff0f41ebf8d3e908"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_chaotic/summary.csv",
+      "sha256": "f57240a45f1e97d2cd2f27e8f07b2a43b79e900638ee963096ff55c1f3d739ab"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_ets/summary.csv",
+      "sha256": "d6910a5aa9e021b265e630fcbc5fa537bcfe90fa906705c0489e5d29addd5c89"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_fbm/summary.csv",
+      "sha256": "e078a43b62521fe0f89a3e2de9bcf998a663f0d5761891fb35906deebe8b2b22"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_garch/summary.csv",
+      "sha256": "ee0c3d564e11bd7112527a82fed75dd4b3d31a738657b478367397ea27e20cf3"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_kernelsynth/summary.csv",
+      "sha256": "dc4e14aa732a0f4c689a690b5cd2878df8f96ae2ac6e000a5461614db8a2dc79"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_sde/summary.csv",
+      "sha256": "8526ea2cd9fb06c6b343f002f7e0fb38b5bf8c86788403d0b72571940e838251"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_stepfunction/summary.csv",
+      "sha256": "d335f06e778678b87d263c50660a84bfadc8f17ab3bebecd1447afe4a954bbdf"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_timesynth/summary.csv",
+      "sha256": "0d1a7da91ca517d55485b5cd691259d30b28b80e39618cd2427cf03cab47b54b"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_tsi/summary.csv",
+      "sha256": "1cef3c329b12899bdb8be08eceabe5846425d048ac2cde2a3d400db83da95bd1"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_waveform/summary.csv",
+      "sha256": "a847041e79df668177e542b343e4b78f233c3d2888596481e6fa3c01d80d062f"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/s2_waveform_seed1/summary.csv",
+      "sha256": "0d449aa5e4eea658030cece04fd7039d205c3f7eab87621a45fe4149ee47fc24"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/eval/seasonal_naive/summary.csv",
+      "sha256": "a93094dcf9451cb8d0c1c270e3c738e73a3479cea8ccec551ac8cb0869f8aeaa"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_arima/config.json",
+      "sha256": "cf7ec953a0a44396cd9e61187793d1b95d3628dab5b50cbe38bb269c64eb3fa1"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_arima/heldout.jsonl",
+      "sha256": "46f5f669339ec542fa498f9e378b0535ca97d5be571d81350c06ee85f96de02f"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_arima/run.json",
+      "sha256": "7b91cac6930d4b190494878f85f2abe885d6b15acaed21b34f0c90e2e21f4810"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_arima/train_curve.csv",
+      "sha256": "f4b25d9b666ec954a233c9ad88f46ffc5842795431b2ea762ef31c808ad71859"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_chaotic/config.json",
+      "sha256": "62cce6fcf1d902f5dd539564ca4c31cb0126f8ed93d9ee3b909316e1a7f2e15e"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_chaotic/heldout.jsonl",
+      "sha256": "f8125066a256e3a2a5566b64a34470de01cf1a0f1b0a9688b2c7301ce0366836"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_chaotic/run.json",
+      "sha256": "35008720e2fadc878b6c9192e7da787cbf5246e138af1efe48b5b724128c93d7"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_chaotic/train_curve.csv",
+      "sha256": "e63be27ab9f518322142e4112a978aaa85aae84cc49d71ecbde626fe22d35c8a"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_ets/config.json",
+      "sha256": "bb98da56b2eaac7b1ff18be1e2ed9d59a2aa95de6fa20ce80a5ee2dff01445c4"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_ets/heldout.jsonl",
+      "sha256": "86d194a359c5fddfdc275d72b031d503523301d609db247b5ca53df9d725ade8"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_ets/run.json",
+      "sha256": "aa339911ab64505c72c8ddfd5e4d8034ef947a6d775c0629a7bea90f999856da"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_ets/train_curve.csv",
+      "sha256": "7000eafbee9e9944e1db14d739fa70f94154a53d1ed8a4f4c485e933829abee5"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_fbm/config.json",
+      "sha256": "976b3672b0bc537e8c18cdb22ee8b8805120126472720bd9910d6f6bae439f11"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_fbm/heldout.jsonl",
+      "sha256": "30141a61b49e1615d6298f44cb4c72e61101613b6a68dd0d4f81a3fcad0da4c8"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_fbm/run.json",
+      "sha256": "c187bf14c3a12a9304dd091f61a9be46017aaec2130d28c874c536af0fe253a1"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_fbm/train_curve.csv",
+      "sha256": "0c7a3ab72c04fcc13f8b30eb8398d46cc89110fbe393df0b7a7a3799fbddd32d"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_garch/config.json",
+      "sha256": "cfaf6582bb66c133edd93313fedf54db4f8da594afc5ce80a204a5e1623dee9e"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_garch/heldout.jsonl",
+      "sha256": "62f4c8d89a8702aeb03307c3e09d288736c595b89f1d12a3b49fa4714f1db341"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_garch/run.json",
+      "sha256": "58f48187107a2109e34790f1ef5ef138bec174b54aa87a893069ae8106bddde7"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_garch/train_curve.csv",
+      "sha256": "d337db9479d1559c0f74e15a5eeb244069c169725de062d97633401904bfcd06"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_kernelsynth/config.json",
+      "sha256": "044595b08820f2dcc697dbb9c00be3457990f076009b87eab1d30a044e8bb5bf"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_kernelsynth/heldout.jsonl",
+      "sha256": "38498655a128cd9578e6aad8492e736a7bbac6ccb0e51c1f41437f960301c447"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_kernelsynth/run.json",
+      "sha256": "b04b919e7e738d63329e01e6574a64536335eb7d6a623c3c1795a2998bdabd81"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_kernelsynth/train_curve.csv",
+      "sha256": "d2dfda3c6a629034e588633a45f3fd7bc37772af37d26c27fd3cebb135634cab"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_sde/config.json",
+      "sha256": "40e275989861a6bebe343d662a1effbdf43163a90efced05d602db8cf0b213b4"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_sde/heldout.jsonl",
+      "sha256": "cf3a23f0165ea812379cbff1d077e8304c640f262498cd750c5a13558112da42"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_sde/run.json",
+      "sha256": "c9958c8e9259db80c1c281f56e60a78692c255c07b604fe56d88d45bb214841b"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_sde/train_curve.csv",
+      "sha256": "8ed76a6389341e8f68aa3f5e9d898bd2158314a4ca9d65ee9352cc095978771b"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_stepfunction/config.json",
+      "sha256": "4ca142997c8b93d757ecda927cb9fa2eee5fab277efd073f8137a3d98959a7c0"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_stepfunction/heldout.jsonl",
+      "sha256": "703aa368b343b3557639d9297945d8662f63da2a5d531289faf9a834724a1643"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_stepfunction/run.json",
+      "sha256": "a6582d32933174878bb3219e1ac0c50772dbddca33fe0f8a9126f59bfda87593"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_stepfunction/train_curve.csv",
+      "sha256": "cf710a1d8e7607f937284ef45044d187d55549992e2b20b3595dcd0e788ac39d"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_timesynth/config.json",
+      "sha256": "bedaa3a257b45105db80821f16bbb9a529a314474675a1792fb6ebc28d621b46"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_timesynth/heldout.jsonl",
+      "sha256": "151f4ddecabb0c57cc1d62373602e613763f2adfd32b37c766b37769fd80b9b0"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_timesynth/run.json",
+      "sha256": "fabd9124a7ee598914c3484c46d9cca8ca11bae41e28fb3f77f0dfab7a4334f5"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_timesynth/train_curve.csv",
+      "sha256": "be2cf3bf5510a66fe8f261f3d5b4d2294761a715ed1532f6aa66bcbecf21008a"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_tsi/config.json",
+      "sha256": "e1a34643a0f1f802722b8111525c4e41c63b27f097ba5f4721c6525262e625c8"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_tsi/heldout.jsonl",
+      "sha256": "1ad653ff33189232a8ec3390fa8293a7fefe6fb6f3784e7b7b6b73888435979a"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_tsi/run.json",
+      "sha256": "8880bb14b952193e06b5f646770b29a04ae86cc8294a5942314834cb0040ec1e"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_tsi/train_curve.csv",
+      "sha256": "c3b4beff6e71ba4d76ab192efc3100e3c5343f9afdec3354c2275b7cd5705fc3"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform/config.json",
+      "sha256": "f8422307d240a830cc987d44b80783b9aa08859eba05bf16d13d7dbe5a050ec7"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform/heldout.jsonl",
+      "sha256": "ddf017d7336da2fb1c0335e6658efdb8af6cfd4147042e764d2d9773dd147e32"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform/run.json",
+      "sha256": "179cada80bfe6c3c8b1eb6237f6969e694d6f6c3242d90c219465615fce0b442"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform/train_curve.csv",
+      "sha256": "28042de2b5f8892f6cb9cb4def236041ce32104b722e2c84fc79076effdac902"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform_seed1/config.json",
+      "sha256": "e16c3e50734eedaeb734add916c9fbcf910aed4fdda4650903fdd9b7f94c6fa8"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform_seed1/heldout.jsonl",
+      "sha256": "c3fb2cc1e95d5833198b0bb87bf570f2c58fe6db5c58605b13346239c0979879"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform_seed1/run.json",
+      "sha256": "d34fd213b75c9763e7b8cf79a90afb76eaf19867baee2724d3c7f4280c30aad3"
+    },
+    {
+      "path": "experiments/episynth/series2_2026-10-19/runs/s2_waveform_seed1/train_curve.csv",
+      "sha256": "17c4955d98c74d9400ea122baa31a6c2ec362513a053f0af237231bf4d282521"
+    }
+  ]
+}

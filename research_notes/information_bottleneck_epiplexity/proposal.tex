@@ -1,0 +1,374 @@
+% Build: pdflatex proposal; bibtex proposal; pdflatex proposal; pdflatex proposal
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage[parfill]{parskip}
+\usepackage{amsmath,amssymb,mathtools,booktabs,tabularx,array,enumitem}
+\usepackage[round,authoryear]{natbib}
+\usepackage{xcolor}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue!45!black,citecolor=blue!45!black,urlcolor=blue!45!black]{hyperref}
+\usepackage{fancyhdr}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small Research proposal: epiplexity and representation learning}
+\fancyfoot[C]{\thepage}
+\setlength{\headheight}{14pt}
+\setlist{leftmargin=*,itemsep=3pt,topsep=4pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcommand{\E}{\mathbb E}
+\newcommand{\V}{\mathcal V}
+\newcommand{\bits}{\mathrm{bits}}
+\newcommand{\pre}{\mathrm{preq}}
+\newcommand{\mdl}{\mathrm{MDL}}
+\newcommand{\KL}{\mathrm{KL}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\hypersetup{pdftitle={Does supervised learning discard information or make it harder to use?},pdfauthor={Epiplexity project research notes}}
+\title{\textbf{Does supervised learning discard information\\or make it harder to use?}\\[0.6em]
+\large A project proposal on epiplexity, usable information,\\and the information bottleneck hypothesis}
+\author{Epiplexity project: research notes for discussion}
+\date{9 October 2026}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+The motivating idea is to treat hidden activations of a supervised neural network as a new dataset and measure their epiplexity during training. This is feasible in principle, but a falling complexity score does not by itself establish an information bottleneck. We propose a narrower, falsifiable question: does supervised training selectively reduce the information about known nuisance variables that a specified observer can extract, and does a measure of the observer's learning cost explain anything beyond its final predictive performance? The study combines controlled data, frozen representations, predictive $\V$-information, minimum-description-length (MDL) probes, and explicitly qualified epiplexity estimates. Its first deliverable is a calibrated measurement protocol; its second is a map of when apparent compression is actual loss, limited accessibility, or an estimator effect. A universal confirmation of the bottleneck hypothesis is neither the premise nor the success criterion.
+\end{abstract}
+
+\begin{center}
+\fbox{\begin{minipage}{0.94\linewidth}
+\textbf{Recommendation.} Pursue a short calibration and feasibility study before a broad training sweep. Make target and nuisance decoding the primary experiment, and marginal activation epiplexity a complementary structural measurement. Continue to an epiplexity-specific claim only if a separate model-coding estimator survives the controls and adds insight beyond established MDL probing.
+\end{minipage}}
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{The problem worth solving}
+
+The correspondence of 3 October suggests a sensible experimental entry point: a feed-forward classifier, checkpoints along training, and intermediate activations used as data for another learner. The valuable question is not whether a new quantity can produce the familiar rising-then-falling information-plane curve. It is whether we can distinguish three mechanisms that have different implications for representation learning:
+\begin{enumerate}
+\item \textbf{Discarding:} a representation ceases to retain a variable, even for an unrestricted decoder in a setting where this can be checked.
+\item \textbf{Restricting access:} the variable remains recoverable, but not by a specified predictive family or learning algorithm at its allotted budget.
+\item \textbf{Changing the measurement:} scaling, quantization, probe optimization, or a moving loss floor changes the score without the proposed selective removal of information.
+\end{enumerate}
+These distinctions matter for nuisance invariance, transfer, and robustness under a change in spurious correlations. They also permit a useful negative result: if epiplexity cannot distinguish these mechanisms better than existing quantities, the project should establish that limitation rather than rename a known MDL effect.
+
+We study \emph{ordinary supervised training}. Explicit bottleneck penalties or adversarial nuisance removal are positive controls or later interventions; a network trained to compress cannot establish that compression emerges spontaneously under the original objective. The proposal contains no new experimental results. Numerical settings below are proposed defaults to be frozen after a pilot.
+
+\section{What the literature supports, and what it does not}
+
+\subsection{Separate an optimization principle from a training-dynamics hypothesis}
+The classical information bottleneck optimizes a representation channel, schematically
+\begin{equation}
+\min_{p(r\mid x)} I(X;R)-\beta I(R;Y),
+\label{eq:ib}
+\end{equation}
+or minimizes input information at fixed predictive information \citep{tishby1999}. This does not imply that cross-entropy training of an arbitrary deterministic network follows this optimization, exhibits two temporal phases, or requires compression to generalize.
+
+\citet{shwartz2017} reported fitting followed by compression and proposed a connection to SGD dynamics. \citet{saxe2018} challenged the universality and causal interpretation, including differences between saturating and ReLU nonlinearities. Geiger's review evaluates these conflicting findings and explains why many measured trajectories can reflect geometric clustering or scale effects \citep{geiger2021}. Work on noisy networks makes the relationship between clustering and information estimable under an explicitly specified noise channel \citep{goldfeld2019}.
+
+For deterministic continuous representations, $I(X;R)$ is often infinite under non-atomic conditions; this is not a statement about every deterministic network. On a finite empirical input distribution, an injective representation instead gives $I(X;R)=H(X)$, independent of how easy classification becomes. Quantization or injected noise changes the random variable being studied. A binning estimate is not automatically an estimate of the original noiseless quantity. Moreover, the data-processing inequality constrains layers at a \emph{fixed} network, not successive checkpoints whose weights change.
+
+The defensible reading is therefore: \emph{compression depends on the setting and the operational definition; a universal two-phase account is not established}. This is a synthesis of the cited evidence, not a claim to have surveyed every 2026 paper. A recent generalized-IB preprint reports compression for a synergy-based quantity, including ReLU settings \citep{westphal2026}; it is evidence of ongoing alternative formulations, not a resolution in favor of all definitions.
+
+\subsection{The closest precedents are already observer-relative}
+\citet{xu2020}, the paper linked in the correspondence, define predictive $\V$-information for a restricted family of predictors. \citet{dubois2020} then develop the \emph{Decodable Information Bottleneck} (DIB): preserve decodable label information while reducing decodable within-class distinctions. Their guarantees assume a particular representation-learning game and additional conditions; they do not assert that arbitrary SGD trajectories obey DIB. Nevertheless, DIB is the closest conceptual baseline. We must not present ``make IB computationally accessible'' as our invention.
+
+MDL probing already accounts for the data or model cost needed to decode a target from a representation \citep{blier2018,voita2020}. The prequential epiplexity heuristic is closely related to this machinery. Epiplexity itself separates a selected model's description length from its residual uncertainty under computational restrictions \citep{finzi2026}. It is not simply another name for predictive entropy.
+
+A September 2026 preprint applies a spectral approximation inspired by epiplexity to learned representations and distinguishes spectral spread, prediction, and downstream utility \citep{vivekananda2026}. Thus even ``epiplexity applied to representations'' is too broad a novelty claim. Its spectral objective should not be silently identified with a calibrated estimate of the original program-length quantity.
+
+\textbf{Candidate contribution.} A controlled comparison of \emph{training dynamics}, with known relevant and nuisance factors, multiple observer budgets, interventions with known informational consequences, and an honest comparison between epiplexity and existing MDL/usable-information measures. The novelty claim remains provisional until a wider citation search before submission.
+
+\section{Objects, observers, and two distinct training clocks}
+
+Let $X$ be the input, $Y$ the supervised target, and $N$ an observed nuisance factor. Write
+\[
+R_{\ell,t}=h_{\ell,\theta_t}(X)
+\]
+for layer $\ell$ of the \emph{encoder} after training step $t$. At each selected $t$, freeze the encoder and train independent \emph{observers} on the resulting representations. An observer's learning index $j$ is not the encoder's training index $t$. A curve of observer loss over $j$ produces one measurement at $(\ell,t)$; the trajectory of those measurements over $t$ is the object of the project.
+
+An operational observer is a tuple
+\[
+\mathcal O=(\V,A,\lambda,n,B,\pi,\mathsf c),
+\]
+where $\V$ is its predictive family, $A$ its learning algorithm, $\lambda$ its fixed hyperparameters, $n$ its sample budget, $B$ its compute budget, $\pi$ its data-order protocol, and $\mathsf c$ its coding/preprocessing convention. Keep these fixed across encoder checkpoints in a primary comparison. Training a new probe until convergence at every checkpoint silently changes the effective compute budget.
+
+The representation and its preprocessing are shared side information for a conditional decoder. We do not charge the encoder's construction to $L(Y\mid R)$; that is a decoding question given a representation. Record the encoder's cost separately, and include it if discussing an end-to-end system. Comparisons to decoding directly from $X$ must state this convention.
+
+\section{Which quantities to measure}
+
+\subsection{Predictive entropy and usable information: the primary readout}
+For a discrete target $A$ (either $Y$ or $N$), define
+\begin{align}
+H_{\V}(A\mid R)&=\inf_{q\in\V}\E[-\log_2 q(A\mid R)],\\
+I_{\V}(R\to A)&=H_{\V}(A\mid\varnothing)-H_{\V}(A\mid R).
+\label{eq:vinfo}
+\end{align}
+The family must allow ignoring its input (``optional ignorance''). The ideal $I_{\V}$ is nonnegative and directional; it need not obey the ordinary data-processing inequality \citep{xu2020}. Expanding a family decreases its optimal conditional entropy, but need not increase $I_{\V}$ if its null family also changes. Our comparisons share an unrestricted categorical null predictor, so that complication is avoided.
+
+Fitted probes only approximate the infimum. Denote their held-out cross-entropy by $\widehat h_{\mathcal O}(A\mid R)$ and their null-minus-conditional loss difference by $\widehat I_{\mathcal O}$. These are \emph{algorithm- and budget-dependent estimates}, not exact $\V$-entropies. Negative empirical gains are possible; report them with uncertainty rather than clipping them.
+
+When nuisance and label are correlated, use a conditional predictive gain:
+\begin{equation}
+\widehat J_N(R;Y)=\widehat h_{\mathcal O_0}(N\mid Y)
+                    -\widehat h_{\mathcal O_1}(N\mid R,Y).
+\label{eq:conditional}
+\end{equation}
+Use nested predictors that can ignore $R$, with the same null baseline at every checkpoint. This is an operational conditional usable-information contrast, not an appeal to a Shannon chain rule. It asks what $R$ reveals about $N$ beyond the label. In the primary synthetic experiment $N\perp Y$, so also report unconditional decoding. In a shifted environment, compute both losses under that environment's distribution; do not subtract baselines from different distributions.
+
+Known nuisance decoding is a \emph{targeted} DIB-inspired readout, not the full DIB objective. DIB averages decodability of within-class labelings \citep{dubois2020}. A small optional replication of that objective should follow its finite-support protocol: labels attached to distinct unseen examples cannot simply be predicted out of sample and treated as DIB minimality. Our nuisance variables instead have a reproducible population-generating rule.
+
+\subsection{Epiplexity: model structure, not predictive success}
+For a finite encoded random object $D$ and time-bounded probabilistic programs $\mathcal P_T$, the formal construction is
+\begin{align}
+p_T^\star&\in\argmin_{p\in\mathcal P_T}
+       \left\{|p|+\E[-\log_2 p(D)]\right\},\\
+S_T(D)&=|p_T^\star|,\qquad H_T(D)=\E[-\log_2 p_T^\star(D)].
+\label{eq:epi}
+\end{align}
+Ties favor the shortest program. The source's formal model requires time-bounded probability evaluation and sampling; its practical neural procedure also budgets model reconstruction/training and evaluation \citep[Definitions 7--8; Section 4]{finzi2026}. We report those operational costs, without pretending that SGD searches all admissible programs.
+
+There are two distinct applications:
+\begin{enumerate}
+\item \textbf{Marginal activation structure:} $S_T(Q(R_{\ell,t})^n)$, where $Q$ is a fixed finite quantizer and the dataset size $n$ is fixed. This directly implements the initial suggestion, but requires a generative model of activation vectors.
+\item \textbf{Conditional decoding structure:} $S_T(A^n\mid R_{\ell,t}^n)$, with label symbols encoded and representations given to both parties. A supervised observer measures this conditional object, not $S_T(R)$ \citep[Definition 11]{finzi2026}.
+\end{enumerate}
+The sample size is part of the object: model cost and residual code length trade off differently as $n$ changes. A fixed architecture's parameter count is not a description length for the learned structure. Nor is final loss alone an estimate of $S_T$.
+
+There is no universally justified direction ``higher $S_T$ is better'' or ``lower $S_T$ means compression of nuisances.'' An easily decoded simple rule can have low model cost and high usable information. An inaccessible or random target can also have low learned structure, but high residual loss. A more expressive observer can discover structure that a weaker one misses, making the model component rise before a still better algorithm makes its description shorter. Always report model cost, residual loss, total code, and budget together.
+
+\subsection{Prequential code and a qualified structural proxy}
+For ordered pairs $(r_i,a_i)_{i=1}^n$, with each label scored before it is used for fitting,
+\begin{equation}
+L_{\pre}(A^n\mid R^n)=\sum_{i=1}^{n}-\log_2 q_{i-1}(a_i\mid r_i).
+\label{eq:preq}
+\end{equation}
+A block version trains only on previous blocks; its initial block uses a shared uniform code. Any stochastic initialization, schedule, architecture choice, or tuning needed by the decoder must be shared in advance or coded. Replaying \emph{already decoded} examples for updates is possible under a declared decoder and compute budget; charging a repeated training loss as if it encoded new labels is not the same code.
+
+The first-pass heuristic is
+\begin{equation}
+\widehat S_{\mathrm{LC}}(A\mid R;n,B)
+ = L_{\pre}(A^n\mid R^n)-n\widehat h_{\mathcal O}(A\mid R),
+\label{eq:proxy}
+\end{equation}
+where the final cross-entropy is measured on independent probe-test data. We call this a \emph{learning-curve structural proxy}. It modifies the original same-stream floor to reduce memorization bias; it is not a rigorously identified model code, nor an exact two-part decomposition of the observed dataset. Finite-sample noise or a poor final observer can make it negative. Do not clip negative areas, substitute training loss, or fit the floor to obtain the desired shape. The original paper itself gives reasons why its prequential model-cost argument is heuristic \citep[Section 4.1]{finzi2026}.
+
+This proxy is sensitive to slow optimization as well as learned structure. A slow learner can have a larger area than a fast one with identical final predictive performance. Worse, a learner that learns nothing can have a small area because its floor remains high. Controls and independent model coding must settle the interpretation.
+
+\subsection{Do we need an ``epiplexic mutual information''?}
+\textbf{No, not for this project.} The formal conditional epiplexity already exists. It does not supply a Shannon chain rule, symmetry, or nonnegative differences. Neither $S_T(A)-S_T(A\mid R)$ nor $S_T(R)-S_T(R\mid A)$ should be introduced as mutual information without new theorems. Even the source's $H_T(A\mid R)$ need not equal $H_T(A,R)-H_T(R)$ \citep{finzi2026}.
+
+A useful directional quantity with a simpler interpretation is actual coding gain:
+\begin{equation}
+G_{\pre}(R\to A)=\frac{L_{\pre}(A^n)-L_{\pre}(A^n\mid R^n)}{n}.
+\label{eq:gain}
+\end{equation}
+It measures label bits saved for a declared coding protocol. A fitted code may yield negative gain. A conditional code family that can select the null code guarantees a no-worse optimum only after selection overhead is accounted for. No general symmetry or data-processing claim follows.
+
+\textbf{A decisive redundancy check (our algebra).} With the same $n$ and the decomposition in Eq.~\eqref{eq:proxy},
+\begin{equation}
+G_{\pre}=\frac{\widehat S_{\mathrm{LC}}(A)
+                   -\widehat S_{\mathrm{LC}}(A\mid R)}{n}
+              +\widehat I_{\mathcal O}(R\to A).
+\label{eq:redundancy}
+\end{equation}
+Thus the proxy can add information beyond \emph{endpoint loss alone}, but cannot add independent information beyond endpoint loss \emph{and} total prequential code jointly. A regression that claims otherwise is exploiting its model specification, noise, or leakage. Decomposing MDL may be scientifically helpful; calling that decomposition a new independent signal would not be.
+
+\subsection{A small independent model-code check}
+On a predeclared subset of early and late checkpoints, use requential model coding \citep{finzi2026,qiu2026}. For categorical targets, the teacher--student divergences are exactly summable over classes for each supplied input. The cumulative KL is a convenient diagnostic, but is \emph{not by itself} a realized code length: include the relative-entropy coding overhead, shared randomness/protocol, and a decoded-student fidelity check. If an implementation only sums KLs, label it a divergence surrogate and do not call it an explicit code.
+
+The teacher here is the observer trained on frozen representations, not the encoder. If a student trades worse residual loss for a shorter model description, compare the complete code. Select among a small preregistered candidate menu by model cost plus residual code at a fixed reference dataset size and budget, never by maximizing the reported $S$. An explicit code for one fitted observer is a restricted achievable description, not proof of the optimal formal $S_T$.
+
+\section{A deliberately small comparison set}
+\begin{table}[htbp]
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}LL@{}}
+\toprule
+Measure & Question answered & Role and limitation\\
+\midrule
+Held-out $H_{\V}$ estimates; $I_{\V}$ and $J_N$ & Can this observer decode the target or nuisance? & Primary; distinguish ideal family optimum from fitted probe.\\
+Prequential MDL and coding gain & How many label bits does learning to decode cost? & Mandatory strongest practical baseline; sample order and budget matter.\\
+$\widehat S_{\mathrm{LC}}$ and residual loss & How does the learning-curve code split under a chosen floor? & Cheap structural diagnostic; algebraically dependent on the preceding measurements.\\
+Requential model code & Is a separate estimate of learned model structure consistent? & Small mandatory validation for an epiplexity-specific claim.\\
+Exact finite-support MI; quantized/noisy MI & Was information actually lost in a specified channel? & Calibration and small-dimensional settings only.\\
+Within-class scatter; effective rank & Did geometry change? & Cheap controls; not epiplexity or MI.\\
+\bottomrule
+\end{tabularx}
+\caption{Core measurements. All comparisons use the same frozen representations and splits.}
+\end{table}
+
+Pointwise $\V$-information is useful for diagnosing a subgroup or a spurious marker \citep{ethayarajh2022}, but its average is the same usable-information estimate: it is not another independent baseline. Reconstruction NLL may be added for a known generative toy; pixel MSE has no common bit interpretation without a likelihood. CKA compares representations rather than retained information. MINE, high-dimensional kNN MI, matrix-based R\'enyi scores, gzip on float buffers, and many nearly interchangeable complexity scores would enlarge the estimator problem before clarifying the scientific question. Defer them. A synergy score from generalized IB or a spectral epiplexity surrogate is a follow-up only if the core results point specifically to joint-feature effects or geometry.
+
+\section{Falsifiable hypotheses and permissible conclusions}
+\textbf{H1: selective accessible compression.} After predictive performance stabilizes, nuisance gain $\widehat J_N$ declines for a fixed observer while label gain is retained. This is a hypothesis about a specified dataset, layer, family, and budget, not every network. Also record whether nuisance information rises in the earlier phase; a late decline alone does not establish the full ``first acquire, then discard'' story.
+
+\textbf{H2: access versus loss.} Some declines for a small observer are recovered by a larger family, more data, or more compute. Recovery establishes restricted accessibility in that case. Failure of a few larger probes to recover a nuisance is not proof of its absence; exact finite-support checks or a known inverse are needed for that stronger conclusion.
+
+\textbf{H3: structural cost beyond endpoint performance.} At matched final loss, some representations differ reliably in learning-curve or separately coded model cost and in a preregistered downstream outcome (few-sample adaptation or nuisance-shift performance). The proxy may improve on endpoint loss, but Eq.~\eqref{eq:redundancy} limits its novelty relative to MDL. A stronger epiplexity-specific interpretation requires the separate coding check.
+
+\textbf{H4: connection to generalization is conditional.} Any association with generalization must survive basic controls for training duration, encoder accuracy, activation family, and layer. An intervention may strengthen a mechanism claim but can also change optimization and inductive bias. We will not infer necessity or causation from a time-series correlation.
+
+H1 failing is a legitimate answer. H1 holding only for tanh, only under weight decay, or only for one observer is an informative boundary. H3 failing favors established usable-information/MDL explanations. An estimator failing the calibration suite ends the corresponding scientific interpretation.
+
+\section{Stage 0: calibration before training-dynamics plots}
+\label{sec:controls}
+Start with synthetic representations whose information can be enumerated or recovered by construction. On a separate finite toy, take independent uniform bit vectors $C,N$, set $Y=C_1$, and enumerate their full support. Calculate discrete MI by exact cell probabilities; if quantization is used, enumerate \emph{that} channel too. Do not call a neural estimate of $S_T$ exact. For a restricted model-code oracle, use a finite, prefix-coded menu of uniform, independent-bit, parity, and table models; enumerate their likelihoods and code costs and report the winning component as a \emph{menu-restricted} MDL decomposition at several dataset sizes.
+
+\begin{table}[htbp]
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.05cm}LL@{}}
+\toprule
+Construction & Ground truth or expected distinction & Required diagnostic\\
+\midrule
+$R=(C,N)$ vs. $(C,0)$ & Nuisance information is deleted; label information remains. & Nuisance decoding and exact MI fall. A drop in marginal $S$ is not guaranteed.\\
+$R=(C,g(N))$ with known bijection $g$ & Nuisance information is retained; decoder difficulty can change. & Exact MI stays fixed; inverse-assisted observer recovers it.\\
+$R\mapsto aR$, permutation, rotation & Invertible changes before quantization preserve Shannon information. & Test preprocessing, optimization and quantizer sensitivity separately.\\
+$R=(C,N)$ vs. $(C,U)$, $U\perp(C,N)$ & Replacing structured nuisance by independent noise can raise residual entropy while reducing learnable structure. & Report both $S$ and $H$, and decode the original $N$.\\
+Constant output; random labels & No useful label information. Both triviality and inaccessible noise can have little learned structure. & Near-zero population decoding gain; high residual loss on balanced random labels.\\
+Same data; fast vs. slow observer optimizer & Endpoint information may agree while learning-curve areas differ. & Detect algorithm dependence of the proxy.\\
+\bottomrule
+\end{tabularx}
+\caption{Known-answer controls; qualitative statements about estimated structure must be tested, not imposed.}
+\end{table}
+
+A random permutation table is an accessibility stress test, not a claim about cryptographic hardness. Include low-dimensional parity/XOR recodings that a nonlinear observer can learn; do not rely solely on a scrambled table that no available observer can decode. Giving an inverse as side information changes the observer, and its cost must be declared.
+
+\textbf{Two simple counterexamples guide the scope (our constructions).} First, uniform bits and an invertible permutation of those bits have exactly the same marginal distribution. Their marginal epiplexity is therefore identical, even though a small predictor's access to a particular original bit may differ. Marginal $S(R)$ cannot characterize task accessibility by itself. Second, a classifier can carry $R=(g(X),N)$ while its output head assigns zero weight to the nuisance coordinates. Its predictive behavior is identical to the classifier using only $g(X)$, and an observer can still decode $N$. Consequently, good generalization cannot universally require nuisance removal in every hidden representation. For a ReLU construction use a nonnegative nuisance or paired positive/negative coordinates. This is a logical counterexample, not an empirical claim about typical training.
+
+\textbf{Calibration gate.} Proceed only if independent random targets give no reproducible positive held-out gain, true deletion is detected, known invertible recodings are distinguished from deletion, and changes induced by coding/preprocessing choices are smaller than or explicitly account for the effects we intend to interpret. Establish acceptable estimator variability using repeated controls before inspecting confirmatory training trajectories.
+
+\section{Stage 1: a controlled supervised experiment}
+
+\subsection{Data with an explicit nuisance}
+Use a population generator rather than a single finite random-label dataset:
+\[
+C\sim\mathcal N(0,I_4),\quad N\sim\mathrm{Unif}\{0,1,2,3\},\quad
+W\sim\mathcal N(0,0.1^2 I_8),\qquad C\perp N\perp W,
+\]
+\begin{equation}
+X=Q\,[C;\operatorname{onehot}(N);W]\in\mathbb R^{16},
+\qquad Y=\mathbf1\{C_1C_2>0\},
+\label{eq:data}
+\end{equation}
+where $Q$ is a fixed, seeded orthogonal matrix. $Y$ is balanced and nonlinear in the signal; $N$ is independent, perfectly recoverable from the uncompressed input, and irrelevant to predicting $Y$. $C_3,C_4,W$ are additional irrelevant variation; decoding $N$ does not certify removal of \emph{all} nuisances. The unmixed $Q=I$ case and $Y=\mathbf1\{C_1>0\}$ are inexpensive sanity tasks. Neither is evidence that the nonlinear task must compress.
+
+Generate disjoint encoder-training (16,384), encoder-validation (4,096), probe-training (8,192), probe-validation/calibration (2,048), and probe-test (8,192) samples, plus fresh downstream evaluation data. Fix the same draws across checkpoints and use paired seeds across activation conditions. Probe data never updates the encoder. Population resampling makes sampling variability measurable; split sizes can be increased at the calibration gate if floor uncertainty dominates.
+
+\subsection{Encoders and checkpoints}
+Use a $16$--$64$--$64$--$64$--$2$ MLP with tanh or ReLU hidden activations. Train with minibatch SGD, batch size 128, cross-entropy, and no explicit compression regularizer in the primary setting. Select one learning rate per activation from a small fixed grid using only encoder validation in the pilot; lock the optimizer schedule and a maximum of 200 epochs. Log training/validation loss and accuracy, parameter norms, activation norms, and dead/saturated-unit fractions. Divergence or failure to learn is a feasibility failure, not an IB counterexample.
+
+Save 12 checkpoints at epochs $0,1,2,4,8,16,32,64,96,128,160,200$ and probe the first and last hidden layers. The early pilot uses six of these checkpoints and the last layer only. Five independently trained encoders per final condition are a minimum initial replication, not a guarantee of statistical power. Add seeds only under a prespecified precision rule. Match conclusions both at common training time and at comparable encoder validation loss; these answer different questions.
+
+Weight decay and a deliberately nuisance-removing positive control belong to a small second-stage ablation after the unregularized baseline. A frozen random encoder is a baseline, not evidence of an early fitted phase. Random-label encoder training is a memorization stress test and should use independent probe labels for the population null; arbitrary labels attached to training examples answer a different question.
+
+\subsection{Observers and learning curves}
+Start with multinomial logistic regression and a one-hidden-layer width-64 MLP. Use a width-256 MLP only for selected accessibility-rescue tests. Probe both $Y$ and $N$; use $(R,Y)\to N$ with $Y\to N$ nulls for correlated-nuisance extensions. Always include input $X$ and the supervised output logits as reference representations.
+
+Use an agreed shuffled order with block boundaries
+\[
+0,32,64,128,256,512,1024,2048,4096,8192.
+\]
+Encode the first block uniformly, train on decoded prefixes under a fixed update rule, then score the next unseen block. Reuse each resulting curve to report budgets at prefix sizes 512, 2,048, and 8,192; these are jointly sample/compute-limited views. At a small selected subset, hold the sample set fixed and vary training updates to separate the effect of compute from the effect of data. Record real updates, examples processed, parameter count, wall time, and estimated FLOPs. The prefix endpoints also need their own independent final-loss estimates.
+
+Use three paired observer seeds/orders for the full experiment. Keep observer hyperparameters fixed across encoder checkpoints, tuning them on separate pilot representations. In particular, do not tune each checkpoint with probe-test labels. For ideal-family comparisons, add a clearly separate best-validated optimization diagnostic; do not relabel the primary fixed-budget run as the family optimum.
+
+\subsection{The direct activation-epiplexity experiment}
+On six selected encoder checkpoints, fit a small autoregressive categorical density model to quantized activations. Use equal-width layers; fix a coordinate order and a scalar calibration map for each layer from designated pilot/calibration data, then freeze it across $t$. Quantize to 8 bins with underflow/overflow categories; repeat on a subset with 16 and 32 bins. Report overflow occupancy. Repeat selected comparisons with a different coordinate order and an orthogonal rotation, since a restricted autoregressive observer can exploit different factorizations differently.
+
+Treat one activation vector as one observation and sum coordinate NLLs before forming bits/vector or dataset-total costs. Count autoregressive coordinate evaluations in compute. Keep vector count, width, precision, and observer budget fixed. Report both raw-coordinate and fixed-scale measurements; per-checkpoint normalization is a separate intervention because it can remove the very scale dynamics being studied. Do not replace the joint density with a sum of independent-coordinate entropies and call it the same object.
+
+Measure $\widehat S_{\mathrm{LC}}(Q(R))$, its residual NLL, and total code. Conditional density $p(Q(R)\mid Y)$ is an optional diagnostic, but subtracting its structural cost from the marginal cost does not create mutual information. If the density model fails known controls or results reverse under reasonable quantization, the direct experiment should be reported as measurement-sensitive rather than used to adjudicate IB.
+
+\section{Stage 2: replication, interventions, and external relevance}
+
+\textbf{A real-data replication.} Use MNIST with a synthetic nuisance consisting of a small border marker in one of four positions, drawn independently of the digit. A fixed fully connected classifier keeps the proposed setup simple. Split base image identities before generating variants so that the same digit image cannot leak across encoder/probe/test partitions. Probe digit identity and marker position. The conclusion concerns the known marker, not every irrelevant property of handwritten digits.
+
+\textbf{A spurious-correlation extension.} Only after the independent-nuisance protocol works, correlate the marker with a fixed map of the digit label during encoder training, then evaluate balanced and reversed marker environments. State explicitly that an encoder may exploit a nuisance that is predictive under its training distribution. Estimate Eq.~\eqref{eq:conditional} in a reference environment with adequate within-label nuisance support; near-deterministic correlations otherwise leave little conditional variation to measure. Removing a marker may aid this shift while harming a downstream task that actually needs it. ``Useful information'' is task-relative.
+
+\textbf{Interventions with fixed predictive behavior.} Apply scale changes and known invertible coordinate maps to frozen representations; where possible compensate the downstream head exactly. These isolate observer or geometric sensitivity while holding predictions fixed. Separately append a bypass carrying $N$ with zero output-head weights. Do not infer genuine information loss from an invariant output prediction. A deliberately trained nuisance-removal control should be checked by a stronger independent probe to detect adversarial hiding.
+
+\textbf{A downstream test for H3.} Measure learning a target from 32, 128, and 512 fresh labels with a downstream predictor/optimizer distinct from the primary probe, or measure loss under the marker shift. Freeze the choice before confirmatory analysis. Predicting the performance of the very same learning curve used to define $\widehat S_{\mathrm{LC}}$ would be largely circular. Test incremental associations using held-out encoder runs (and, if possible, a held-out task), not random checkpoint rows from the same run. Compare endpoint-only, endpoint-plus-total-code, and endpoint-plus-separate-model-code models; use small prespecified regressions or paired matched-loss contrasts, not an unrestricted meta-predictor on a tiny sample.
+
+\section{Analysis, uncertainty, and the evidence standard}
+
+\subsection{Define the contrast before seeing its sign}
+Use the pilot only to fix an early fitted checkpoint $t_a$ and a late checkpoint $t_b$ per task/activation, based on encoder-validation loss and the saved schedule, \emph{without looking at nuisance metrics}. For example, choose the first checkpoint within a fixed tolerance of the best pilot validation loss and the final checkpoint; if there is no later interval, extend the schedule before confirmation or declare the late-phase question untested. Lock these choices for new confirmatory seeds.
+
+For each run and observer define
+\[
+\Delta_N=\widehat J_N(R_{t_b};Y)-\widehat J_N(R_{t_a};Y),\qquad
+\Delta_Y=\widehat I_{\mathcal O}(R_{t_b}\to Y)-\widehat I_{\mathcal O}(R_{t_a}\to Y).
+\]
+In the independent-nuisance case report the analogous unconditional nuisance contrast. A provisional criterion for selective accessible compression is an upper confidence limit for $\Delta_N$ below $-0.05$ bits per nuisance label, together with a lower limit for $\Delta_Y$ above $-0.02$ bits per target label and no material encoder-accuracy loss (initial tolerance: one percentage point). These are proposed practical effect thresholds, not constants supplied by theory. Check their detectability in calibration and preregister any changes before confirmation.
+
+Retained task information requires an \emph{equivalence/noninferiority} criterion; a nonsignificant decline is not evidence of retention. Report full trajectories and effect sizes even when the criteria fail. Test an initial rise separately against initialization to evaluate the stronger two-phase claim. A post hoc peak-to-final difference exaggerates compression and is not the primary contrast.
+
+\subsection{Use the right independent units}
+The independent replication unit is the encoder training run, with observer seeds/orders nested within it. Checkpoints, layers, and test examples are not independent encoder replications. Use paired run-level contrasts and intervals; a hierarchical bootstrap can additionally resample test examples and observer repetitions while preserving pairing. With only five encoder seeds, show individual runs and interval limitations. Prespecify the primary last-layer nonlinear-observer test; apply a multiple-comparison correction to a small confirmatory family, and label the rest exploratory. Never select the layer, budget, seed, or quantizer giving the most attractive information plane.
+
+The loss floor needs explicit error accounting. If $\widehat h$ shifts by $\epsilon$ bits/example, Eq.~\eqref{eq:proxy} shifts by $-n\epsilon$ bits. At $n=8192$, a change of $0.01$ bits/example moves the apparent structural cost by $81.92$ bits. Bootstrap the full proxy, including the final model's test loss, not only the online curve. Use a second independent floor sample on selected checkpoints and examine shuffled-label controls for a systematic offset.
+
+\subsection{Plots and decision table}
+Make time plots primary: target/nuisance predictive gain, model proxy plus residual loss, and geometric diagnostics with uncertainty. A two-dimensional accessible-information plot can place nuisance gain on the horizontal axis and target gain on the vertical axis, colored by encoder time; call it that, not a Shannon information plane. Plot observer-budget curves at early and late checkpoints to show recovery. Keep dataset-total model bits distinct from residual bits/example. Model bits divided by $n$ are a useful amortization, not a claim that model complexity is extensive.
+
+\begin{table}[htbp]
+\small
+\begin{tabularx}{\linewidth}{@{}LL@{}}
+\toprule
+Observed outcome & Defensible interpretation\\
+\midrule
+Weak-probe nuisance gain falls; stronger or inverse-assisted probe recovers it & Loss of accessibility for the weak observer; not demonstrated deletion.\\
+Exact toy MI and all calibrated nuisance probes fall; target retained & Actual selective loss in the specified toy channel. Broader claims need more evidence.\\
+Marginal structural proxy falls; nuisance decoding does not & Changed activation modeling cost; no evidence of selective nuisance removal.\\
+Only binned/noisy MI changes after rescaling & Change in that observation channel or its geometry; not noiseless information loss.\\
+Proxy helps beyond endpoint loss but not beyond endpoint plus MDL & Useful MDL decomposition; expected from Eq.~\eqref{eq:redundancy}, not a new independent measure.\\
+Separate model code is unstable or provides no additional insight & Stop the epiplexity-specific claim; retain a calibrated MDL/usable-information study.\\
+No late nuisance decrease despite reliable measurement and good learning & Counterexample to H1 in this setting; report it without changing the measure to force a positive result.\\
+\bottomrule
+\end{tabularx}
+\caption{Precommitted interpretation avoids turning every possible outcome into confirmation.}
+\end{table}
+
+\section{Feasibility, work packages, and stopping rules}
+
+The current repository exposes estimator/model interfaces; its estimator and training routines are still skeletons. Do not budget as though prequential or requential measurement already works. Implement the label-only prequential baseline and data-splitting checks first; cache activations once per encoder checkpoint. The proposed work can use the existing \texttt{epimeter} interfaces without requiring a general estimator framework before the pilot.
+
+\begin{enumerate}
+\item \textbf{Week 1: definitions and calibration.} Finalize the observer contract, finite toy, valid online code, floor uncertainty, and known-answer controls. Produce a protocol note with a failure ledger. Stop or redesign if deletion and hard decoding cannot be distinguished.
+\item \textbf{Week 2: timing and dynamics pilot.} Two activations, two encoder seeds, six checkpoints, one layer, two observer families, two targets, one observer seed: $4\times6\times1\times2\times2\times1=96$ observer curves. Budgets are prefixes of these curves, not extra runs. Also prototype the separate model code on four cases (two times, two targets, one encoder). Pilot cap: eight GPU-hours, excluding an explicitly logged one-time setup cost. This is an allocation, not a runtime estimate. If separate coding is infeasible or uninformative, decide whether the MDL/usable-information question alone warrants continuation before expanding.
+\item \textbf{Weeks 3--4: confirmation.} After the calibration, coding-feasibility, and scientific-value gates, two datasets, two activations, five encoder seeds, twelve checkpoints, two layers, two observer families, two targets, three observer seeds: $20\times12\times2\times2\times2\times3=5760$ curves. Null codes can be reused where distributions and orders agree. Measure median and high-percentile cost per curve in the pilot and forecast before launching; density models, nulls, rescue probes, and coding checks are additional costs.
+\item \textbf{Week 5: independent coding and targeted interventions.} Start with 24 conditional requential validations: two activations, two encoder times, two targets, three encoder seeds on one task/layer. Compare model code, residual loss, and decoded-student fidelity. Add the small direct-activation density study, or report why it failed its gate.
+\item \textbf{Week 6: synthesis.} Produce reproducible trajectories, matched-loss comparisons, a claim-by-claim evidence table, and a short manuscript or negative-result note. Extend to shifted nuisances only if calibration and primary replication are convincing.
+\end{enumerate}
+
+Reserve a provisional 40 GPU-hours for confirmation plus validation, revisable after timing. If projected cost exceeds it, reduce the declared checkpoint grid or study one dataset first \emph{before inspecting confirmatory metrics}; do not quietly reduce the number of independent encoder seeds. There is no warranted single-GPU runtime estimate until the implementation is profiled. A two-person division is natural: one owns datasets/encoders/interventions, the other observers/codes/calibration, with joint review of definitions and stopping decisions. The wider repository team can review each other's artifacts without expanding the scientific scope.
+
+\textbf{Minimum useful deliverable.} Calibrated $\V$-information and prequential MDL trajectories on the controlled task, known-answer interventions, and a precise conclusion about the extra value or limitations of the structural decomposition. A paper centered on epiplexity requires more: stable separate coding evidence and a scientifically interpretable distinction that existing baselines miss. If only the inexpensive proxy is feasible, title and claims should say \emph{learning-curve/MDL analysis}, not a definitive measurement of epiplexity.
+
+\section{What we should deliberately not do}
+\begin{itemize}
+\item Do not define success as rescuing IB for every activation function. There are simple counterexamples, and changing the measure changes the hypothesis.
+\item Do not infer input-information compression from a supervised probe's training loss or conditional model cost. State which variable is encoded and which is side information.
+\item Do not use a sign of $S_T$ alone as a verdict on usefulness, nuisance retention, or generalization. Low structure can mean simplicity, deletion, or inability to learn.
+\item Do not invent mutual information by subtracting structural complexities and then borrow Shannon's properties.
+\item Do not start with large models, many datasets, an exhaustive estimator leaderboard, or expensive high-dimensional MI estimation. Resolve identification and calibration first.
+\item Do not train observers across changing encoder checkpoints without resetting them: transfer between representations changes the estimand. A continual-observer experiment would be a separate project.
+\item Do not claim an independent epiplexity signal from an algebraic re-expression of endpoint loss and prequential MDL, or causal generalization from correlated trajectories.
+\end{itemize}
+
+\section{Source verification and the remaining novelty check}
+The source notes in this repository were used as background, particularly the distinction between program-length epiplexity and its practical proxies. For this proposal, the epiplexity definitions and estimator caveats, the Xu definitions, DIB, MDL probing, Goldfeld's study, and Geiger's review were rechecked against primary arXiv/ACL/PMLR copies. The correspondence's Xu OpenReview PDF was inaccessible in this environment; its arXiv counterpart was read. The Saxe publication is cited through its official conference link; the specific summary here was checked against Geiger's discussion because direct publisher/OpenReview access failed. No claims depend on an unverified numerical result from it.
+
+As of 9 October 2026, direct arXiv searches for ``epiplexity bottleneck'' and ``epiplexity information bottleneck'' returned no records, while ``epiplexity representation'' surfaced the September spectral-representation paper. A separate title search surfaced the recent generalized-IB paper. These are limited metadata searches, not proof that no one has studied the proposed question. The general web-search tool was unavailable. Before a submission or a claim of priority, complete forward/backward citation searches for DIB, MDL probing, epiplexity, and the 2026 related work, including work without ``epiplexity'' in its metadata.
+
+The counterexamples, observer protocol, hypotheses, experiment settings, decision thresholds, resource allocations, and coding-gain algebra are proposals/derivations in these notes, not results attributed to the cited papers. No experiments were run in preparing this document.
+
+\bibliographystyle{plainnat}
+\begingroup
+\interlinepenalty=10000
+\bibliography{references}
+\endgroup
+\end{document}

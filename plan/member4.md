@@ -1,5 +1,8 @@
 # Member 4: testbeds, fast proxies, variance and the repository
 
+> **OUTDATED (21 October 2026).** Historical assignment from the
+> [superseded plan](README.md); current scope: [`episynth` and its technical report](../technical_report/README.md).
+
 **Role.** Owner of the data generators, the classical and fast complexity measures, the study of
 seed variance, and the repository (package, CI, documentation, Docker).
 

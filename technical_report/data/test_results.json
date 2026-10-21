@@ -1,0 +1,419 @@
+{
+  "provenance": "Fresh report rerun of existing tests, not an archived author run",
+  "cases": [
+    {
+      "name": "test_run_area_and_curve",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_quality_table_and_correlations",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_rows_equal_generator",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_parts_and_errors",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_seasonality_and_config_names",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_crps_and_seasonal_error_closed_forms",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_stats_and_aggregate_handle_nan_and_zero_seasonal_error",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_seasonal_naive_forecast",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_both_protocols",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_gift_dataset_windows",
+      "module": "tests.episynth.test_evaluation",
+      "status": "skipped",
+      "details": "GIFT_EVAL_DIR \u043d\u0435 \u0437\u0430\u0434\u0430\u043d"
+    },
+    {
+      "name": "test_shape_dtype_finite[kernelsynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[ets]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[waveform]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[sde]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[stepfunction]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[tsi]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[arima]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[fbm]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[garch]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[chaotic]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[timesynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_shape_dtype_finite[ou]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[kernelsynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[ets]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[waveform]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[sde]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[stepfunction]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[tsi]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[arima]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[fbm]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[garch]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[chaotic]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[timesynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_and_batch_independent[ou]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[kernelsynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[ets]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[waveform]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[sde]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[stepfunction]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[tsi]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[arima]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[fbm]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[garch]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[chaotic]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[timesynth]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_exact_mode_runs[ou]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_timesynth_batch_matches_rowwise",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_param_count_matches_published_small",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_component_log_probs_match_torch_distributions",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_forward_shapes_and_finite_nll",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_pretrained_checkpoint_loads_and_fits_sine_better_than_noise",
+      "module": "tests.episynth.test_model",
+      "status": "skipped",
+      "details": "MOIRAI_SMALL_DIR \u043d\u0435 \u0437\u0430\u0434\u0430\u043d"
+    },
+    {
+      "name": "test_ou_generator_is_stationary_ar1",
+      "module": "tests.episynth.test_ou_bayes",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_single_node_matches_closed_form",
+      "module": "tests.episynth.test_ou_bayes",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_log_marginal_prefix_consistency",
+      "module": "tests.episynth.test_ou_bayes",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_pointwise_bound_above_sequential_on_average",
+      "module": "tests.episynth.test_ou_bayes",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_mixture_routes_seeds_round_robin",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_overrides_and_resolution",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_build_generator_from_corpus_and_mixture",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_cli_runs_tiny_training",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_seed_range_check",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_smoke_run_writes_logs_and_resumes",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_layout_and_masks",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_deterministic_by_seed_and_dequantization_scale",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_stream_is_resumable",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_context_length_distribution_follows_probs",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_pool_stream_matches_thread_stream",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_generators_pickle_for_workers",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_collect_windows_respects_corpus_bounds",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    }
+  ],
+  "counts": {
+    "passed": 66,
+    "skipped": 2,
+    "failure": 0,
+    "error": 0
+  }
+}

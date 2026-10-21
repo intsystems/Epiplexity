@@ -1,5 +1,8 @@
 # Member 2: requential code, label noise and the demo
 
+> **OUTDATED (21 October 2026).** Historical assignment from the
+> [superseded plan](README.md); current scope: [`episynth` and its technical report](../technical_report/README.md).
+
 **Role.** Owner of the requential estimator for classifiers (Eq. 4 and Section 3.2 of
 [`notes/epiplexity.pdf`](../notes/epiplexity.pdf)). Owner of the experiments that separate
 structure from noise.

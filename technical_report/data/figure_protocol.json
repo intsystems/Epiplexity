@@ -1,0 +1,28 @@
+{
+  "provenance": "New descriptive examples generated for this report; not historical experiment results",
+  "generator_length": 256,
+  "generator_seeds": [
+    3,
+    11
+  ],
+  "display_transform": "Each series independently centered and divided by its population standard deviation",
+  "window_spec": {
+    "series_length": 1024,
+    "context_max": 512,
+    "horizon": 64,
+    "patch_size": 32,
+    "context_lengths": [
+      128,
+      256,
+      512
+    ],
+    "context_probs": null,
+    "dequantize_width": 0.001
+  },
+  "window_generator": "waveform",
+  "selected_window_seeds": [
+    1,
+    14,
+    0
+  ]
+}

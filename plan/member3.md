@@ -1,5 +1,8 @@
 # Member 3: Bayesian codes, theory and the manuscript
 
+> **OUTDATED (21 October 2026).** Historical assignment from the
+> [superseded plan](README.md); current scope: [`episynth` and its technical report](../technical_report/README.md).
+
 **Role.** Owner of the Bayesian estimators, the bridge from Bayes to MDL, and the manuscript
 (editor). This is the part that ties the project to the Bayesian course.
 
