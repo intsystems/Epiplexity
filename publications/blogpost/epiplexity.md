@@ -1,551 +1,310 @@
 ---
 edit: true
-title: "From Entropy to Epiplexity: What Can a Computationally Bounded Learner Extract from Data?"
+title: "Does Learnable Structure Predict Transfer? Epiplexity Meets Time-Series Pretraining"
 lang: en
-date: 2026-09-29
-read_time: 32
+date: 2026-10-21
+read_time: 25
 authors:
-  - Alex Kravatsky
-summary: "Shannon entropy measures uncertainty and Kolmogorov complexity measures the shortest program for one object. Epiplexity adds a compute budget and measures the model part of a two-part description. Prequential and requential coding provide practical estimates of that model part."
+  - Danila Chernousov
+  - Mark Ikonnikov
+  - Daniil Kazachkov
+  - Alexey Kravatskiy
+summary: "Epiplexity motivates measuring the structure a bounded learner extracts from data. We test a learning-curve proxy on eleven synthetic time-series priors: KernelSynth and ETS transfer best, but excess prequential loss does not reliably rank downstream forecasting quality."
 tags:
   - Information Theory
   - Epiplexity
   - Data Selection
+  - Time Series
   - BMM
-cover: images/fig1.png
+cover: images/transfer_results.png
 ---
 
-**Based on the paper by Marc Finzi, Shikai Qiu, Yiding Jiang, Pavel Izmailov, J. Zico Kolter and Andrew Gordon Wilson (Carnegie Mellon University, New York University), arXiv:2601.03220, version 2, March 2026**
+## Choosing data before knowing what will transfer
 
-_The [paper](https://arxiv.org/abs/2601.03220) and the [code](https://github.com/shikaiqiu/epiplexity) are public._
+Suppose you can generate unlimited training data for a forecasting model. You can give it periodic signals, noisy trends, volatility clusters, chaotic trajectories, or samples from Gaussian processes. Every source is cheap to describe. Some are easy to predict; others keep a transformer busy for millions of examples. Which source should you choose if the eventual task is forecasting real time series?
 
-## Three apparent paradoxes of information
+The difficulty is deciding what makes synthetic experience useful. Low training loss may mean that a task is trivial. High loss may mean that its uncertainty is irreducible. A long learning process may build reusable representations, or teach details with little relevance to the deployment distribution. Dataset size and final predictive loss do not distinguish all these cases.
 
-[Finzi et al. (2026), Section 5](https://arxiv.org/html/2601.03220v2#S5) introduce three apparent tensions between classical information measures and observations in machine learning. They motivate a measure relative to an observer with bounded computation.
+**Our question is whether the amount of structure learned during synthetic pretraining helps predict transfer.** Epiplexity provides the theoretical motivation; excess prequential loss provides a statistic we can compute from training logs. Using our `episynth` pipeline, we trained a probabilistic Moirai-based transformer from scratch on eleven synthetic priors, at approximately 2 million and 40 million windows per prior, and evaluated transfer on 55 short-term GIFT-Eval configurations.
 
-1. **Deterministic computation cannot increase information.** Yet self-play and synthetic data can improve model capabilities. AlphaZero, for example, generated its training games from the rules and a reinforcement-learning procedure. The procedure is compact to specify, but running it produces a network with useful chess strategies.
-2. **Total information does not depend on prediction order.** Yet language-model loss can differ when text is modelled forward or in reverse. A description that exists mathematically may be much harder for a particular model to use in one order.
-3. **Likelihood modelling targets the data distribution.** This is sometimes taken to mean that a model can only reproduce the generating procedure. Yet assigning probabilities to observations can require inference that the generator never performs.
+The answer has two parts. KernelSynth and ETS gave the strongest aggregate transfer at both budgets. But across all eleven priors, the Spearman correlation between excess area and downstream CRPS error was **−0.18 at 2M and 0.00 at 40M**. The hoped-for relationship would be negative: more learned structure, lower forecasting error. Our measurements do not establish that ranking rule.
 
-These are not contradictions of classical theorems. An improvement in model capabilities does not imply an increase in Shannon entropy, and matching a distribution does not uniquely determine an algorithm. The issue is that a bounded observer may be unable to use every regularity that exists mathematically. This also matters for data selection: datasets of the same size can yield models with different downstream performance.
+Understanding this result requires separating three things: a formal measure of accessible structure, an algorithm-dependent proxy for that measure, and usefulness for a particular downstream distribution. We develop that distinction first, then follow it through the experiment. Our original results and numerical claims come from [*Epiplexity and Transfer in Synthetic Time-Series Pretraining*](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.tex), with its [compiled report](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf) and [supporting analysis](https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report/data).
 
-The rest of the post follows that distinction. We first define the two classical quantities, then show why computation creates the three apparent tensions. Only after that do we introduce epiplexity as a measure relative to a bounded observer and explain how the paper estimates it.
+## From uncertainty to accessible structure
 
-* * *
+### What entropy and program length leave out
 
-## Two classical notions of information
-
-The two measures quantify different objects. Shannon entropy asks how uncertain a draw from a known distribution is. Kolmogorov complexity asks how concise one realized object can be. For a discrete random variable $$X$$ with probability distribution $$p(x)=\Pr[X=x]$$, the **Shannon entropy** is
+For a discrete random variable $X$ with distribution $p$, Shannon entropy is
 
 $$
-H(X)=\mathbb{E}\bigl[-\log_2 p(X)\bigr].
+H(X)=\mathbb E[-\log_2 p(X)].
 $$
 
-For every binary prefix code, the expected code length is at least $$H(X)$$; block codes can approach this lower bound per sample. The **Kolmogorov complexity** $$K(x)$$ of one realised string $$x$$ is the length of the shortest self-delimiting program that makes a fixed prefix-free universal Turing machine $$\mathcal{U}$$ output $$x$$ and halt ([Li and Vitányi, 2008](#ref-livitanyi2008)).
+It measures uncertainty before observing a draw and bounds its expected lossless code length. Kolmogorov complexity $K(x)$ instead measures the length of the shortest program that outputs one realized string $x$ on a fixed universal machine ([Li and Vitányi, 2008](#ref-livitanyi2008)). Neither quantity specifies how much computation a learner has available to discover or use a pattern.
 
-The distinction is easiest with two examples. A uniform draw has high uncertainty before it is observed, and a typical realized draw also has high Kolmogorov complexity. An alternating string can be completely determined by a short rule once its length is known, even though a distribution that chooses between two alternating strings still has one bit of entropy.
+A uniform random string has high entropy and typically a long shortest description. An alternating string has a short description once its length is known. A pseudorandom sequence is the revealing intermediate case: a short seed and program reproduce it, yet an efficient observer may be unable to distinguish it from random data. Short description and accessible regularity are different properties.
 
-Entropy therefore describes uncertainty in a distribution, whereas Kolmogorov complexity describes the shortest effective description of one outcome. Neither quantity says whether a particular learner can discover a reusable pattern within a finite compute budget.
-
-Training on random API keys gives a model little beyond frequency estimates; training on data generated by a compact algorithm may yield reusable circuits even when the generator has a short description. Figure 1 illustrates why a third quantity is useful: the amount of structure that a particular learner can extract.
-
-![Random and structural information in three kinds of data, and information created by computation](images/fig1.png)
-
-*Figure 1. Left: three kinds of data and the training loss of a model on each. The dashed line is the final-loss baseline; the green area is the cumulative excess loss above that baseline, used as a proxy for the model part. Right: computation can create both kinds of information; learned structure can transfer to out-of-distribution (OOD) tasks. Source: Fig. 1 of the paper.*
-
-We can now make the classical statements behind the opening precise:
-
-| Classical statement | Observation in practice |
-| :-- | :-- |
-| A deterministic map $$f$$ adds no information: $$H(f(X))\le H(X)$$ and $$K(f(x))\le K(x)+K(f)+c$$ | Pseudorandom generators create randomness; self-play and synthetic data improve models |
-| Information does not depend on the order of prediction: $$H(X)+H(Y\mid X)=H(Y)+H(X\mid Y)$$ | Language models compress English text better left to right than in reverse ([Papadopoulos et al., 2024](#ref-papadopoulos2024)) |
-| Expected negative log-likelihood under $$Q$$ is minimized by $$P=Q$$ when the model class contains $$Q$$ | Matching those probabilities may require inference or representations absent from the sampling procedure |
-
-Here $$c$$ is a constant independent of $$x$$, and $$Q$$ is the data distribution. The first two rows concern classical information measures. The third concerns expected prediction loss under $$Q$$. It identifies the best distribution, but says nothing about the algorithm a model uses to represent or evaluate it.
-
-### Paradox 1: a short description can require extensive computation
-
-For a discrete random variable $$X$$ and a deterministic computable transformation $$f$$,
+Final predictive loss adds another perspective, but combines several effects. In the discrete case, predicting a true distribution $p$ with a model $q$ gives expected log-loss
 
 $$
-H(f(X))\le H(X),\qquad K(f(x))\le K(x)+K(f)+c.
+\mathbb E_p[-\log_2 q(X)]=H(p)+\mathrm{KL}(p\Vert q).
 $$
 
-The entropy inequality follows because $$f(X)$$ is fixed once $$X$$ is known: the chain rule gives $$H(X)=H(f(X))+H(X\mid f(X))$$, and conditional entropy is non-negative. The complexity inequality follows by composing a program for $$x$$ with a program for $$f$$. Neither argument bounds how long that program takes to run.
+The first term is uncertainty in the data; the second is predictive mismatch. A single endpoint does not describe how much the model learned on its way there. Nor does it say whether what it learned will help on another distribution.
 
-A pseudorandom generator illustrates the distinction. It expands a uniformly random $$k$$-bit seed into $$n>k$$ bits. Its output has Shannon entropy at most $$k$$ and a description consisting of the seed and the generator program. Assuming cryptographic security, no randomized test whose runtime is bounded by a polynomial in $$k$$ distinguishes the output from uniform $$n$$-bit data with non-negligible advantage. Here an advantage is negligible if it eventually becomes smaller than $$k^{-m}$$ for every fixed $$m>0$$. The output can therefore be unpredictable to a bounded observer without having higher Shannon entropy.
+### A two-part code with a time bound
 
-A related computational issue appears in AlphaZero. It learns a policy and a value function through self-play ([Silver et al., 2018](#ref-silver2018)). The algorithm and random seed may require far fewer bits to specify than the resulting network, but reconstructing the network requires running the training procedure. Once trained, the network makes its predictions without repeating that computation. The formal result below concerns pseudorandomness; the cellular-automaton experiments measure model structure empirically.
-
-### Paradox 2: exact conditional probabilities may be expensive
-
-The chain rule gives
+[Finzi et al. (2026), version 2](https://arxiv.org/html/2601.03220v2#S3) define epiplexity using probabilistic programs that can both evaluate probabilities and sample within a time bound $T$. Let $\mathcal P_T$ be that class. For a random finite bit string $X$, select
 
 $$
-H(X)+H(Y\mid X)=H(X,Y)=H(Y)+H(X\mid Y).
+\mathrm P^\star\in\arg\min_{\mathrm P\in\mathcal P_T}
+\left\{|\mathrm P|+\mathbb E[-\log_2 P(X)]\right\},
 $$
 
-Both orders describe the same pair, provided the exact conditional distributions can be used. This identity does not bound the cost of evaluating or sampling from those distributions.
+breaking ties in favor of the shortest program. Here $|\mathrm P|$ is the program length in bits, and $P$ is its probability distribution. The formal definition fixes a prefix-free universal machine and requires normalized, finite-binary probabilities, with evaluation and sampling each satisfying the runtime bound.
 
-Let $$X$$ be uniform on $$n$$-bit strings and $$Y=f(X)$$ for a bijection $$f$$ computable in polynomial time. Then $$Y$$ is also uniform, and $$H(Y\mid X)=H(X\mid Y)=0$$: each variable uniquely determines the other. Encoding the input first requires $$n$$ bits for $$X$$ followed by computation of $$f(X)$$. Encoding the output first also has entropy $$n$$, but recovering the input requires computing $$f^{-1}(Y)$$. If $$f$$ is a one-way permutation, no randomized algorithm with runtime polynomial in $$n$$ inverts it with non-negligible success probability over uniform inputs, despite the unique inverse.
-
-This is a difference in computation, not in the classical joint entropy. Under a time bound, it can affect the conditional models available in each direction. The paper proves an asymmetry for one-way permutations and tests prediction order empirically with cellular automata and chess data.
-
-### Paradox 3: can prediction require more than generation?
-
-Likelihood training aims to match the distribution of the data. If the model class contains the true distribution, that distribution minimizes expected prediction loss. It is tempting to take this further: perhaps the model only needs to reproduce the computations used to generate the data, and cannot acquire an inference procedure absent from the generator. This is the expectation questioned in [Section 5.3 of the paper](https://arxiv.org/html/2601.03220v2#S5.SS3).
-
-Consider a mystery story. The author chooses the culprit first, then writes clues consistent with that choice. The author does not have to solve the mystery. A model predicting the name of the culprit before the reveal faces a different task: only the clues are available, so it must assign probabilities to possible culprits from the evidence. Successful prediction can require inference that was unnecessary during generation. This is **induction**: inference about unobserved variables from observations.
-
-The two procedures can represent the same distribution of stories. What differs is which information is available when a computation is performed. Matching a distribution fixes probabilities, but does not specify an algorithm for calculating them. With unlimited computation, a predictor might enumerate possible hidden states. With a restricted budget, it may need to learn another procedure for inference. The paper investigates this possibility empirically; distribution matching alone is not a general theorem that the predictor must have greater program length than the generator.
-
-The objective makes the distinction precise. Let $$Y\sim Q$$ and let $$P$$ be a candidate probability model. Add and subtract $$-\log_2 Q(Y)$$ in the expected loss:
+The optimal description has two parts:
 
 $$
-\begin{aligned}
-L_Q(P)&:=\mathbb E_{Y\sim Q}[-\log_2 P(Y)]\\
-&=\mathbb E_Q[-\log_2 Q(Y)]
- +\mathbb E_Q\!\left[\log_2\frac{Q(Y)}{P(Y)}\right]\\
-&=H(Q)+\mathrm{KL}(Q\Vert P).
-\end{aligned}
+S_T(X)=|\mathrm P^\star|,\qquad
+H_T(X)=\mathbb E[-\log_2 P^\star(X)],\qquad
+\mathrm{MDL}_T(X)=S_T(X)+H_T(X).
 $$
 
-Here $$H(Q)=H(Y)$$, and the second term is the **Kullback–Leibler (KL) divergence**. It is non-negative and equals zero exactly when the distributions agree. Thus $$P=Q$$ minimizes expected loss when $$Q$$ belongs to the model class. If $$P$$ assigns zero probability to an event of positive $$Q$$-probability, the loss and divergence are infinite. A restricted class or finite-data training need not attain the optimum.
+**Epiplexity $S_T$ is the model part; time-bounded entropy $H_T$ is the residual data part.** The optimization chooses the shortest total description available to the observer, rather than maximizing model size. A useful model costs bits to describe but saves bits when encoding data. What remains unexplained is paid for in the residual code.
 
-For the story, write $$Y=(C,R)$$, where $$C$$ denotes the clues and $$R$$ the reveal identifying the culprit. Since $$P(C,R)=P(C)P(R\mid C)$$,
+![Random and structural information, illustrated through data examples, learning curves, and computation](images/fig1.png)
 
-$$
--\log_2 P(C,R)=-\log_2 P(C)-\log_2 P(R\mid C).
-$$
+*Figure 1. The motivation for separating model structure from residual uncertainty. In the learning-curve illustration, cumulative loss above a final-loss baseline serves as a model-part proxy. The transfer diagram expresses a motivation for data selection, not a guarantee for a particular downstream task. Source: Finzi et al., Fig. 1.*
 
-The story loss therefore includes predicting the reveal from the clues. At the distribution-matching optimum, $$P(R\mid C)=Q(R\mid C)$$ for clues with positive $$Q$$-probability. Merely generating a new story with a newly chosen culprit does not evaluate this probability for the clues already observed.
+The observer matters. A larger budget can make a previously inaccessible regularity usable, or allow a simpler program to replace an elaborate approximation. The optimal total code cannot increase when the admissible program class expands; its model part need not move monotonically. Epiplexity is therefore not an intrinsic dataset score independent of computational resources.
 
-The hidden-input experiment revisits induction. A separate experiment studies **emergence**: when direct simulation of long-run dynamics exceeds the observer's budget, prediction may rely on larger-scale patterns that are not explicit in the local generating rules.
+For forecasting, the relevant extension is conditional: the context $C$ is already available, and the model describes a distribution of future values $Y$ given $C$. The model part is then $S_T(Y\mid C)$. Our continuous-valued experiment uses conditional densities and a fixed dequantization protocol, which introduces additional conventions beyond the finite-string definition.
 
-* * *
+### Three consequences for synthetic data
 
-## Information for an observer with bounded time
+The time bound changes how three familiar information-theoretic arguments apply to synthetic data.
 
-### A model that runs in bounded time
+First, **computation can change what information is accessible**. Deterministic maps cannot increase Shannon entropy, and applying a short program cannot greatly increase unbounded Kolmogorov complexity. Those statements do not bound runtime. Under suitable cryptographic assumptions, Finzi et al. show that pseudorandom expansion can increase time-bounded entropy while leaving little accessible structure. Their cellular-automaton experiments separately illustrate computation producing structure detectable by neural observers. These are distinct theoretical and empirical claims.
 
-Definition 1 fixes the models available to the observer: probability models that can score an observation and generate a new one within a time bound. The observer is not allowed to hide an unlimited computation inside its model.
+Second, **prediction order can matter to a bounded observer**. Shannon's chain rule equates the joint entropy in either order. For a one-way permutation, predicting its output from its input can be efficient while recovering the input from the output is hard. Finzi et al.'s formal asymmetry concerns time-bounded quantities under a one-way-permutation assumption; their automaton and chess experiments examine order effects empirically.
 
-The quantity built from this restriction is **epiplexity** (from *epistemic complexity*): the amount of structure that the bounded observer can extract and use.
+Third, **generation and prediction can require different computations**. A generator can choose a hidden state and produce observations from it. A predictor seeing only the observations may need to infer that state, or average over possible states. Matching the observable distribution can therefore require an inference procedure absent from the sampler. This motivates synthetic tasks with latent mechanisms, but does not prove that every predictor is more complex than its generator.
 
-> **Definition 1** (time-bounded probabilistic model; Def. 7 of the paper). Let $$\mathcal{U}$$ be a fixed prefix-free universal Turing machine: no program is a proper prefix of another. Let $$T:\mathbb{N}\to\mathbb{N}$$ be a non-decreasing time-constructible function. A program $$\mathrm{P}$$ is a *$$T$$-time probabilistic model* over $$\{0,1\}^n$$ if $$\mathcal{U}$$ runs it in two modes, each halting within $$T(n)$$ steps:
->
-> - *evaluation*: on input $$(0,x)$$ with $$x\in\{0,1\}^n$$ it outputs a probability $$P(x)\in[0,1]$$ with a finite binary expansion;
-> - *sampling*: on input $$(1,u)$$, for an infinite string $$u$$ of random bits, it outputs $$x\in\{0,1\}^n$$ with probability $$P(x)$$.
->
-> The probabilities sum to one. $$\mathcal{P}_T$$ is the set of all such programs; $$\lvert\mathrm{P}\rvert$$ is the length of $$\mathrm{P}$$ in bits.
+Together, these ideas make synthetic-data selection a question about the observer and its task. They do not yet tell us which learned mechanisms will transfer to real forecasting problems.
 
-The input flag selects one of two routines in the same program. Evaluation receives a supplied observation; sampling receives random bits. Both routines must implement the same distribution $$P$$. A function $$T$$ is time-constructible if $$\mathcal{U}$$ can compute $$T(n)$$ from $$n$$ within $$O(T(n))$$ steps.
+## Measuring structure through a training trajectory
 
-For example, an autoregressive network with fixed parameters $$\theta$$ supplies conditional probabilities $$p_\theta(x_j\mid x_{<j})$$. For evaluation, give it the observed prefixes and multiply those probabilities:
+### Prequential coding: predict, transmit, then update
+
+Prequential coding turns learning into a sequential description of data ([Dawid, 1984](#ref-dawid1984); [Blier and Ollivier, 2018](#ref-blier2018)). Sender and receiver share an initialization, deterministic update procedure, schedule, and random seed. Before update $i$, both have model $P_i$. The sender codes the next batch $Z_i$ using $P_i$; the receiver decodes it. Only then do both update to $P_{i+1}$.
+
+The ideal data-code length is
 
 $$
-P_\theta(x)=\prod_{j=1}^n p_\theta(x_j\mid x_{<j}).
+L_{\rm preq}=\sum_{i=0}^{M-1}-\log_2 P_i(Z_i).
 $$
 
-For sampling, draw the first symbol from $$p_\theta(x_1)$$, then draw each next symbol from the conditional distribution for the prefix already generated. The parameters and conditional probabilities are the same in both routines. The formal definition additionally requires exact finite-binary probabilities and completion within the time bound.
+Replaying the decoded data reconstructs the final model as well. This is a code for the data and the training outcome, including unpredictable data bits. It is not a separate model code.
 
-### Epiplexity and time-bounded entropy
-
-A program in $$\mathcal{P}_T$$ gives a **two-part code** for data. First transmit the program describing a useful model; then transmit the residual data using that model. Arithmetic coding of $$x$$ with a model $$P$$ has ideal length $$-\log_2 P(x)$$ bits, up to coding overhead. The best program under the time bound splits the information in $$X$$ into a model part and a residual part.
-
-> **Definition 2** (epiplexity and time-bounded entropy; Def. 8 of the paper). For a random variable $$X$$ on $$\{0,1\}^n$$, let
->
-> $$
-> \mathrm{P}^\star=\arg\min_{\mathrm{P}\in\mathcal{P}_T}\Bigl\{\lvert\mathrm{P}\rvert+\mathbb{E}\bigl[-\log_2 P(X)\bigr]\Bigr\},
-> $$
->
-> with ties broken by the shortest program. The **epiplexity** of $$X$$ is $$S_T(X):=\lvert\mathrm{P}^\star\rvert$$. The **time-bounded entropy** of $$X$$ is $$H_T(X):=\mathbb{E}\bigl[-\log_2 P^\star(X)\bigr]$$.
-
-The sum $$\mathrm{MDL}_T(X):=S_T(X)+H_T(X)$$ is the minimum description length (MDL) of $$X$$ under the bound. Epiplexity is the model part of this code: the bits of structure the observer has to keep in order to predict well. Time-bounded entropy is the data part: the bits that remain unpredictable even for the best model the observer can run.
-
-In plain language: **how much of the data can this learner explain with a reusable model, and how much still looks random to it?** The answer changes when the allowed compute or the model family changes.
-
-- **Uniform random bits.** Let $$U_n$$ be uniform on $$\{0,1\}^n$$, with the length $$n$$ available to the model and $$T(n)$$ sufficient to evaluate and sample the uniform distribution. A program of constant length $$c_2$$ assigns $$P(x)=2^{-n}$$ to every string, so $$\mathrm{MDL}_T(U_n)\le n+c_2$$. For any normalized model $$P$$, if some $$P(x)=0$$ then the expected log-loss is infinite. Otherwise, $$\prod_x P(x)\le (2^{-n})^{2^n}$$ because $$\sum_xP(x)=1$$. Taking $$-\log_2$$ and dividing by $$2^n$$ gives
-
-  $$
-  \frac{1}{2^n}\sum_x -\log_2 P(x)\;\ge\; n.
-  $$
-
-Thus every admissible model has data cost at least $$n$$. The selected two-part code therefore satisfies $$n\le H_T(U_n)\le n+c_2$$ and $$S_T(U_n)\le c_2$$: the residual code grows linearly with $$n$$, while the model part stays bounded by a constant.
-
-- **Two alternating strings.** Let $$X$$ be $$0101\ldots$$ or $$1010\ldots$$, each with probability $$\tfrac12$$. Take $$T(n)=\Theta(n)$$. A program of constant size assigns probability $$\tfrac12$$ to $$0101\ldots$$ and to $$1010\ldots$$ within linear time. Both $$S_T(X)$$ and $$H_T(X)$$ are $$O(1)$$.
-
-Only the total is monotone in the bound: $$\mathrm{MDL}_{T'}(X)\le\mathrm{MDL}_T(X)$$ whenever $$T'\ge T$$. Epiplexity itself can rise or fall with $$T$$; an experiment below shows it falling.
-
-For pairs of random variables the authors define conditional versions.
-
-> **Definition 3** (conditional quantities; Def. 11 of the paper). Let $$\mathcal P_T^X$$ be the programs that receive $$x$$ as input and evaluate and sample a distribution of $$Y$$ within the time bound for every fixed $$x$$. Choose
->
-> $$
-> \mathrm P^\star_{Y\mid X}\in\arg\min_{\mathrm P\in\mathcal P_T^X}
-> \left\{|\mathrm P|+\mathbb E_{X,Y}[-\log_2 P(Y\mid X)]\right\},
-> $$
->
-> again selecting the shortest program among minimisers. Define
->
-> $$
-> S_T(Y\mid X):=|\mathrm P^\star_{Y\mid X}|,\qquad
-> H_T(Y\mid X):=\mathbb E_{X,Y}[-\log_2 P^\star(Y\mid X)].
-> $$
-
-For image classification, $$X$$ is the image and $$Y$$ its label. The decoder already has the images: the model code describes the classifier, and the data code encodes labels using its conditional probabilities. Images are not transmitted in this conditional code; the expectation still averages over the joint distribution of images and labels.
-
-Unlike Shannon entropy, these quantities obey no chain rule: in general $$H_T(Y,X)-H_T(X)\ne H_T(Y\mid X)$$. Paradox 2 rests on this asymmetry.
-
-* * *
-
-## The theory
-
-The theorems use a polynomial time bound. We write $$S_{\mathrm{Poly}}$$ and $$H_{\mathrm{Poly}}$$ for $$S_T$$ and $$H_T$$ with $$T$$ a polynomial in $$n$$. Below, $$c$$ is a fixed constant.
-
-### Pseudorandom numbers are random to a bounded observer
-
-A **pseudorandom generator** (PRG; [Blum and Micali, 1982](#ref-blum1982)) stretches a short random seed into a long string that looks random to every efficient test.
-
-> **Definition 4** (non-uniform PRG; Def. 3 of the paper). A function $$G:\{0,1\}^k\to\{0,1\}^n$$ with $$n=\mathrm{poly}(k)$$ is a PRG if every probabilistic polynomial-time test $$D$$, given an advice string of length $$\mathrm{poly}(k)$$, has a negligible advantage in telling $$G(U_k)$$ from $$U_n$$:
->
-> $$
-> \varepsilon(k)=\Bigl\lvert\Pr_{s\sim U_k}\bigl[D(G(s))=1\bigr]-\Pr_{u\sim U_n}\bigl[D(u)=1\bigr]\Bigr\rvert<k^{-m}\quad\text{for every }m>0\text{ and all large }k.
-> $$
-
-> **Theorem 1** (Thm. 9 of the paper). For every PRG $$G$$ with advantage $$\varepsilon(k)$$,
->
-> $$
-> n-2-n\varepsilon(k)<H_{\mathrm{Poly}}\bigl(G(U_k)\bigr)\le n+c,\qquad S_{\mathrm{Poly}}\bigl(G(U_k)\bigr)\le c+n\varepsilon(k).
-> $$
-
-The Shannon entropy of $$G(U_k)$$ is only $$k$$: there are $$2^k$$ seeds. The polynomial-time Kolmogorov complexity of $$G(U_k)$$ is at most $$k+c$$, because $$G$$ together with the seed is a short program. To a polynomial-time observer, however, the output is as unpredictable as $$n$$ truly random bits and contains no structure. Epiplexity and time-bounded entropy agree with the intuition that pseudorandom numbers are random and nothing more.
-
-### Paradox 1: deterministic computation creates information
-
-> **Theorem 2** (Thm. 12 of the paper). For every PRG $$G$$ with advantage $$\varepsilon(k)$$,
->
-> $$
-> H_{\mathrm{Poly}}\bigl(G(U_k)\bigr)-H_{\mathrm{Poly}}(U_k)>n-k-n\varepsilon(k)-c.
-> $$
-
-The output of the deterministic map $$G$$ has about $$n-k$$ bits more time-bounded entropy than the input. The time-bounded analogue of the classical bound $$H(f(X))\le H(X)$$ therefore fails. The reason is an asymmetry between $$G$$ and $$G^{-1}$$ that appears only under a time bound: $$K(G^{-1})=K(G)+O(1)$$, while a short program for $$G$$ gives no fast program for $$G^{-1}$$. The authors derive a practical rule for synthetic data: to create new information, use transformations without a simple and efficiently computable inverse.
-
-Theorem 2 concerns random information only. Evidence that computation also creates *structure* is empirical: the cellular-automaton experiment below.
-
-### Paradox 2: the order of prediction matters
-
-A **one-way permutation** is a bijection $$f$$ of $$\{0,1\}^n$$, computable in polynomial time, for which inversion has negligible success probability for every randomized polynomial-time algorithm. In the non-uniform setting used by the paper, the algorithm also receives an advice string of polynomial length, fixed for each $$n$$ independently of the sampled input. Formally, every such algorithm $$A$$ has $$\Pr_{x\sim U_n}[A(f(x))=x]<n^{-m}$$ for every $$m>0$$ and all large $$n$$.
-
-> **Theorem 3** (Thm. 13 of the paper). Let $$f$$ be a one-way permutation, $$X=U_n$$ and $$Y=f(X)$$. Then
->
-> $$
-> H_{\mathrm{Poly}}(X\mid Y)+H_{\mathrm{Poly}}(Y)>H_{\mathrm{Poly}}(Y\mid X)+H_{\mathrm{Poly}}(X)+\omega(\log_2 n).
-> $$
->
-> Here $$\omega(\log_2 n)$$ is a term $$g(n)$$ with $$g(n)/\log_2 n\to\infty$$.
-
-For Shannon entropy both sides equal $$H(X,Y)$$. Under a time bound, predicting $$X$$ first and then $$Y=f(X)$$ is easy: the observer computes $$f$$. Predicting $$Y$$ first and then $$X$$ requires inverting $$f$$, which no polynomial-time observer can do. The same data leave more random information in one order than in the other.
-
-The authors check this with an **elementary cellular automaton** (ECA): a row of binary cells updated in parallel by a rule $$r\in\{0,\dots,255\}$$ that sets each cell from the three cells centred on it. Rule 30 is believed to be one-way ([Wolfram, 2002](#ref-wolfram2002)). The map $$f$$ is 8 updates of rule 30 on $$n$$ cells with periodic boundary. In Figure 2, a transformer trained in the forward order reaches the Shannon entropy of the data; in the reverse order a gap to the Shannon entropy persists.
-
-![Loss of the forward and reverse order for rule 30 against the number of cells](images/owf-scaling.png)
-
-*Figure 2. Total time-bounded entropy of an input–output pair of rule 30 against the number of cells $$n$$, predicted in the forward order (input first) and in the reverse order (output first). Grey region: the Shannon entropy. Source: Fig. 4a of the paper.*
-
-### How much structure can exist?
-
-> **Theorem 4** (Thm. 10 of the paper). If one-way functions secure against probabilistic polynomial-time algorithms with polynomial advice exist, then some random variables $$X_n$$ on $$\{0,1\}^n$$ have $$S_{\mathrm{Poly}}(X_n)=\Omega(\log_2 n)$$.
-
-This proves that epiplexity can grow without bound. The logarithmic lower bound does not cap the epiplexity of these distributions; it may grow faster. The proof is non-constructive and does not identify a particular distribution realizing the bound.
-
-* * *
-
-## Measuring epiplexity with neural networks
-
-### From programs to training runs
-
-A search over all programs is intractable. The abstract class $$\mathcal P_T$$ requires both probability evaluation and sampling within the bound. The authors instead restrict the empirical estimate to neural networks of one architecture trained by one optimiser and measure compute in floating-point operations (FLOPs). Let $$N$$ be the parameter count, $$D$$ the training-token count and $$\mathcal D$$ the evaluation-token count. Their dense-network approximation assigns roughly $$2N$$ FLOPs per token to a forward pass: one multiplication and one addition per parameter. Backpropagation computes gradients with respect to both activations and weights and costs roughly two forward passes, or $$4N$$ FLOPs per token. Replaying training therefore costs about $$6ND$$ FLOPs, and forward-only evaluation costs $$2N\mathcal D$$. The decoder performs these stages in sequence, so their costs add:
+To isolate a model-part proxy, subtract the length of describing those data with the final model:
 
 $$
-6ND+2N\mathcal{D}\le T.
+\widehat K_{\rm preq}
+=L_{\rm preq}-L_{\rm final},\qquad
+L_{\rm final}=\sum_{i=0}^{M-1}-\log_2 P_M(Z_i).
 $$
 
-Definition 7 bounds evaluation and sampling **separately**, in Turing-machine steps. Sampling does not involve training: after reconstruction, it uses the same weights in a separate call. Each complete program call must finish within $$T(n)$$. Sections 4.1–4.2 and Appendix B.1 instead use a FLOP proxy for reconstructing a model by replaying training and evaluating the target dataset. Section 3 explicitly permits restricting the model class to networks reachable by a specified architecture and optimiser. Connecting this restricted empirical estimate to the exact class $$\mathcal P_T$$ requires normalized finite-binary probabilities and a worst-case runtime bound for both evaluation and sampling, including model reconstruction. The reported FLOP condition accounts for reconstruction plus evaluation; a sampling implementation must also satisfy its own bound.
+Geometrically, this is the area between the online loss curve and a horizontal final-model baseline, weighted by the number of observations. A sustained loss reduction produces a larger area. A high but flat curve contributes little excess: unpredictable data can be expensive to encode without teaching much structure.
 
-Attention, optimiser updates and coding overheads require separate accounting when they contribute materially.
+The interpretation follows the idea of separating a model description from a conditional data description ([Zhang et al., 2020](#ref-zhang2020)). It remains a heuristic. Subtracting two computable code lengths does not establish the difference between the corresponding shortest programs, and the argument does not supply a model-only decoder meeting the formal time bound. Replacing final loss on the training sequence with held-out loss makes the generalization gap another part of the measurement protocol.
 
-The authors call $$X$$ the *test dataset*: we choose the training data freely, while $$X$$ is the data whose information we measure.
+### Requential coding: describe what changes the student
 
-Writing out the weights of a trained network overestimates the information in them, particularly for large networks trained on little data. The authors encode the *training process* instead, with the prequential or the requential code.
+Requential coding takes a more direct route to describing a model. A teacher supplies a target distribution; sender and receiver share a student and indexed random proposals from that student. Relative entropy coding lets the sender communicate an index selecting a teacher-distributed example from those proposals. The receiver regenerates it and applies the same student update. The messages reconstruct the student without transmitting the teacher or the original dataset ([Theis and Ahmed, 2022](#ref-theis2022); [Qiu et al., 2026](https://arxiv.org/html/2607.11883v1#S3)).
 
-### Prequential coding: the area under the loss curve
+Its leading coding cost is cumulative teacher–student KL divergence on teacher-distributed samples. Universal index coding adds overhead, so the KL sum alone is not the complete expected message length. Unlike prequential coding, the protocol selects examples rather than losslessly transmitting a pre-existing sequence. The plotted teacher–student loss gap on real data is an empirical approximation, not generally that KL divergence. Our forecasting runs use the prequential proxy; they do not implement this requential protocol.
 
-Let $$Z_0,\dots,Z_{M-1}$$ be i.i.d. training batches. Let $$\theta_i$$ denote the complete training state after $$i$$ updates, including weights and optimiser state; write $$P_i=P_{\theta_i}$$. Sender and receiver share $$\theta_0$$, a deterministic update rule $$A$$, its schedule and random seed. The **prequential approach** predates epiplexity ([Dawid, 1984](#ref-dawid1984)); its use for neural-network coding is described by [Blier and Ollivier (2018)](#ref-blier2018).
+![Schematic training curves showing prequential excess area and a requential teacher–student gap](images/requential-illustration.png)
 
-At each step, the encoder arithmetic-codes the exact batch $$Z_i$$ under $$P_i$$ and transmits the bits. The decoder uses its identical $$P_i$$ and the received bits to recover $$Z_i$$. Only after this recovery do both sides compute $$\theta_{i+1}=A(\theta_i,Z_i)$$. This maintains identical training states at every step. The ideal contribution of the batch is
+*Figure 2. Blue: a prequential model-part proxy above a final-loss baseline. Red: the teacher–student gap used to illustrate requential estimation. This is a schematic from Finzi et al., Fig. 2a, not a measurement from our forecasting runs; exact requential cost involves KL on teacher samples and coding overhead.*
 
-$$
-\ell_i=-\log_2 P_i(Z_i)=\log_2\frac{1}{P_i(Z_i)}
-$$
+The full empirical procedure in Finzi et al. also searches over model sizes and training lengths, selecting the shortest total two-part code under a compute bound. Our study holds one architecture fixed and compares data budgets. An excess area from one run is not the result of that optimization.
 
-bits. Actual arithmetic coding adds rounding and termination overhead. After decoding, both sides make the same update and obtain $$P_{i+1}$$. The chain rule explains why the contributions add: the adaptive predictions define a joint probability
+### The signed area we actually measure
 
-$$
-\begin{aligned}
-Q_{\mathrm{preq}}(Z_{0:M-1})
-&=\prod_{i=0}^{M-1}P_i(Z_i),\\
-L_{\mathrm{preq}}
-&=-\log_2 Q_{\mathrm{preq}}(Z_{0:M-1})
-=\sum_{i=0}^{M-1}\ell_i.
-\end{aligned}
-$$
-
-Each $$P_i$$ depends on the already decoded prefix. Consequently this code reconstructs both the data and the final network $$P_M$$. It is a data code, rather than a separate code for the model alone.
-
-Why subtract the final-model loss? For unbounded Kolmogorov complexity, the algorithmic chain rule gives $$K(Z,P_M)\approx K(P_M)+K(Z\mid P_M)$$, up to logarithmic overhead. A description of the pair can be organised as a description of the model followed by the data conditional on that model. The prequential message is a code for the pair. Given $$P_M$$, the same training data have ideal code length $$L_{\mathrm{final}}:=\sum_i-\log_2 P_M(Z_i)$$. Following [Zhang et al. (2020)](#ref-zhang2020), the paper substitutes these computable code lengths for the two Kolmogorov terms. This motivates the estimate
+Let $g$ be a synthetic distribution over context–target pairs. In optimizer step $k$, let $u_k$ be the mean negative log density **per target point**, evaluated before updating the model. Our batch size is $B=1024$ and horizon is $h=64$. After $K$ steps, $N=BK$ windows have been observed. Let $\widehat\ell_N^{\rm EMA}$ be the final held-out loss in **nats per window**, using an exponential moving average (EMA) of the weights. We compute
 
 $$
-\begin{aligned}
-\widehat K_{\mathrm{preq}}
-&:=L_{\mathrm{preq}}-L_{\mathrm{final}}\\
-&=\sum_{i=0}^{M-1}\Bigl[-\log_2 P_i(Z_i)+\log_2 P_M(Z_i)\Bigr].
-\end{aligned}
+A_N=Bh\sum_{k=1}^{K}u_k-N\widehat\ell_N^{\rm EMA},
+\qquad \widehat S_N=\frac{A_N}{\ln 2}.
 $$
 
-For a loss curve measured in bits per token, multiply each loss gap by the number of tokens in its interval to obtain the corresponding contribution in bits.
+The factor $Bh$ converts each step's mean loss into a sum over its target points. We report $A_N$ in million nats, matching the technical report; division by $\ln 2$ converts nats to bits. **We retain the sign.** Clipping negative contributions would define another statistic.
 
-![Training loss curves of teacher and student with the prequential and requential areas](images/requential-illustration.png)
+Why might this measure learning rather than noise? Under fresh independent tasks and an unbiased endpoint estimate, a common conditional-entropy term cancels in expected excess loss. What remains compares the online and endpoint conditional KL divergences to the true prior predictive. That cancellation motivates the proxy, but neither finds the optimal program nor measures which learned features match the downstream distribution.
 
-*Figure 3. Training loss against the number of training tokens. The blue area is the prequential estimate $$\lvert\mathrm{P}_{\mathrm{preq}}\rvert$$. The red area between the student and teacher curves is the requential estimate $$\lvert\mathrm{P}_{\mathrm{req}}\rvert$$ of the next section. Source: Fig. 2a of the paper.*
+For continuous densities, negative NLL is valid: a density can exceed one. Absolute density losses depend on units. Our calculation retains the report's original-unit scores and dequantization convention, with no reinterpretation as exact finite-string code lengths.
 
-This subtraction is a **heuristic**, not a proved bound on the description length of the model. Both code lengths only upper-bound their respective Kolmogorov terms; subtracting upper bounds need not bound their difference. Moreover, the unbounded chain rule does not provide a decoder that runs within $$T$$. Finite-sample estimates need not even be positive.
-
-The pre-update loss estimates predictive loss for a fresh i.i.d. example. The final model has already seen those examples; its loss on them can be optimistic. In Appendix B.1, the authors approximate the final-training-data loss using scaled held-out loss, assuming a small generalization gap in their one-epoch experiments. For the adaptive-data experiment, they compute the final-training-data loss directly.
-
-### Requential coding: reconstructing a student from sample indices
-
-The **requential code** ([Qiu et al., 2026](#ref-qiu2026)) reconstructs a student trained on synthetic samples, without transmitting teacher weights or the original data. A *teacher* network $$P^{\mathrm{t}}_i$$ trains on real data. Sender and receiver share a *student* $$P^{\mathrm{s}}_i$$ with identical initial training state, update rule and random seed. At step $$i$$, the seed defines indexed proposals $$Y_i^{(j)}\sim P_i^{\mathrm{s}}$$. A counter-based random generator keyed by the seed, step $$i$$ and proposal index $$j$$ lets the receiver regenerate a proposal directly without producing the earlier proposals.
-
-The sender uses **relative entropy coding** ([Theis and Ahmed, 2022](#ref-theis2022)) to choose an index $$J_i$$ so that $$\widetilde Z_i=Y_i^{(J_i)}$$ has the teacher distribution $$P_i^{\mathrm t}$$. It transmits a prefix code for $$J_i$$. The receiver decodes the index and regenerates the chosen batch; both copies of the student then apply the same update $$\theta^{\mathrm s}_{i+1}=A(\theta^{\mathrm s}_i,\widetilde Z_i)$$. Repeating these steps reconstructs the final student.
-
-To see how sample selection can change a distribution, consider simple rejection sampling at one step. Write $$P$$ for the student and $$Q$$ for the teacher. Assume $$P(z)>0$$ whenever $$Q(z)>0$$, and choose $$B\ge\max_z Q(z)/P(z)$$. Draw proposals $$Y^{(j)}\sim P$$ and independent uniforms $$U_j\sim\mathrm{Uniform}[0,1]$$, and accept the first index satisfying
+The endpoint is especially consequential. Online losses use raw weights, while our main floor uses EMA weights. Replacing a raw floor with an EMA floor changes area by
 
 $$
-U_j\le\frac{Q(Y^{(j)})}{B P(Y^{(j)})}.
+A_N^{\rm EMA}-A_N^{\rm raw}
+=N\left(\widehat\ell_N^{\rm raw}-\widehat\ell_N^{\rm EMA}\right).
 $$
 
-For a proposal, $$\Pr(Y=z,\text{ accept})=P(z)Q(z)/(B P(z))=Q(z)/B$$. Summing over $$z$$ gives acceptance probability $$1/B$$; dividing therefore yields conditional distribution $$Q(z)$$ for the accepted proposal. Communicating its index is enough to identify the sample to the receiver. This illustrates the mechanism, but simple rejection sampling need not achieve the short KL-based message bound below. More sophisticated relative entropy coding constructions provide that bound ([Theis and Ahmed, 2022](#ref-theis2022)).
+A floor error $\delta$ shifts area by $-N\delta$. A small per-window discrepancy can therefore matter at a large data budget. Endpoint selection is part of the statistic's definition, not a presentation detail.
 
-The expected log-likelihood ratio of a teacher sample is
+## A controlled test with synthetic forecasting priors
 
-$$
-\mathbb{E}_{z\sim P_i^{\mathrm{t}}}\left[\log_2\frac{P_i^{\mathrm{t}}(z)}{P_i^{\mathrm{s}}(z)}\right]
-=\mathrm{KL}_i,
-\qquad \mathrm{KL}_i:=\mathrm{KL}\bigl(P_i^{\mathrm{t}}\,\Vert\,P_i^{\mathrm{s}}\bigr).
-$$
+### What varies, and what stays fixed
 
-The identity has a useful interpretation:
+Our hypothesis is deliberately narrower than the formal theory: **within a common forecasting protocol, do priors with larger signed excess prequential loss give lower real-world forecast error?** A useful association could help screen synthetic distributions from training logs, before repeatedly evaluating candidates downstream. Early-prefix prediction would make that screening cheaper still.
 
-$$
-\mathrm{KL}_i
-=\mathbb{E}_{P_i^{\mathrm t}}[-\log_2 P_i^{\mathrm s}(Z)]
--\mathbb{E}_{P_i^{\mathrm t}}[-\log_2 P_i^{\mathrm t}(Z)].
-$$
+`episynth` connects seeded task generation, probabilistic training, loss recording, area calculation, and transfer evaluation. We use the eleven generator families studied in [*Mix, Don't Pick*](https://arxiv.org/abs/2606.09912v1): KernelSynth, ETS, Waveform, SDE, StepFunction, TSI, ARIMA, fBm, GARCH, Chaotic, and TimeSynth. KernelSynth uses Gaussian-process kernels, an approach introduced in [Chronos](https://arxiv.org/abs/2403.07815v3); the remaining families span trends, seasonality, discontinuities, stochastic dynamics, and volatility.
 
-Thus KL is the excess loss of the student on **teacher samples**, above the entropy of the teacher. It is not generally the difference of their losses on real data; that loss gap is only an empirical approximation in Figure 3.
+![Examples from the eleven generator families, independently standardized for display](images/generator_gallery.png)
 
-Why can the message be shorter than the entropy of a sample? Relative entropy coding communicates a randomly selected teacher-distributed sample using shared proposals at the decoder. Ordinary lossless coding communicates a particular sample already fixed by the sender. Shared randomness and freedom to select the sample make the KL rate possible.
+*Figure 3. A visual guide to the synthetic priors. These are descriptive examples generated for the technical report, not traces from the archived training runs: two length-256 series per family, seeds 3 and 11, each independently centered and standardized. Source: our report's supplementary `generator_gallery` and `figure_protocol.json`.*
 
-The relative entropy coding result bounds the expected logarithm of the selected proposal index by $$\mathrm{KL}_i+O(1)$$ ([Theis and Ahmed, 2022](#ref-theis2022)). To send the index without requiring the decoder to know KL, [Qiu et al. (2026), Appendix A.1](https://arxiv.org/html/2607.11883v1#A1.SS1) use a universal prefix-free integer code. The code length is bounded by $$\log_2 J+2\log_2(1+\log_2 J)+1$$ for index $$J\ge1$$. Taking expectations and applying Jensen's inequality gives
+Each training task draws a window from a seeded length-1024 series. Context lengths vary from 13 to 512, with sampling weights derived from GIFT-Eval history lengths; the future target has 64 points. Padding is masked, and future targets do not enter context normalization. A fixed dequantization rule smooths the observations. Separate random streams make a window reproducible regardless of batch composition or worker count. These controls help ensure that changing generation throughput does not silently change the task.
 
-$$
-\mathbb{E}[\ell_i\mid\mathcal F_i]
-\le \mathrm{KL}_i+2\log_2(1+\mathrm{KL}_i)+\kappa,
-\qquad \kappa<5.21.
-$$
+The observer is our [Moirai 1.x](https://arxiv.org/abs/2402.02592v2) port: six transformer layers, width 384, patch size 32, and 10,746,600 parameters. It predicts a mixture density with Student-*t*, fixed-scale Gaussian, and log-normal components. Every run starts from scratch, rather than from published pretrained weights, so the learned forecasting behavior comes from the selected synthetic prior under this architecture.
 
-Here $$\mathcal F_i$$ is the training history before message $$i$$, and $$\ell_i$$ is the number of bits sent. Once the sample is decoded, both copies of the student apply the same update. The final student is therefore specified by the shared setup and all the messages. Adding their lengths and taking expectations yields
+| Training series | Windows per prior | Optimizer steps | Data access |
+| :-- | --: | --: | :-- |
+| Approximately 2M | 1,999,872 | 1,953 | Precomputed corpora |
+| Approximately 40M | 39,999,488 | 39,062 | Online generation; KernelSynth precomputed |
 
-$$
-\begin{aligned}
-\mathbb{E}[L_{\mathrm{req}}]
-&\le C_{\mathrm{setup}}
-+\mathbb{E}\!\left[\sum_{i=0}^{M-1}
-\bigl(\mathrm{KL}_i+2\log_2(1+\mathrm{KL}_i)+\kappa\bigr)\right].
-\end{aligned}
-$$
+Both series use batch size 1024, AdamW, learning rate $10^{-3}$ with 200 warmup steps, and bfloat16 training. The EMA time constant is 2% of each run's step budget. At seven checkpoints—1%, 2%, 5%, 10%, 20%, 50%, and 100%—raw and EMA weights are evaluated on 100,000 held-out windows. Area uses the bfloat16 endpoint matching training precision.
 
-The setup includes the initialisation, update rule, shared seed and schedule. A realised trajectory may exceed its conditional-mean bound; this is an expected-length result. The epiplexity paper originally used $$\mathrm{KL}_i+\log_2(1+\mathrm{KL}_i)+4$$ as its per-message expression; the later requential paper explicitly accounts for coding the index without transmitting KL. We use that later bound here.
+There are 22 primary runs plus a second initialization for Waveform at 40M. Primary runs share initialization seed 0. The budgets share training seed ranges and are not independent replications; the EMA schedule also scales with budget. We match model size and window counts within each series, not measured total compute or generation cost. Training used RTX 4090/A100 hardware, with a precomputed GPU-generated corpus for the long KernelSynth run.
 
-When $$2\log_2(1+\mathrm{KL}_i)+\kappa$$ is small relative to $$\mathrm{KL}_i$$, the leading estimate is $$\widehat K_{\mathrm{req}}=\sum_i\mathrm{KL}_i$$. At small block sizes the overhead can dominate, so the full bound should also be reported.
+![Pre-update training losses for all eleven priors at the two window budgets](images/training_results.png)
 
-The decoder reconstructs the **student**, without the teacher or the original training data. Its main cost is replaying student training, approximately $$6ND$$ FLOPs under the dense-model accounting in the paper, plus proposal generation. Actually finding an index at the encoder can be much more expensive. To evaluate the estimate, experiments can sample directly from the teacher and accumulate KL without performing the index search.
+*Figure 4. Our archived training curves, with logarithmic window axes and NLL in nats per target point. Displayed curves average groups of steps; area calculation uses every exported step. Negative losses are valid continuous-density scores. Source: technical report, Fig. 1, reconstructed from the saved runs of 19–20 October 2026.*
 
-|          | Prequential | Requential |
-| :-- | :-- | :-- |
-| What is decoded | Exact training data and final model; the subtracted model-part estimate has no separate decoder | Student reconstructed from shared setup and sample-index messages |
-| Main decoding work | Replay the agreed training procedure | Regenerate selected samples and replay student training |
-| Training | one network | teacher and student, 2 to 10 times slower |
-| Estimate | several times larger | smaller |
+### What counts as transfer
 
-Across the datasets of the paper the prequential and requential estimates correlate, most closely among datasets of the same kind. The authors recommend the prequential estimate for ranking datasets, especially when the loss curve of an expensive training run already exists. For accurate values they recommend the requential estimate.
+We evaluate the final EMA model **without fine-tuning** on 55 short-term [GIFT-Eval](https://arxiv.org/abs/2410.10393v2) configurations. Each configuration specifies a dataset, frequency, and forecasting horizon. The main score is the saved sample-based `scaled_crps`, a continuous ranked probability score that evaluates forecast distributions rather than only a point prediction.
 
-### The compute-optimal two-part code
-
-The prequential procedure estimates a model part; the requential procedure constructs a student-model code. The authors estimate the data part $$\mathbb{E}[\log_2 1/P(X)]$$ as the validation loss times $$\mathcal{D}$$. They sweep the model size $$N$$ (width and depth) and the training length $$D$$. Training uses a constant learning rate with an exponential moving average of the weights: each run then gives a whole curve of code length against compute. The lower envelope over all runs estimates $$\mathrm{MDL}_T$$ at every bound $$T$$. Figure 4 shows the construction. At a given $$T$$ the model part of the envelope estimates $$S_T(X)$$; the data part estimates $$H_T(X)$$. The empirical envelope is jagged; the authors smooth it with a lower convex hull.
-
-![Two-part code length against compute for runs of different sizes, with the lower envelope](images/pareto-frontier.png)
-
-*Figure 4. Schematic of the estimation. Each thin curve is a training run, coloured by the number of parameters $$N$$; the dots form the lower envelope. At each compute bound, dark green is $$S_T$$ and light green is $$H_T$$. Source: Fig. 2b of the paper.*
-
-Under standard scaling assumptions the authors derive typical trends. Epiplexity grows with the compute bound $$T$$ while time-bounded entropy falls. With unlimited compute, epiplexity grows with the size $$\mathcal{D}$$ of the dataset while time-bounded entropy per token falls. These trends are typical only; the emergence experiment below is a counterexample.
-
-* * *
-
-## Experiments
-
-### Cellular automata: equal programs, different information
-
-**Setting.** The ECA has 64 cells with periodic boundary. The input $$X$$ is the state after 1000 updates of a uniform random row; the output is $$Y=F_r^{48}(X)$$. Here $$F_r$$ is one update under rule $$r$$. The authors train transformers of width 16 to 512 and depth 1 to 9 with the requential code. They measure $$S_T(Y\mid X)$$ and $$H_T(Y\mid X)$$ on a test set of $$\mathcal{D}=10^8$$ tokens of $$Y$$.
-
-![Rollouts of ECA rules 15, 30 and 54](images/eca-spacetime.png)
-
-![Two-part code, epiplexity and time-bounded entropy of the three rules against compute](images/eca-rules-measurements.png)
-
-*Figure 5. Top: rollouts of rules 15, 30 and 54 from random rows, time downward. Bottom: two-part code, $$S_T(Y\mid X)$$ and $$H_T(Y\mid X)$$ against compute in FLOPs. Source: Fig. 3 of the paper.*
-
-| Rule | Wolfram class | $$S_T(Y\mid X)$$, bits | $$H_T(Y\mid X)$$, bits |
-| :-: | :-: | :-: | :-: |
-| 15 | II, periodic | $$\approx 2\times10^5$$ | $$\approx 0$$ |
-| 30 | III, chaotic | $$\approx 0$$ | $$\approx 10^8$$ |
-| 54 | IV, complex | $$\approx 5.4\times10^6$$ | $$\approx 1.5\times10^7$$ |
-
-*Values at $$10^{17}$$ FLOPs, our estimates from Figure 5.*
-
-Rules 15, 30 and 54 define programs of equal length and equal running time. Rule 15 is periodic with a simple inverse. The loss saturates quickly; the data contain little information of either kind. Rule 30 is chaotic. The loss makes no progress; the information is maximal and entirely random. Rule 54 is complex but partly predictable. The loss decreases steadily as compute grows; the model extracts millions of bits of structure. [Zhang et al. (2024)](#ref-zhang2024) found that models trained on class IV rules transfer best to downstream tasks, in line with the high epiplexity of rule 54.
-
-### Emergence: when more compute means less structure
-
-**Setting.** The data are 64 updates of rule 54. A non-looped transformer predicts the final state directly. A looped transformer predicts intermediate states as well, dividing the computation into shorter prediction intervals. Its code accounts for the intermediate tokens; it is trained to approximate the dynamics.
-
-![Two-part code and epiplexity of looped and non-looped models against compute](images/eca-emergence.png)
-
-*Figure 6. Two-part code and $$S_T$$ against compute in FLOPs for the non-looped and looped models. Source: Fig. 6 of the paper.*
-
-In Figure 6, below about $$10^{15}$$ FLOPs the non-looped model gives the shorter estimated two-part code. Its estimated model part rises with compute. The authors interpret this as learning patterns at a larger scale, such as travelling structures called gliders and their interactions; the plot itself measures code length, not the internal representation. Above that budget, the looped model gives the shorter code, and both the total and the selected model part decrease sharply. These are empirical code estimates, rather than the exact program lengths in the formal definition.
-
-This is the emergence aspect of Paradox 3: predicting many steps of simple dynamics within a limited budget can favour a model of their large-scale regularities. With enough compute, replaying shorter intervals can become preferable. The example also shows that epiplexity need not increase with $$T$$. The authors describe the fall as uncommon because simulation is feasible here; they expect growth to be more typical for natural data at moderate compute.
-
-### Paradox 3 in the experiment: inference about hidden inputs
-
-The hidden-state example makes the gap between a sampling procedure and likelihood evaluation explicit. A generator has access to the complete state; a predictor receives only part of it. The distribution-matching objective is unchanged.
-
-**Setting.** $$Z$$ is uniform on $$\{0,1\}^{32}$$. The map $$f$$ is 4 updates of rule 30; the mask $$m$$ deletes the first $$h$$ bits of $$Z$$. The model receives $$m(Z)$$ and predicts $$f(Z)$$. A transformer with 3 layers and width 256 trains for 20 000 steps with the requential code.
-
-Write $$X=m(Z)$$ and $$Y=f(Z)$$. Given $$X=x$$, exactly $$2^h$$ complete states remain possible, each with conditional probability $$2^{-h}$$. Grouping the states according to their output gives
+For prior $g$ and configuration $j$, divide its score $m_{g,j}$ by the saved seasonal-naive score $m_{{\rm naive},j}$. Then give each configuration equal weight in a geometric mean:
 
 $$
-\begin{aligned}
-Q(y\mid x)
-&=\sum_{z:\,m(z)=x}\Pr(Z=z\mid X=x)\,\mathbf 1\{f(z)=y\}\\
-&=2^{-h}\sum_{z:\,m(z)=x}\mathbf 1\{f(z)=y\}.
-\end{aligned}
+R_g=\exp\left\{\frac{1}{55}\sum_{j=1}^{55}
+\log\frac{m_{g,j}}{m_{{\rm naive},j}}\right\}.
 $$
 
-The indicator is one for a completion producing $$y$$ and zero otherwise. Generating a pair requires sampling one $$z$$ and evaluating $$f$$ once. Directly evaluating the displayed probability by enumeration requires up to $$2^h$$ evaluations of $$f$$. Enumeration is one algorithm, not a proof that every algorithm has exponential cost. A predictor can approximate these probabilities without recovering the actual hidden bits or explicitly listing all completions.
+**Lower is better; a ratio below one beats seasonal naive.** Normalization expresses performance against a common reference. Equal weighting prevents a configuration from dominating simply because it contains more windows, but does not eliminate sensitivity to an extreme score ratio. We keep this sample-based CRPS field distinct from the separately saved nine-quantile `mean_weighted_sum_quantile_loss`. MASE, median configuration ratios, and mean configuration ranks serve as sensitivity checks.
 
-Because $$Y$$ is deterministic given $$Z$$, conditional Shannon entropy satisfies
+We correlate area with $R_g$ across generator families, not across all forecast windows. The 95% intervals below use 10,000 paired bootstrap resamples of those eleven families. They describe uncertainty over this small collection of priors, not training-initialization uncertainty. Related configurations in GIFT-Eval are also not 55 independent training replications.
 
-$$
-H(Y\mid X)=H(Z\mid X)-H(Z\mid X,Y)
-          =h-H(Z\mid X,Y)\le h.
-$$
+## What transfers, and does area predict it?
 
-Equality holds when $$Y$$ distinguishes the hidden completions for each observed $$x$$. If several completions give the same output, the entropy is smaller. Thus $$h$$ is a natural baseline, rather than an automatic consequence of hiding $$h$$ bits for any transformation.
+### Useful priors emerge at both budgets
 
-![The hidden-bits task: generation and prediction](images/hidden-bits-illustration.png)
+KernelSynth achieves the lowest aggregate CRPS ratio in both series: **0.678 at 2M and 0.639 at 40M**. It beats seasonal naive on 50 of 55 configurations at each budget. ETS ranks second, at 0.731 and 0.717. These are useful empirical choices for this model and evaluation protocol, not architecture-independent rankings of synthetic data.
 
-![Training loss against compute for h from 0 to 5, and epiplexity for each h](images/induction-hard.png)
+| Prior | Area, 2M | CRPS ratio, 2M | Area, 40M | CRPS ratio, 40M |
+| :-- | --: | --: | --: | --: |
+| KernelSynth | 68.4 | **0.678** | 926.1 | **0.639** |
+| ETS | 26.7 | 0.731 | 138.6 | 0.717 |
+| Waveform | 70.9 | 0.818 | 1061.2 | 1.373 |
+| SDE | 11.0 | 0.872 | 34.6 | 0.861 |
+| StepFunction | 49.5 | 1.607 | 588.3 | 0.839 |
+| TSI | 64.8 | 0.803 | 765.9 | 0.776 |
+| ARIMA | 24.2 | 0.847 | 154.5 | 0.833 |
+| fBm | 9.6 | 0.853 | 40.6 | 0.867 |
+| GARCH | 16.6 | 0.879 | 100.9 | 0.874 |
+| Chaotic | 126.2 | 1.171 | 1956.6 | 1.285 |
+| TimeSynth | 15.3 | 0.974 | 114.9 | 0.851 |
+| Waveform, initialization 1 | — | — | 1063.6 | 0.972 |
 
-*Figure 7. Top: the data. The generator computes $$m(Z)$$ and $$f(Z)$$ from $$Z$$; the predictor receives only $$m(Z)$$. Bottom: training loss against compute (dashed lines: $$h$$ bits) and the measured epiplexity for each $$h$$. Source: Fig. 5 of the paper.*
+*Table 1. Signed EMA-floor areas in million nats and geometric mean CRPS ratios to seasonal naive, reproduced from the technical report's generated results table. Primary runs use initialization 0. The Waveform repeat is excluded from eleven-family correlations.*
 
-In Figure 7, the authors report convergence near the $$h$$-bit baseline, with training compute increasing approximately exponentially across the tested values of $$h$$. The estimated model part increases as well. This supports the interpretation that prediction uses additional inference, but the loss curves alone do not identify the learned algorithm or establish an asymptotic complexity lower bound.
+More data improves aggregate CRPS for eight of the eleven primary priors. StepFunction improves markedly, from 1.607 to 0.839. Waveform, fBm, and Chaotic worsen. This comparison shows how outcomes change across the completed training protocols; with mostly one initialization, it does not isolate a general causal effect of increasing the data budget.
 
-A second task makes the distinction clearer: the generator samples a sequence using a random Markov transition matrix, then withholds some of that matrix from the predictor. The predictor must use the supplied entries and estimate missing transition probabilities from the sequence. The generator performs no such estimation because it already has the matrix. The authors find a larger estimated model part when both strategies are needed than when the matrix is fully visible or fully hidden ([Section 5.3.1](https://arxiv.org/html/2601.03220v2#S5.SS3.SSS1)).
+### The full-set relationship is weak
 
-This distinction also applies beyond autoregressive prediction. For a latent-variable model, sampling can proceed by drawing $$Z$$ and then drawing $$Y$$ given $$Z$$, while likelihood evaluation requires the marginal $$Q(y)=\sum_z Q(y\mid z)Q(z)$$ (an integral for continuous latents). Efficient approximations may use an inference procedure for the posterior of $$Z$$ given $$Y$$. The paper discusses this connection in [Appendix G](https://arxiv.org/html/2601.03220v2#A7).
+The crucial comparison places area on one axis and downstream error on the other.
 
-### Chess: the order of the data
+![Signed excess area versus aggregate CRPS ratio, showing weak full-set correlations and a Waveform initialization repeat](images/transfer_results.png)
 
-**Setting.** Lichess games as characters. In the forward order each game is written as the moves followed by the final board in FEN, a one-line text encoding of a position. In the reverse order the board comes first. Transformers of 1 to 160 million parameters train on up to $$5\times10^9$$ tokens with the requential code.
+*Figure 5. Our main result. Each filled point is one prior; lower is better on the vertical axis. The dashed horizontal line is seasonal naive. Horizontal axes are logarithmic. The open Waveform marker is the additional initialization, excluded from the displayed correlations. Source: technical report, Fig. 2.*
 
-![Time-bounded entropy and epiplexity of the two orders against compute](images/chess-entropy-and-epi.png)
+The Spearman correlations are $\rho=-0.18$ at 2M, with 95% interval $[-0.81,0.51]$, and $\rho=0.00$ at 40M, with interval $[-0.89,0.61]$. These broad intervals reflect the small number of generator families. They do not establish that the true association is exactly zero; they do show that this experiment has not demonstrated a reliable monotone ranking rule.
 
-![Epiplexity and downstream accuracy for the two orders](images/chess-metrics-bar.png)
+The point pattern explains why a simple narrative fails. Chaotic has the largest area in both series but transfers worse than seasonal naive. ETS transfers well despite a much smaller area than KernelSynth or Waveform. A prior can induce substantial measured learning without making the most useful preparation for this benchmark.
 
-*Figure 8. Top: $$H_T$$ and $$S_T$$ of the forward and reverse orders against compute in FLOPs. Bottom: $$S_T$$, accuracy on chess puzzles and accuracy on the centipawn task after fine-tuning. Source: Figs. 4c and 7 of the paper.*
+Final EMA loss is not a convincing substitute: its correlations with aggregate CRPS are −0.13 and −0.22. Conversely, our results do not demonstrate that area predicts transfer better than final loss. Area combines the accumulated online loss and endpoint loss by construction; once both are known, it is not an independent source of information.
 
-In Figure 8, at large compute the reverse order gives both higher time-bounded entropy and higher epiplexity; at small compute the gap vanishes. The authors then fine-tune both models on two OOD tasks. On chess puzzles the forward and the reverse order reach the same accuracy. The centipawn task is to predict the advantage of a position, as evaluated by the Stockfish engine, in 9 classes. On this task the reverse order reaches an accuracy of 0.28 against 0.21. Predicting the moves from the final board forces the model to represent the board state. This structure transfers to a task on board states. The reverse order has the higher training loss, yet it gives the more useful model.
+### Stronger subset correlations need a different interpretation
 
-### Natural data: text, chess and images
+Excluding Chaotic and StepFunction yields $\rho=-0.73$ at 2M across nine priors, but only −0.28 at 40M. Additionally excluding Waveform at 40M gives −0.83 across eight priors. The analysis also explores fifteen area variants.
 
-**Setting.** Three datasets of $$\mathcal{D}=5\times10^9$$ tokens each. OpenWebText is English web text with one token per character; CIFAR-5M consists of $$32\times32$$ greyscale images with one token per pixel. The authors train transformers of up to 160 million parameters with the requential code, under the bound $$T=6\times10^{18}$$ FLOPs.
+Those relationships can generate hypotheses about mechanisms or unstable forecasts. They cannot validate a selector: exclusions and metric choices were explored after observing the outcomes, and the intervals are not corrected for that search. A useful next test would specify the selection rule in advance and evaluate it on unseen generator families. Reporting only the favorable subsets would hide the main experimental result.
 
-![Epiplexity and time-bounded entropy of OpenWebText, chess and CIFAR-5M](images/natural-epi-stacked.png)
+## What the sensitivity checks reveal
 
-*Figure 9. Epiplexity (solid) and time-bounded entropy (hatched) on a logarithmic axis; Chess (R) is the reverse order. Source: Fig. 8a of the paper.*
+### Similar area can coexist with different forecast tails
 
-| Dataset | $$S_T$$, bits | $$\mathrm{MDL}_T$$, bits | $$S_T/\mathrm{MDL}_T$$ |
-| :-- | :-: | :-: | :-: |
-| OpenWebText | $$\approx 3\times10^8$$ | $$\approx 7\times10^9$$ | 4% |
-| Chess, reverse | $$\approx 2.8\times10^8$$ | $$\approx 4\times10^9$$ | 7% |
-| Chess, forward | $$\approx 2\times10^8$$ | $$\approx 3.5\times10^9$$ | 6% |
-| CIFAR-5M | $$\approx 9\times10^7$$ | $$\approx 2.3\times10^{10}$$ | 0.4% |
+The 40M Waveform repeat is particularly informative. Initializations 0 and 1 produce areas of **1061.2 and 1063.6 million nats**, yet aggregate CRPS ratios of **1.373 and 0.972**. Their median configuration ratios are much closer: 0.750 and 0.721.
 
-*Our estimates from Figure 9.*
+The worst seed-0 configuration, `bitbrains_rnd/5T/short`, has a CRPS ratio of about $2.67\times10^5$; the same configuration scores 58.0 for seed 1. A geometric mean reduces the influence of extremes compared with an arithmetic mean of ratios, but an enormous failure still matters. The saved summaries identify the affected configuration; they do not contain the individual forecast samples needed to diagnose its mechanism.
 
-In these experiments, estimated epiplexity is a small fraction of the total two-part code length. At the stated token count and compute budget, text has the largest estimated model part; CIFAR-5M has the largest total code length and the smallest model part. More than 99% of its code length is assigned to residual pixel values. This ranking is relative to the tokenisation, model family and compute budget used in the paper; it does not order text and images intrinsically.
+The median describes typical configuration performance, while the geometric aggregate also registers the severity of poor configurations. Choosing one changes the operational question. A forecaster's rare failures may be important in deployment even when its typical task performance is good.
 
-Published scaling laws give the same ordering: extrapolated to $$T=10^{25}$$ FLOPs and $$10^{12}$$ tokens, they place language first and pixel images last. Epiplexity also agrees with a result on data selection. Adaptive data optimisation ([Jiang et al., 2025](#ref-jiang2025)) reweights data domains during pretraining; the data it selects have higher prequential epiplexity than natural sampling, along with better downstream accuracy.
+This repeat is evidence of sensitivity, not an estimate of initialization variance across the study. Nor does substituting the better repeat rescue the main hypothesis: replacing Waveform seed 0 with seed 1 leaves the full-set area correlation near zero, at 0.009.
 
-* * *
+### EMA changes the measured area
 
-## Limitations
+At 40M, ARIMA's area is **154.5 million nats with an EMA endpoint and 15.4 with a raw endpoint**. The factor-of-ten change follows the endpoint term in the area equation; it need not reflect a comparable change in the amount of transferable structure.
 
-The paper has two direct limitations:
+Using raw floors gives full-set correlations of −0.15 at 2M and +0.19 at 40M. Endpoint choice substantially changes some measured areas without establishing a stable association with transfer. A practical selector would need its floor, precision, and averaging protocol fixed before evaluation, rather than choosing whichever produces a favorable correlation.
 
-- Epiplexity measures the amount of structure, independent of the usefulness of that structure for a given task. The authors stress that it is no guarantee of OOD performance.
-- The prequential estimate is a heuristic; the requential estimate is 2 to 10 times slower.
+### Can short prefixes screen priors cheaply?
 
-The released code and experiments add two practical limits:
+If a signal appears only after full training, it offers limited savings for data selection. We therefore examine each of the seven saved checkpoints. A prefix area uses only losses observed so far and **that checkpoint's own EMA floor**; it does not subtract the future final loss. We compare it with checkpoint loss and the loss drop from the initial 1% of training steps, using final downstream CRPS as the target.
 
-- Every estimate depends on the architecture, optimiser, bound $$T$$ and evaluation size $$\mathcal D$$. Comparing datasets requires a common observer and protocol. Comparing architectures treats the observer as the experimental variable and requires common data, evaluation criteria and compute accounting.
-- All experiments use transformers.
+![Checkpoint area, checkpoint loss, and loss drop correlated with final transfer at seven prefixes](images/prefix_results.png)
 
-* * *
+*Figure 6. Exploratory prefix statistics across all eleven priors. Correlations change with checkpoint and budget; the signs describe association with final error, so their desirability depends on the predictor. Source: technical report, Fig. 3. No predictor is trained and tested on held-out generator families.*
 
-## Conclusion
+The curves do not supply a consistent early ranking. At the first 40M checkpoint, area is positively associated with final error; later associations approach zero. The 2M series shows a different trajectory. These retrospective correlations are useful diagnostics, but do not constitute a validated early-transfer predictor.
 
-Epiplexity is the model part of the shortest two-part description available under a time bound. This restriction permits phenomena excluded by the corresponding unbounded statements: deterministic computation can increase the time-bounded quantities, prediction order can matter, and prediction can require a more elaborate model than generation. The empirical procedures approximate the model part using cumulative excess prequential loss or a requential student code, then select a model by total description length. The ranking of datasets is therefore relative to the specified observer and budget.
+### A simple compression baseline remains inconclusive
 
-For machine learning, predictive loss and estimated model description length provide complementary measurements. Two datasets with the same final loss can yield different model parts. Epiplexity is therefore a candidate criterion for data selection, while transfer performance must still be evaluated on the intended downstream tasks.
+We also compare gzip compression rates for 5,000 series from each of ten priors; TimeSynth is absent. The baseline includes raw float32 and range-normalized int16 representations. For the int16 rate, correlations with aggregate CRPS are −0.59 and −0.47 at the two budgets, with both bootstrap intervals including zero.
 
-* * *
+Here a higher rate means more bytes per point, not better compression. The numerical correlations therefore do not support a simple story that more compressible series transfer better. They also do not establish that gzip outperforms excess area: the study is small, the family set differs, and the uncertainty is wide. This baseline reinforces the need to define precisely which property of the data a proposed selector captures.
 
-## Follow-up work
+## Structure learned is not necessarily structure needed
 
-The most direct follow-up work comes from the group led by Andrew Gordon Wilson:
+Our experiment separates an attractive motivation from a demonstrated selection procedure. Under this forecasting protocol, KernelSynth and ETS are strong priors. Signed excess prequential loss alone does not reliably identify them across the full family set.
 
-- **[Qiu et al. (2026), Requential Coding](https://arxiv.org/abs/2607.11883):** a teacher selects examples drawn from a student predictive distribution. Recording the selection indices, together with shared randomness and the training algorithm, lets a decoder reconstruct the training trajectory of that student. The coding cost depends on teacher–student disagreement, rather than the entropy of the original data. The authors obtain PAC-Bayes generalization bounds for billion-parameter language models. At fixed loss, larger models and ensembles can have shorter codes; repeated training epochs can increase the code length and indicate overfitting.
-- **[Su et al. (2026), Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746):** introduce two online uses of an epiplexity proxy. **EpiSelect** fits cross-domain loss-scaling laws to account for how training on one domain affects predictions on others, then adjusts sampling weights to maximize the predicted proxy gain. **EpiGen** trains a synthetic-data generator with REINFORCE. Its reward is the reduction in learner loss on a buffer of earlier samples after training on a new generated batch. Evaluating earlier samples rewards improvements that extend beyond the new batch itself. The authors report gains in zero-shot downstream evaluation for EpiSelect and in downstream fine-tuning for EpiGen.
+One interpretation is task alignment. A learner can acquire a substantial description of synthetic dynamics whose details do little for real-world forecasting. Another is measurement: excess area depends on the learning algorithm, endpoint, and density conventions, and is not the formal optimum. The present experiments do not disentangle these explanations. In particular, they do not disprove epiplexity, establish a universal absence of association, or show that structure is irrelevant to transfer.
 
-* * *
+This distinction is already present in the founding work: [Finzi et al.](https://arxiv.org/html/2601.03220v2#S6) explicitly separate the amount of structure from relevance to a specific downstream task. [Su et al.](https://arxiv.org/html/2608.11746v1) subsequently report successful language-model applications: EpiSelect adapts domain sampling using predicted epiplexity gains, while EpiGen rewards learner improvement on a reference buffer to guide synthetic generation. Those interventions and evaluation distributions differ from our fixed-prior forecasting comparison. Their positive results motivate testing the idea elsewhere; our negative full-set result constrains its demonstrated usefulness here.
+
+Our evidence covers one model configuration, eleven generator families, and mostly one initialization per family. The two budgets share seed ranges and match data rather than measured total compute. Subset choices, area variants, and prefix analyses are exploratory. The uncertainty intervals cannot replace missing initialization repeats or validation on new priors.
+
+The next experiments should address those gaps directly: predeclare endpoint and metric aggregation, repeat initializations, and evaluate a fixed selection rule on held-out families and architectures. Oracle decomposition, noise replacement, mixtures, and model-size studies remain **future work**, not completed results. Oracle comparisons could help separate learning a synthetic mechanism from residual predictive mismatch; mixture studies would ask whether useful combinations are missed by ranking priors individually.
+
+The practical lesson is to treat a learning-curve area as a measurement of a specified training process. Its connection to transferable structure is a hypothesis to validate. In our completed study, that measurement helps characterize learning and exposes important sensitivities, while downstream evaluation supplies the evidence for choosing KernelSynth and ETS.
+
+## Evidence, attribution, and further reading
+
+The archived training runs were conducted by **Danila Chernousov (`Chernousovdv`)**. Our report analyzes those shared artifacts; preparing the report and this article does not rerun model training. The [original experiment archive](https://github.com/intsystems/Epiplexity/commit/7d2b001d972169efdb19e3c8e256a182ba4c09f8) contains the source material for the two series. The [report's analysis scripts](https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report) reconstruct signed areas, baseline ratios, correlations, and figures from committed step means and evaluation summaries. All 22 primary areas agree with the archived per-window analysis to its displayed precision of 0.1 million nats.
+
+Large per-window loss vectors, model weights, and individual failed forecasts were not reexamined for this analysis. The report's [run statistics](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/data/run_statistics.csv), [correlations](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/data/correlations.csv), and [prefix statistics](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/data/prefix_correlations.csv) provide the numerical trail for the experimental claims above. Supplementary illustrative generator traces are explicitly distinguished from archived measurements.
+
+The references below cover the formal foundations, coding methods, broader examples, and sources for our forecasting study.
 
 ## References
 
-1. <a id="ref-finzi2026"></a>M. Finzi, S. Qiu, Y. Jiang, P. Izmailov, J. Z. Kolter, A. G. Wilson. [From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence](https://arxiv.org/abs/2601.03220). arXiv:2601.03220v2, 2026. [Code](https://github.com/shikaiqiu/epiplexity).
-2. <a id="ref-qiu2026"></a>S. Qiu, M. Finzi, Y. Zheng, K. Zhang, A. G. Wilson. [Requential Coding: Pushing the Limits of Model Compression with Self-Generated Training Data](https://arxiv.org/abs/2607.11883). arXiv:2607.11883, 2026.
+1. <a id="ref-finzi2026"></a>M. Finzi, S. Qiu, Y. Jiang, P. Izmailov, J. Z. Kolter, A. G. Wilson. [From Entropy to Epiplexity: Rethinking Information for Computationally Bounded Intelligence](https://arxiv.org/abs/2601.03220v2). arXiv:2601.03220v2, 2026. [Code](https://github.com/shikaiqiu/epiplexity).
+2. <a id="ref-qiu2026"></a>S. Qiu, M. Finzi, Y. Zheng, K. Zhang, A. G. Wilson. [Requential Coding: Pushing the Limits of Model Compression with Self-Generated Training Data](https://arxiv.org/abs/2607.11883v1). arXiv:2607.11883v1, 2026.
 3. <a id="ref-dawid1984"></a>A. Philip Dawid. [Present Position and Potential Developments: Some Personal Views. Statistical Theory: The Prequential Approach](https://doi.org/10.2307/2981683). *Journal of the Royal Statistical Society, Series A*, 147(2), 1984.
 4. <a id="ref-theis2022"></a>Lucas Theis, Noureldin Y. Ahmed. [Algorithms for the Communication of Samples](https://proceedings.mlr.press/v162/theis22a.html). ICML, 2022.
 5. <a id="ref-zhang2020"></a>X. Zhang, X. Li, D. Dou, J. Wu. [Measuring Information Transfer in Neural Networks](https://arxiv.org/abs/2009.07624). arXiv:2009.07624, 2020.
@@ -556,5 +315,10 @@ The most direct follow-up work comes from the group led by Andrew Gordon Wilson:
 10. <a id="ref-papadopoulos2024"></a>V. Papadopoulos, J. Wenger, C. Hongler. [Arrows of Time for Large Language Models](https://arxiv.org/abs/2401.17505). ICML, 2024.
 11. <a id="ref-silver2018"></a>D. Silver et al. A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play. *Science*, 362(6419):1140–1144, 2018.
 12. <a id="ref-jiang2025"></a>Y. Jiang, A. Zhou, Z. Feng, S. Malladi, J. Z. Kolter. [Adaptive Data Optimization: Dynamic Sample Selection with Scaling Laws](https://openreview.net/forum?id=aqok1UX7Z1). ICLR, 2025.
-13. <a id="ref-su2026"></a>E. Su, A. Potapczynski, S. Qiu, E. Hughes, A. G. Wilson. [Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746). arXiv:2608.11746, 2026.
+13. <a id="ref-su2026"></a>E. Su, A. Potapczynski, S. Qiu, E. Hughes, A. G. Wilson. [Epiplexity Guided Data Selection and Generation for Out-of-Distribution Generalization](https://arxiv.org/abs/2608.11746v1). arXiv:2608.11746v1, 2026.
 14. <a id="ref-blier2018"></a>Léonard Blier, Yann Ollivier. [The Description Length of Deep Learning Models](https://arxiv.org/abs/1802.07044). NeurIPS, 2018.
+15. <a id="ref-ourreport2026"></a>D. Chernousov, M. Ikonnikov, D. Kazachkov, A. Kravatskiy. [Epiplexity and Transfer in Synthetic Time-Series Pretraining](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf). Technical report, 21 October 2026. [Source and reproduction instructions](https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report).
+16. <a id="ref-nagpal2026"></a>A. Nagpal, D. Sanyal, M. Mandal, D. Kumar, S. Deshpande. [Mix, Don't Pick: Why Synthetic Corpus Composition Matters for Time Series Foundation Model Pretraining](https://arxiv.org/abs/2606.09912v1). arXiv:2606.09912v1, 2026.
+17. <a id="ref-ansari2024"></a>A. F. Ansari et al. [Chronos: Learning the Language of Time Series](https://arxiv.org/abs/2403.07815v3). *Transactions on Machine Learning Research*, 2024.
+18. <a id="ref-woo2024"></a>G. Woo, C. Liu, A. Kumar, C. Xiong, S. Savarese, D. Sahoo. [Unified Training of Universal Time Series Forecasting Transformers](https://arxiv.org/abs/2402.02592v2). ICML, 2024.
+19. <a id="ref-aksu2024"></a>T. Aksu, G. Woo, J. Liu, X. Liu, C. Liu, S. Savarese, C. Xiong, D. Sahoo. [GIFT-Eval: A Benchmark for General Time Series Forecasting Model Evaluation](https://arxiv.org/abs/2410.10393v2). arXiv:2410.10393v2, 2024.

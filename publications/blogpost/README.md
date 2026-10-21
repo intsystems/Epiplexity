@@ -1,10 +1,9 @@
 # Blog post
 
-Read [epiplexity.md](epiplexity.md) directly on GitHub. Its twelve illustrations
-use relative paths under [images/](images/), so they render inside the repository.
-The post is a draft explaining the founding epiplexity paper, not a report of
-our time-series experiments; those are described in the
-[technical report](../technical_report/README.md).
+Read [epiplexity.md](epiplexity.md) directly on GitHub. The article connects 
+epiplexity and prequential coding to our synthetic time-series
+transfer study. The [technical report](../technical_report/README.md) is the
+source for our experimental claims.
 
 ## Local preview
 
