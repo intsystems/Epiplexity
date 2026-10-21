@@ -189,11 +189,11 @@ There are 22 primary runs plus a second initialization for Waveform at 40M. Prim
 
 We evaluate the final EMA model **without fine-tuning** on 55 short-term [GIFT-Eval](https://arxiv.org/abs/2410.10393v2) configurations. Each configuration specifies a dataset, frequency, and forecasting horizon. The main score is the saved sample-based `scaled_crps`, a continuous ranked probability score that evaluates forecast distributions rather than only a point prediction.
 
-For prior $g$ and configuration $j$, divide its score $m_{g,j}$ by the saved seasonal-naive score $m_{{\rm naive},j}$. Then give each configuration equal weight in a geometric mean:
+For prior $g$ and configuration $j$, divide its score $m_{g,j}$ by the saved seasonal-naive score $m_{\mathrm{naive},j}$. Then give each configuration equal weight in a geometric mean:
 
 $$
 R_g=\exp\left\{\frac{1}{55}\sum_{j=1}^{55}
-\log\frac{m_{g,j}}{m_{{\rm naive},j}}\right\}.
+\log\frac{m_{g,j}}{m_{\mathrm{naive},j}}\right\}.
 $$
 
 **Lower is better; a ratio below one beats seasonal naive.** Normalization expresses performance against a common reference. Equal weighting prevents a configuration from dominating simply because it contains more windows, but does not eliminate sensitivity to an extreme score ratio. We keep this sample-based CRPS field distinct from the separately saved nine-quantile `mean_weighted_sum_quantile_loss`. MASE, median configuration ratios, and mean configuration ranks serve as sensitivity checks.
