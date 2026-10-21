@@ -1,5 +1,9 @@
 # Member 4: testbeds, fast proxies, variance and the repository
 
+> This is the original research plan, including future algorithms and testbeds.
+> For the implemented synthetic time-series workflow and current API, see
+> [the project description](../description.md) and the [Sphinx architecture](../../doc/source/architecture.rst).
+
 **Role.** Owner of the data generators, the classical and fast complexity measures, the study of
 seed variance, and the repository (package, CI, documentation, Docker).
 
@@ -17,7 +21,7 @@ seed variance, and the repository (package, CI, documentation, Docker).
   in ranking. The reservoir score will agree only after the baseline is subtracted
   (review, Table 3).
 
-## Library (`epimeter`)
+## Library (`episynth`)
 
 - `data/`: the testbeds, all generated on the GPU where possible.
   - ECA $Y=F^t(X)$ with periodic boundary;
@@ -62,7 +66,7 @@ seed variance, and the repository (package, CI, documentation, Docker).
 
 | Date | Deliverable |
 |---|---|
-| 29.09 | Repository skeleton: `src/epimeter`, `tests/`, `docs/`, `paper/`, CI, licence |
+| 29.09 | Repository skeleton: `src/episynth`, `tests/`, `docs/`, `paper/`, CI, licence |
 | 06.10 | ECA generator on the GPU; label-noise and permutation wrappers; AIC and BIC |
 | 13–19.10 (R&D CP2) | Permutation invariance and the seed rule, written |
 | 20.10 (BMM TM2) | Documentation structure; WAIC and WBIC with SGLD |

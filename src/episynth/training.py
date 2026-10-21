@@ -30,7 +30,14 @@ from pydantic import BaseModel
 from torch import nn
 
 from .generators.base import Generator
-from .model.moirai import MoiraiConfig, MoiraiModule, MultiInSizeLinear, MultiOutSizeLinear, RMSNorm
+from .model.moirai import (
+    Mixture,
+    MoiraiConfig,
+    MoiraiModule,
+    MultiInSizeLinear,
+    MultiOutSizeLinear,
+    RMSNorm,
+)
 from .windows import WindowBatch, WindowSpec, WindowStream, collect_windows
 
 
@@ -91,7 +98,7 @@ class TrainConfig(BaseModel):
         return self.n_windows // self.batch_size
 
 
-def window_nll(mixture, batch: WindowBatch, patch_size: int) -> torch.Tensor:
+def window_nll(mixture: Mixture, batch: WindowBatch, patch_size: int) -> torch.Tensor:
     """Лосс каждого окна `(B,)` в натах: сумма минус лог-плотности по наблюдаемым точкам горизонта."""
     nll = -mixture.log_prob(batch.target)[..., :patch_size]
     mask = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask[..., :patch_size]

@@ -4,10 +4,10 @@ r"""Прогнозчики для оценки: сезонный наивный 
 минус лог-плотность правды. Протокол Moirai `"ours"` — форма задачи обучения: последние
 `context_max` точек истории, ведущие NaN отбрасываются как отсутствующая история, внутренние
 заполняются линейной интерполяцией, прогноз на `horizon_max` точек, из которых берутся первые
-$h$. Протокол `"notebook"` повторяет `MoiraiForecast` из тетради GIFT-Eval: история до 4000
+:math:`h`. Протокол `"notebook"` повторяет `MoiraiForecast` из тетради GIFT-Eval: история до 4000
 точек, токены левее её начала — заполнение вне внимания, NaN внутри истории как
 ненаблюдаемые без заполнения, индексы времени от первого наблюдаемого патча,
-$\lceil h / P \rceil$ прогнозных токенов.
+:math:`\lceil h / P \rceil` прогнозных токенов.
 """
 
 import math
@@ -56,7 +56,10 @@ class SeasonalNaive(Forecaster):
     def __init__(self, season: int) -> None:
         self.season = season
 
-    def predict(self, histories, horizon, labels=None) -> Forecast:
+    def predict(
+        self, histories: list[np.ndarray], horizon: int,
+        labels: list[np.ndarray] | None = None,
+    ) -> Forecast:
         """Прогноз `(1, B, h)`."""
         out = np.empty((1, len(histories), horizon), dtype=np.float32)
         for i, h in enumerate(histories):
@@ -125,7 +128,10 @@ class MoiraiForecaster(Forecaster):
         self.batch_size = batch_size
         self.device = device
 
-    def predict(self, histories, horizon, labels=None) -> Forecast:
+    def predict(
+        self, histories: list[np.ndarray], horizon: int,
+        labels: list[np.ndarray] | None = None,
+    ) -> Forecast:
         """Сэмплы `(n, B, h)` и, при `labels`, минус лог-плотность `(B, h)`."""
         samples, nlls, lengths = [], [], []
         for start in range(0, len(histories), self.batch_size):

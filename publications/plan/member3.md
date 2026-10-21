@@ -1,5 +1,9 @@
 # Member 3: Bayesian codes, theory and the manuscript
 
+> This is the original research plan, including future algorithms and testbeds.
+> For the implemented synthetic time-series workflow and current API, see
+> [the project description](../description.md) and the [Sphinx architecture](../../doc/source/architecture.rst).
+
 **Role.** Owner of the Bayesian estimators, the bridge from Bayes to MDL, and the manuscript
 (editor). This is the part that ties the project to the Bayesian course.
 
@@ -17,7 +21,7 @@ coincide with $S_T$?
 - **Testbed with a known answer.** A teacher–student MLP with planted structure. The labels come
   from a random teacher MLP of width $k$. Structure therefore grows with $k$ by construction.
 
-## Library (`epimeter`)
+## Library (`episynth`)
 
 - `codes/variational.py`: the variational code of Graves (2011) and Blier and Ollivier (2018).
   - Model part $\mathrm{KL}(q\Vert p)$ with a Gaussian mean-field posterior.

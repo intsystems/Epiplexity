@@ -1,5 +1,9 @@
 # Member 2: requential code, label noise and the demo
 
+> This is the original research plan, including future algorithms and testbeds.
+> For the implemented synthetic time-series workflow and current API, see
+> [the project description](../description.md) and the [Sphinx architecture](../../doc/source/architecture.rst).
+
 **Role.** Owner of the requential estimator for classifiers (Eq. 4 and Section 3.2 of
 [`notes/epiplexity.pdf`](../notes/epiplexity.pdf)). Owner of the experiments that separate
 structure from noise.
@@ -14,7 +18,7 @@ structure from noise.
    divergence threshold with a paused teacher (founding paper), or iso-loss projection
    (requential-coding paper)? Neither paper compares them.
 
-## Library (`epimeter`)
+## Library (`episynth`)
 
 - `codes/requential.py`:
   - an EMA teacher, a student trained on hard labels sampled from the teacher, and the exact
@@ -51,7 +55,7 @@ structure from noise.
 - **Tests** (coverage above 90%, TM3 on 24.11). Set up pytest and coverage in week 1. Every member
   adds tests for their own code; Member 2 enforces the threshold in CI together with Member 4.
 - **Demo** (TM3 on 24.11, final version at TM4 on 8.12). One Colab notebook that installs
-  `epimeter`, computes the prequential and requential codes on MNIST with label noise, and plots
+  `episynth`, computes the prequential and requential codes on MNIST with label noise, and plots
   the main figure of the paper. The same notebook satisfies the Colab requirement of the R&D course.
 
 ## Tasks and dates

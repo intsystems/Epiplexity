@@ -68,9 +68,9 @@ certificates, add ``--system-certs`` to the uv commands.
 
 .. code-block:: bash
 
-    uv sync --extra dev
-    .venv/bin/pytest tests/
-    .venv/bin/ruff check src/ tests/ experiments/demos/
+    uv sync --locked --extra dev
+    uv run --no-sync pytest tests/
+    uv run --no-sync ruff check src/ tests/ experiments/demos/ doc/source/conf.py
 
 Documentation
 =============
@@ -80,5 +80,11 @@ every push to ``main`` by `.github/workflows/docs.yaml`. To build it locally:
 
 .. code-block:: bash
 
-    .venv/bin/sphinx-build -b html doc/source doc/_build
+    uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build
     # open doc/_build/index.html
+
+The generated API example is ``doc/_build/api/estimators.html``. See
+``doc/source/installation.rst`` for standalone hosting and GitHub Pages setup.
+The Pages source must be configured as **GitHub Actions**. The expected URL is
+https://intsystems.github.io/Epiplexity/; a successful deployment is required to
+update the online site. Pull requests build documentation without publishing.

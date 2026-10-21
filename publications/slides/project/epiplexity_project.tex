@@ -25,7 +25,7 @@
 \newcommand{\E}{\mathbb{E}}
 \title{Measuring epiplexity beyond transformers}
 \subtitle{A fair, small-scale comparison of MLP, CNN and transformer observers}
-\author{BMM project: \texttt{epimeter}}
+\author{BMM project: \texttt{episynth}}
 \date{September 2026}
 \begin{document}
 
@@ -291,19 +291,19 @@ within uncertainty across setups. We will not call a setup-dependent proxy the a
 theoretical $S_T$.
 \end{frame}
 
-\begin{frame}{Project library: \texttt{epimeter}}
+\begin{frame}{Project library: \texttt{episynth}}
 \begin{center}
 \small
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{.30\linewidth}>{\raggedright\arraybackslash}p{.63\linewidth}@{}}
 \toprule
 Package & Responsibility \\
 \midrule
-\texttt{epimeter.data} & ECA, noise/permutation, Markov and teacher--student generators \\
-\texttt{epimeter.models} & MLP, circular CNN, and a DiT adapter with a common interface \\
-\texttt{epimeter.codes} & prequential, requential, variational and Laplace codes \\
-\texttt{epimeter.criteria} & EDL, AIC/BIC/HQIC, WAIC/WBIC and matched baselines \\
-\texttt{epimeter.sweep} & FLOPs, checkpoints, lower hull and seed aggregation \\
-\texttt{epimeter.cli} & reproducible \texttt{train.py} and \texttt{test.py} entry points \\
+\texttt{episynth.generators} & Seeded synthetic time-series generators and mixtures \\
+\texttt{episynth.model} & Moirai observer and forecast distributions \\
+\texttt{episynth.estimators} & Pluggable protocol; prequential implemented, requential planned \\
+\texttt{episynth.evaluation} & GIFT-Eval windows, forecasters and metrics \\
+\texttt{episynth.analysis} & Held-out-floor area, uncertainty and quality comparisons \\
+\texttt{episynth.train} & JSON configurations, overrides and reproducible runs \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -316,21 +316,18 @@ Every run is one JSON line; figures are regenerated only from saved runs.
 \begin{frame}[fragile]{Demo: one common result object}
 \small
 \begin{verbatim}
-from epimeter.data import ECA
-from epimeter.models import MLP
-from epimeter.codes import prequential
+from episynth.estimators import build
 
-task = ECA(rule=54, cells=64, steps=8, seed=0)
-model = MLP(width=128, depth=2, out_bits=64)
-run = prequential(model, task, floor="heldout", seed=0).fit()
-
-print(run.S_bits, run.H_bits, run.flops)
+# model, generator, spec and config are set by the demo.
+estimator = build("prequential")
+result = estimator.run(model, generator, spec, config, "runs/demo")
+print(result["model_part_bits"], result["data_part_bits"])
 \end{verbatim}
 
 \medskip
-The same interface returns the requential bound, Bayesian model/data parts, and metadata.
-The Colab demo uses MNIST with $\rho\in\{0,0.2,0.5,1\}$, plots raw code versus held-out-floor
-structure, and runs from a clean install of \texttt{epimeter}.
+The CPU notebook uses a tiny Moirai model, waveform data and 64 training windows.
+It plots the learning curve and the decomposition in bits. Requential remains a planned
+implementation; large time-series runs are stored separately from this demo.
 \end{frame}
 
 \begin{frame}{Roles and milestones}

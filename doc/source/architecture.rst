@@ -22,7 +22,7 @@ Architecture
      - Назначение
    * - ``episynth.generators``
      - Одиннадцать генераторов одномерных рядов (KernelSynth, ETS, Waveform, SDE и др.) из
-       Mix, Don't Pick. Ряд зависит только от сида и длины; ``generate(seeds)`` даёт ``(n, L)``.
+       Mix, Don't Pick и OU-эталон. Ряд зависит только от сида и длины; ``generate(seeds)`` даёт ``(n, L)``.
    * - ``episynth.windows``
      - Окна задачи прогноза: ``WindowSpec`` (форма задачи), ``WindowBatch`` (батч окон),
        ``WindowStream`` (поток батчей по возрастающим сидам в фоновом потоке).
@@ -48,21 +48,32 @@ Architecture
 
     class EpiplexityEstimator(Protocol):
         name: str
-        def run(self, model, generator, spec, config, out_dir) -> dict[str, float]: ...
+        def run(
+            self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+            config: TrainConfig, out_dir: str | Path,
+        ) -> dict[str, float]: ...
 
 Метод ``run`` выполняет полный прогон обучения и возвращает разложение кодовой длины на
 ``model_part_bits`` и ``data_part_bits`` (в битах).
 
 Алгоритмы регистрируются в :mod:`episynth.estimators.registry` по имени и создаются фабрикой
-:func:`episynth.estimators.build`:
+:func:`episynth.estimators.registry.build`:
 
 .. code-block:: python
 
-    from episynth.estimators import register, build
+    from pathlib import Path
+    from episynth.estimators import EpiplexityEstimator, register, build
+    from episynth.generators.base import Generator
+    from episynth.model.moirai import MoiraiModule
+    from episynth.training import TrainConfig
+    from episynth.windows import WindowSpec
 
     @register("my_estimator")
     class MyEstimator(EpiplexityEstimator):
-        def run(self, model, generator, spec, config, out_dir):
+        def run(
+            self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+            config: TrainConfig, out_dir: str | Path,
+        ) -> dict[str, float]:
             ...  # обучение и подсчёт кодовой длины
             return {"model_part_bits": ..., "data_part_bits": ...}
 

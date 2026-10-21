@@ -3,36 +3,49 @@ name: docs
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      UV_HTTP_TIMEOUT: "300"
+      UV_CONCURRENT_DOWNLOADS: "4"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.10"
-      - uses: astral-sh/setup-uv@v5
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v7
       - name: Install dependencies
-        run: uv sync --extra dev --system-certs
+        run: uv sync --locked --extra dev --system-certs
       - name: Build Sphinx docs
-        run: sphinx-build -b html doc/source doc/_build
-      - name: Upload artifact
+        run: uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: doc/_build
+
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

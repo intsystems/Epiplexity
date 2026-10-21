@@ -1,38 +1,33 @@
-.. episynth documentation master file
+episynth
+========
 
-Welcome to episynth!
-====================
-
-Estimating epiplexity on synthetic time series with small models on a single GPU.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Main Info:
-
-   info.rst
+``episynth`` measures how much structure a small forecasting model learns from a
+synthetic time-series generator, and compares the resulting epiplexity estimates
+with forecasting quality on GIFT-Eval. The project repository is
+`intsystems/Epiplexity <https://github.com/intsystems/Epiplexity>`_.
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Get Started:
+   :maxdepth: 2
+   :caption: Getting started
 
-   installation.rst
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Architecture:
-
-   architecture.rst
-   extending.rst
+   info
+   installation
+   demo
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Packages:
+   :maxdepth: 2
+   :caption: Design and experiments
 
-   api.rst
+   architecture
+   stack
+   extending
+   experiments
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
 
-Indices and tables
-==================
+   api
 
 * :ref:`genindex`
 * :ref:`modindex`

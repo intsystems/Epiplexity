@@ -1,72 +1,37 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""Sphinx configuration; builds work from any current directory."""
 
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath('../../src/'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 import episynth  # noqa: E402
 
-
-# -- Project information -----------------------------------------------------
-
-project = 'episynth'
-copyright = '2026, Epiplexity team'
-author = 'Epiplexity team'
-
-version = getattr(episynth, '__version__', '0.1.0')
-master_doc = 'index'
-
-# -- General configuration ---------------------------------------------------
-
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 
-              'sphinx.ext.intersphinx', 'sphinx.ext.todo',
-              'sphinx.ext.ifconfig', 'sphinx.ext.viewcode',
-              'sphinx.ext.inheritance_diagram',
-              'sphinx.ext.autosummary', 'sphinx.ext.mathjax',
-              'sphinx_rtd_theme']
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
-
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
+project = "episynth"
+copyright = "2026, Epiplexity team"
+author = "Epiplexity team"
+version = release = episynth.__version__
+root_doc = "index"
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.mathjax",
+]
+autodoc_member_order = "bysource"
+autodoc_typehints = "description"
+autoclass_content = "both"
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_use_ivar = True
 exclude_patterns = []
-
-html_extra_path = []
-
+html_theme = "sphinx_rtd_theme"
+html_title = "episynth documentation"
+html_baseurl = "https://intsystems.github.io/Epiplexity/"
 html_context = {
-    "display_github": True, # Integrate GitHub
-    "github_user": "intsystems", # Username
-    "github_repo": "Epiplexity", # Repo name
-    "github_version": "main", # Version
-    "conf_py_path": "/doc/source/", # Path in the checkout to the docs root
+    "display_github": True,
+    "github_user": "intsystems",
+    "github_repo": "Epiplexity",
+    "github_version": "main",
+    "conf_py_path": "/doc/source/",
 }
-
-
-# -- Options for HTML output -------------------------------------------------
-
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#
-html_theme = 'sphinx_rtd_theme'
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
-

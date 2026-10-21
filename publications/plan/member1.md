@@ -1,5 +1,9 @@
 # Member 1: prequential code and the compute sweep
 
+> This is the original research plan, including future algorithms and testbeds.
+> For the implemented synthetic time-series workflow and current API, see
+> [the project description](../description.md) and the [Sphinx architecture](../../doc/source/architecture.rst).
+
 **Role.** Owner of the central estimator: the prequential area of Eq. (2) in
 [`notes/epiplexity.pdf`](../notes/epiplexity.pdf) (Section 3.1). The same member recovers $S_T$
 from a sweep over widths and depths (Section 3.3). Every other estimator is compared with this one.
@@ -19,7 +23,7 @@ bound $T$ does the order settle?
   scale? Compare $S_T(Y\mid X)$ with $S_T(X\mid Y)$ for $Y=F^t(X)$ under a bijective rule
   (rule 15, a shift with negation) and a non-bijective one (rule 30).
 
-## Library (`epimeter`)
+## Library (`episynth`)
 
 - `codes/prequential.py`:
   - the online code and the area above the floor;

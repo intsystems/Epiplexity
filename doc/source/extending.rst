@@ -12,7 +12,10 @@ Extending: adding your own estimator
 
 .. code-block:: python
 
-    def run(self, model, generator, spec, config, out_dir) -> dict[str, float]:
+    def run(
+        self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+        config: TrainConfig, out_dir: str | Path,
+    ) -> dict[str, float]:
         """Выполнить прогон обучения и вернуть оценку в битах."""
 
 Аргументы:
@@ -32,23 +35,30 @@ Extending: adding your own estimator
 
 .. code-block:: python
 
-    from episynth.estimators import register
-    from episynth.estimators.base import EpiplexityEstimator
+    from pathlib import Path
+
+    from episynth.estimators import EpiplexityEstimator, build, register
+    from episynth.generators.base import Generator
+    from episynth.model.moirai import MoiraiModule
+    from episynth.training import TrainConfig
+    from episynth.windows import WindowSpec
 
     @register("my_estimator")
     class MyEstimator(EpiplexityEstimator):
         name = "my_estimator"
 
-        def __init__(self, param: float = 1.0) -> None:
-            self.param = param
+        def __init__(self, variant: str = "ema") -> None:
+            self.variant = variant
 
-        def run(self, model, generator, spec, config, out_dir):
-            # Любая логика: обучение, накопление кодовой длины, ...
-            # При необходимости можно использовать общий движок:
-            from episynth.training import Trainer
-            Trainer(model, generator, spec, config, out_dir).run()
-            # ... и затем посчитать model/data part по записанным артефактам.
-            return {"model_part_bits": 0.0, "data_part_bits": 0.0}
+        def run(
+            self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+            config: TrainConfig, out_dir: str | Path,
+        ) -> dict[str, float]:
+            # Рабочий пример обёртки над встроенным алгоритмом.
+            # Собственный алгоритм заменит тело этого метода.
+            return build("prequential", variant=self.variant).run(
+                model, generator, spec, config, out_dir
+            )
 
 Шаг 3. Использование
 --------------------
@@ -57,17 +67,21 @@ Extending: adding your own estimator
 
 .. code-block:: python
 
+    import my_package.my_estimator  # регистрирует внешний плагин
     from episynth.estimators import build
-    est = build("my_estimator", param=2.0)
+    est = build("my_estimator", variant="ema")
     result = est.run(model, generator, spec, config, "runs/my")
 
-Через CLI конвейера ``episynth.train`` оценщик выбирается полем ``estimator`` в файле
-конфигурации:
+Для встроенного оценщика достаточно поля ``estimator`` в конфигурации CLI.
+Внешний плагин нужно импортировать **в том же процессе** перед вызовом CLI:
 
-.. code-block:: bash
+.. code-block:: python
 
-    python -m episynth.train --config configs/kernelsynth.json --out runs/epi \
-        --set estimator=my_estimator
+    import my_package.my_estimator
+    from episynth.train import main
+
+    main(["--config", "configs/kernelsynth.json", "--out", "runs/epi",
+          "--set", "estimator=my_estimator"])
 
 Если вы добавляете алгоритм в саму библиотеку ``episynth``, положите его в
 ``src/episynth/estimators/`` и убедитесь, что он импортируется (встроенные оценщики
@@ -80,7 +94,7 @@ Extending: adding your own estimator
 
 .. code-block:: python
 
-    from episynth.estimators import available, build
+    from episynth.estimators import EpiplexityEstimator, available, build
     assert "prequential" in available()
     assert "requential" in available()
     est = build("prequential")

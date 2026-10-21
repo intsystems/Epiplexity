@@ -1,16 +1,16 @@
 r"""Проверка обучения на ОУ: лосс модели на окнах против точного байесовского лосса.
 
-Для генератора `ou` маргиналы при приоре на $\varphi$ считаются квадратурой по $u$ (средние
-точки, `n_nodes` узлов). Два эталона в натах на окно, где $c$ — длина контекста, $h$ — горизонт:
+Для генератора `ou` маргиналы при приоре на :math:`\varphi` считаются квадратурой по :math:`u` (средние
+точки, `n_nodes` узлов). Два эталона в натах на окно, где :math:`c` — длина контекста, :math:`h` — горизонт:
 
-- *последовательный*: $-\log M_0(x_{1:c+h}) + \log M_0(x_{1:c})$, каждая точка горизонта при всех
+- *последовательный*: :math:`-\log M_0(x_{1:c+h}) + \log M_0(x_{1:c})`, каждая точка горизонта при всех
   предыдущих; наименьший достижимый лог-лосс для любой модели;
-- *поточечный*: $-\sum_{t=1}^{h} \log \int p(x_{c+t} \mid x_c, \varphi)\, p(\varphi \mid x_{1:c})\, d\varphi$,
+- *поточечный*: :math:`-\sum_{t=1}^{h} \log \int p(x_{c+t} \mid x_c, \varphi)\, p(\varphi \mid x_{1:c})\, d\varphi`,
   каждая точка горизонта только при контексте, как в лоссе Moirai, где точки горизонта условно
   независимы при контексте; наименьший достижимый лог-лосс в форме модели.
 
-Оба считаются на тех же окнах, что видит модель (после деквантования; шум ширины $10^{-3}$
-масштаба меняет их меньше чем на $10^{-5}$ нат на точку). Обученная модель должна подойти
+Оба считаются на тех же окнах, что видит модель (после деквантования; шум ширины :math:`10^{-3}`
+масштаба меняет их меньше чем на :math:`10^{-5}` нат на точку). Обученная модель должна подойти
 сверху к поточечному эталону; разность эталонов — цена независимости точек горизонта.
 
     python -m episynth.checks.ou_bayes --run runs/ou [--n-windows 20000] [--device cuda]
@@ -31,13 +31,13 @@ from ..windows import WindowBatch, WindowSpec, window_batch
 
 
 def phi_nodes(n_nodes: int = 2000) -> np.ndarray:
-    r"""Узлы квадратуры средних точек по $u$, переведённые в $\varphi = \sin u$."""
+    r"""Узлы квадратуры средних точек по :math:`u`, переведённые в :math:`\varphi = \sin u`."""
     h = (OU.u_max - OU.u_min) / n_nodes
     return np.sin(OU.u_min + h * (np.arange(n_nodes) + 0.5))
 
 
 def prefix_loglik(x: np.ndarray, lengths: np.ndarray, phi: np.ndarray) -> np.ndarray:
-    r"""$\log p_\varphi(x_{1:\ell})$ для окон `(B, T)` при длинах префиксов `(B,)` и узлах $\varphi$ `(K,)`: матрица `(B, K)`."""
+    r""":math:`\log p_\varphi(x_{1:\ell})` для окон `(B, T)` при длинах префиксов `(B,)` и узлах :math:`\varphi` `(K,)`: матрица `(B, K)`."""
     B = x.shape[0]
     sq = np.cumsum(x**2, axis=1)
     cross = np.cumsum(np.concatenate([np.zeros((B, 1)), x[:, 1:] * x[:, :-1]], axis=1), axis=1)
@@ -58,7 +58,7 @@ def _logsumexp(a: np.ndarray, axis: int = -1) -> np.ndarray:
 
 
 def log_marginal(x: np.ndarray, lengths: np.ndarray, phi: np.ndarray, chunk: int = 2048) -> np.ndarray:
-    r"""$\log M_0(x_{1:\ell})$ для окон `(B, T)` при длинах префиксов `(B,)` и узлах $\varphi$ `(K,)` с равными весами."""
+    r""":math:`\log M_0(x_{1:\ell})` для окон `(B, T)` при длинах префиксов `(B,)` и узлах :math:`\varphi` `(K,)` с равными весами."""
     return np.concatenate([_logsumexp(prefix_loglik(x[i : i + chunk], lengths[i : i + chunk], phi)) - math.log(len(phi)) for i in range(0, len(x), chunk)])
 
 
@@ -81,7 +81,7 @@ def exact_window_nll(batch: WindowBatch, spec: WindowSpec, phi: np.ndarray) -> n
 
 
 def pointwise_window_nll(batch: WindowBatch, spec: WindowSpec, phi: np.ndarray, chunk: int = 256) -> np.ndarray:
-    r"""Поточечный эталон в натах на окно: каждая точка горизонта при одном контексте с апостериорным усреднением по $\varphi$."""
+    r"""Поточечный эталон в натах на окно: каждая точка горизонта при одном контексте с апостериорным усреднением по :math:`\varphi`."""
     left, lengths = _left_aligned(batch)
     h = spec.horizon
     idx = np.arange(len(batch))

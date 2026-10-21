@@ -1,5 +1,9 @@
 # Plan: epiplexity on one GPU (fall 2026)
 
+> This is the original research plan, including future algorithms and testbeds.
+> For the implemented synthetic time-series workflow and current API, see
+> [the project description](../description.md) and the [Sphinx architecture](../../doc/source/architecture.rst).
+
 The team has four members and uses one repository and one paper for two courses:
 
 - the Bayesian course (BMM, [schedule](https://github.com/intsystems/BMM/blob/main-26-27/schedule.md),
@@ -28,7 +32,7 @@ in turn.
 **Working title:** *Epiplexity on one GPU: estimators for small networks and when they agree.*
 Planned contributions:
 
-1. `epimeter`, a PyTorch library (the name is free on PyPI; `epiplexity` is taken).
+1. `episynth`, a PyTorch library for synthetic time-series experiments.
    - One interface returns (model part, data part) in bits for the prequential, requential,
      variational and Laplace codes, the classical criteria, EDL and the reservoir score.
    - A sweep recovers $S_T$ at a compute bound $T$.
@@ -125,7 +129,7 @@ follows Section 9 of the review.
 ```
 notes/                 literature review (exists)
 plan/                  this plan
-src/epimeter/          codes/ criteria/ data/ observers/ sweep.py
+src/episynth/          codes/ criteria/ data/ observers/ sweep.py
 tests/  docs/          pytest; Sphinx
 paper/                 arXiv-style manuscript; the tech report is derived from it
 notebooks/demo.ipynb   Colab demo

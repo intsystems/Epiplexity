@@ -36,8 +36,8 @@ _LN2 = 0.6931471805599453
 class PrequentialEstimator(EpiplexityEstimator):
     """Prequential-оценка эпиплексии (площадь над кривой лосса).
 
-    Использует общий :class:`Trainer` в его prequential-режиме по умолчанию, затем читает
-    `window_loss.f32` и `heldout_ema_1.f32` из каталога прогона через :func:`run_area` и считает
+    Использует общий :class:`~episynth.training.Trainer` в его prequential-режиме по умолчанию, затем читает
+    `window_loss.f32` и `heldout_ema_1.f32` из каталога прогона через :func:`~episynth.analysis.run_area` и считает
     разложение на model/data part в битах.
     """
 
@@ -47,7 +47,7 @@ class PrequentialEstimator(EpiplexityEstimator):
         r"""Создаёт оценщик.
 
         Args:
-            variant: Вариант весов финального лосса в :func:`run_area`: `ema` или `raw`.
+            variant: Вариант весов финального лосса в :func:`~episynth.analysis.run_area`: `ema` или `raw`.
         """
         if variant not in ("ema", "raw"):
             raise ValueError("variant must be 'ema' or 'raw'.")
