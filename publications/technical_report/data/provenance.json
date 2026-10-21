@@ -1,6 +1,6 @@
 {
   "report_date": "2026-10-21",
-  "commit": "7d2b001d972169efdb19e3c8e256a182ba4c09f8",
+  "commit": "6352438ad740603103d45a39414eca2bf3b3c20d",
   "author_commit_message": "commit 7d2b001d972169efdb19e3c8e256a182ba4c09f8\nAuthor:     Chernousovdv <chernousov.dv@phystech.edu>\nAuthorDate: Wed Oct 21 16:07:45 2026 +0300\nCommit:     Chernousovdv <chernousov.dv@phystech.edu>\nCommitDate: Wed Oct 21 16:07:45 2026 +0300\n\n    experiments/episynth: outputs of series 1 (2M windows, corpora) and series 2 (40M windows, online generation): run configs, per-step training curves, held-out losses by checkpoint, GIFT-Eval summaries, analysis tables and figures, analysis scripts, leaderboard reference CSVs; per-window losses go to release results-2026-10-19\n",
   "python": "3.12.13 (main, Jul 23 2026, 14:44:57) [MSC v.1944 64 bit (AMD64)]",
   "platform": "Windows-10-10.0.17763-SP0",

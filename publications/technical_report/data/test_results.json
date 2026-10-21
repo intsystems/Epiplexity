@@ -26,6 +26,42 @@
       "details": ""
     },
     {
+      "name": "test_builtin_estimators_registered",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_build_returns_instance",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_build_unknown_raises",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_register_rejects_duplicates",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_requential_is_skeleton",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_prequential_from_run_dir_uses_heldout",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_seasonality_and_config_names",
       "module": "tests.episynth.test_evaluation",
       "status": "passed",
@@ -411,7 +447,7 @@
     }
   ],
   "counts": {
-    "passed": 66,
+    "passed": 72,
     "skipped": 2,
     "failure": 0,
     "error": 0

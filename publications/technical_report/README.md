@@ -97,7 +97,7 @@ python reproduce.py
 
 This records source/environment provenance, regenerates supplementary examples,
 runs the author's existing `tests/episynth` suite, recomputes the saved-run
-analysis, and redraws the figures. The current report rerun has **66 passed,
+analysis, and redraws the figures. The current report rerun has **72 passed,
 2 skipped, 0 failed**. The two skipped comparisons require external GIFT-Eval data
 and the original Moirai checkpoint. Temporary training/checkpoint files stay in
 the repository's ignored `build/` directory.

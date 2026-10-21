@@ -1,6 +1,7 @@
-.........s........................................s.................     [100%]
+...............s........................................s............... [ 97%]
+..                                                                       [100%]
 - generated xml file: D:\GitHubD\Epiplexity\build\technical_report_checks\junit.xml -
 =========================== short test summary info ===========================
 SKIPPED [1] tests\episynth\test_evaluation.py:73: GIFT_EVAL_DIR не задан
 SKIPPED [1] tests\episynth\test_model.py:77: MOIRAI_SMALL_DIR не задан
-66 passed, 2 skipped in 29.80s
+72 passed, 2 skipped in 31.03s
