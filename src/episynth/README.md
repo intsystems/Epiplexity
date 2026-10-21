@@ -23,6 +23,10 @@
   gluonts, тестовые окна как в бенчмарке, прогнозчики (сезонный наив, Moirai в нашем протоколе
   и в протоколе тетради лидерборда), метрики по окнам с точным сведением в определениях
   лидерборда и в масштабированном виде, лог-плотность правды.
+- `episynth.estimators` — плагинный интерфейс оценки эпиплексии: алгоритмы регистрируются по
+  имени и выбираются полем `estimator` в конфигурации `episynth.train`. Встроены `prequential`
+  (площадь над кривой лосса) и скелет `requential`; пользователь добавляет свой алгоритм одним
+  модулем через `@register`.
 
 ```python
 from episynth.generators import GENERATORS
@@ -48,9 +52,25 @@ python -m episynth.corpus --generator kernelsynth --first-seed 1000000000 --n 10
 python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth --set train.lr=3e-4
 ```
 
-Файл конфигурации — разделы `data`, `spec`, `model`, `train` и путь `context_table`; формат и
-правила в докстринге `episynth.train`. Равная смесь генераторов или корпусов (`Mixture`, раздел
-`data.mixture`) служит для подбора шага обучения, общего для всех генераторов.
+Файл конфигурации — разделы `data`, `spec`, `model`, `train`, путь `context_table` и имя
+алгоритма оценки `estimator`; формат и правила в докстринге `episynth.train`. Равная смесь
+генераторов или корпусов (`Mixture`, раздел `data.mixture`) служит для подбора шага обучения,
+общего для всех генераторов.
+
+Поле `estimator` выбирает алгоритм оценки эпиплексии из реестра `episynth.estimators` (по
+умолчанию `prequential`). Прогон пишет обычные артефакты `Trainer`, а результат оценки — в
+`estimator_result.json`:
+
+```bash
+python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth \
+    --set estimator=prequential --set train.lr=3e-4
+```
+
+Плагинный интерфейс описан в `episynth.estimators`: встроены `prequential` (площадь над кривой
+лосса, финальный лосс берётся с отложенного набора `heldout_ema_1.f32` через
+`episynth.analysis.run_area`) и скелет `requential`. Свой алгоритм добавляется одним модулем:
+класс, реализующий `EpiplexityEstimator`, помечается `@register("имя")`; выбирается по имени в
+`--set estimator=имя`.
 
 Оценка чекпойнта прогона на краткосрочной части GIFT-Eval (снимок датасета — `huggingface_hub.snapshot_download("Salesforce/GiftEval", repo_type="dataset")`):
 

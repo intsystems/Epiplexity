@@ -61,10 +61,13 @@ Extending: adding your own estimator
     est = build("my_estimator", param=2.0)
     result = est.run(model, generator, spec, config, "runs/my")
 
+Через CLI конвейера ``episynth.train`` оценщик выбирается полем ``estimator`` в файле
+конфигурации:
+
 .. code-block:: bash
 
-    python -m episynth.estimators.run --estimator my_estimator --generator kernelsynth \
-        --config-json runs/kernelsynth/config.json
+    python -m episynth.train --config configs/kernelsynth.json --out runs/epi \
+        --set estimator=my_estimator
 
 Если вы добавляете алгоритм в саму библиотеку ``episynth``, положите его в
 ``src/episynth/estimators/`` и убедитесь, что он импортируется (встроенные оценщики

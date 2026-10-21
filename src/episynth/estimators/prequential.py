@@ -1,25 +1,27 @@
 r"""Prequential-оценщик эпиплексии.
 
 Обёртка над общим движком :class:`episynth.training.Trainer`: тот уже выполняет prequential-прогон
-(пишет лосс каждого окна до шага по нему в `window_loss.f32`). После прогона оценщик пересчитывает
-покомпонентную кодовую длину в битах по тем же файлам.
+(пишет лосс каждого окна до шага по нему в `window_loss.f32` и лоссы отложенного набора на
+последнем чекпойнте в `heldout_ema_1.f32`). После прогона оценщик пересчитывает покомпонентную
+кодовую длину в битах через :func:`episynth.analysis.run_area`.
 
-Формулы (в натах, лосс окна `l_i` в исходных единицах ряда):
+Формулы (в натах, лосс окна `l_i` в исходных единицах ряда, `L_fin` — средний лосс окна на
+отложенном наборе у последнего чекпойнта для варианта весов `ema`):
 
 * prequential-длина кода: :math:`L = \sum_i l_i`;
-* оценка model part (площадь над финальным лоссом): :math:`S = \sum_i \max(0, l_i - l_\mathrm{final})`,
-  где :math:`l_\mathrm{final}` — средний лосс последних окон (конечная модель);
-* оценка data part: :math:`H = L - S`.
+* оценка model part (площадь над финальным лоссом): :math:`A = \sum_i l_i - N L_\mathrm{fin}`;
+* оценка data part: :math:`H = L - A`.
 
-Перевод в биты — делением на :math:`\ln 2`.
+Площадь, в отличие от ранней версии (средний лосс хвоста прогона), использует отложенный набор,
+как в основном протоколе эксперимента; это и есть финальный лосс конечной модели. Перевод в биты —
+делением на :math:`\ln 2`.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
-
+from ..analysis import run_area
 from ..generators.base import Generator
 from ..model.moirai import MoiraiModule
 from ..training import TrainConfig, Trainer
@@ -35,21 +37,21 @@ class PrequentialEstimator(EpiplexityEstimator):
     """Prequential-оценка эпиплексии (площадь над кривой лосса).
 
     Использует общий :class:`Trainer` в его prequential-режиме по умолчанию, затем читает
-    `window_loss.f32` из каталога прогона и считает разложение на model/data part в битах.
+    `window_loss.f32` и `heldout_ema_1.f32` из каталога прогона через :func:`run_area` и считает
+    разложение на model/data part в битах.
     """
 
     name = "prequential"
 
-    def __init__(self, final_window_fraction: float = 0.01) -> None:
+    def __init__(self, variant: str = "ema") -> None:
         r"""Создаёт оценщик.
 
         Args:
-            final_window_fraction: Доля последних окон прогона, чей средний лосс принимается за
-                финальный лосс модели :math:`l_\mathrm{final}`. Должна быть в (0, 1].
+            variant: Вариант весов финального лосса в :func:`run_area`: `ema` или `raw`.
         """
-        if not 0 < final_window_fraction <= 1:
-            raise ValueError("final_window_fraction must be in (0, 1].")
-        self.final_window_fraction = final_window_fraction
+        if variant not in ("ema", "raw"):
+            raise ValueError("variant must be 'ema' or 'raw'.")
+        self.variant = variant
 
     def run(
         self,
@@ -74,20 +76,25 @@ class PrequentialEstimator(EpiplexityEstimator):
         """
         out = Path(out_dir)
         Trainer(model, generator, spec, config, out).run()
-        return self.from_run_dir(out, config)
+        return self.from_run_dir(out)
 
-    def from_run_dir(self, out_dir: Path, config: TrainConfig) -> dict[str, float]:
-        """Считает оценку из готового каталога прогона `Trainer`."""
-        loss = np.memmap(out_dir / "window_loss.f32", dtype=np.float32, mode="r", shape=(config.n_windows,))
-        n = config.n_windows
-        k = max(1, int(round(self.final_window_fraction * n)))
-        final = float(loss[-k:].mean())
-        total_nats = float(loss.sum())
-        model_nats = float(np.maximum(loss - final, 0.0).sum())
+    def from_run_dir(self, out_dir: str | Path) -> dict[str, float]:
+        """Считает оценку из готового каталога прогона `Trainer` через `analysis.run_area`.
+
+        Args:
+            out_dir: Каталог прогона с `window_loss.f32` и `heldout_<variant>_1.f32`.
+
+        Returns:
+            dict[str, float]: ``model_part_bits``, ``data_part_bits``, ``total_bits`` и
+                ``n_windows`` (площадь в битах, оставшиеся в натах несущественны для разложения).
+        """
+        area = run_area(out_dir, self.variant)
+        total_nats = area.sum_loss
+        model_nats = area.area
         data_nats = total_nats - model_nats
         return {
             "model_part_bits": model_nats / _LN2,
             "data_part_bits": data_nats / _LN2,
             "total_bits": total_nats / _LN2,
-            "n_windows": float(n),
+            "n_windows": float(area.n_windows),
         }

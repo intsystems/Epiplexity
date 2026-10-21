@@ -46,3 +46,22 @@ def test_requential_is_skeleton():
     assert est.name == "requential"
     with pytest.raises(NotImplementedError):
         est.run(None, None, None, None, "unused")  # type: ignore[arg-type]
+
+
+def test_prequential_from_run_dir_uses_heldout(tmp_path):
+    """from_run_dir считает площадь через heldout_ema_1.f32, а не через хвост прогона."""
+    import numpy as np
+
+    np.asarray([5.0, 4.0, 3.0, 2.0], dtype=np.float32).tofile(tmp_path / "window_loss.f32")
+    np.asarray([2.0, 2.0, 1.0, 3.0], dtype=np.float32).tofile(tmp_path / "heldout_ema_1.f32")
+    est = build("prequential", variant="ema")
+    res = est.from_run_dir(tmp_path)
+    # model part = sum_loss - N*l_fin = 14 - 4*2 = 6 нат
+    import math
+
+    assert res["n_windows"] == 4.0
+    assert abs(res["total_bits"] - 14.0 / math.log(2)) < 1e-9
+    assert abs(res["model_part_bits"] - 6.0 / math.log(2)) < 1e-9
+    assert abs(res["data_part_bits"] - 8.0 / math.log(2)) < 1e-9
+    with pytest.raises(ValueError):
+        build("prequential", variant="bad")

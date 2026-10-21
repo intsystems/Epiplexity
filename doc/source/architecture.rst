@@ -92,7 +92,16 @@ Architecture
 CLI
 ---
 
+Выбор оценщика встроен в конфигурационный CLI :mod:`episynth.train`, которым запускаются большие
+серии экспериментов. Файл конфигурации (разделы ``data``, ``spec``, ``model``, ``train`` и поле
+``estimator``) передаётся через ``--config``, любое поле переопределяется через ``--set``:
+
 .. code-block:: bash
 
-    python -m episynth.estimators.run --estimator prequential --generator kernelsynth \
-        --config-json runs/kernelsynth/config.json --out runs/epi
+    python -m episynth.train --config configs/kernelsynth.json --out runs/epi \
+        --set train.lr=3e-4 --set estimator=prequential
+
+Поле ``estimator`` задаёт имя алгоритма в реестре :mod:`episynth.estimators` (по умолчанию
+``prequential``). Прогон пишет обычные артефакты ``Trainer``, а результат оценки — в
+``estimator_result.json`` в каталоге прогона. Поддерживается и программный вызов:
+``build("prequential").run(model, generator, spec, config, out_dir)``.
