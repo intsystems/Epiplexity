@@ -79,7 +79,7 @@ Architecture
   окон до шага по ним (площадь над кривой лосса). Реализован поверх общего ``Trainer``.
 * :class:`episynth.estimators.requential.RequentialEstimator` — requential-оценка (код студента,
   реконструируемого по индексам сэмплов из распределения учителя). Зарегистрирован, но его прогон
-  пока скелет: бросает :class:`NotImplementedError`. См. ``research_notes/.../requential_coding.md``.
+  пока скелет: бросает :class:`NotImplementedError`. См. ``publications/research_notes/.../requential_coding.md``.
 
 Взаимодействие ``Trainer`` и оценщика
 -------------------------------------

@@ -1,7 +1,7 @@
 r"""Requential-оценщик эпиплексии (скелет).
 
 Требует реализации (см. литературу: Qiu и др., 2026, arXiv:2607.11883; заметки в
-`research_notes/.../requential_coding.md`):
+`publications/research_notes/.../requential_coding.md`):
 
 * **Учитель и студент** — два экземпляра :class:`~episynth.model.moirai.MoiraiModule` одинаковой
   конфигурации. Учитель обучается на реальных батчах из генератора и сглаживается EMA; студент

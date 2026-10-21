@@ -35,7 +35,7 @@ needs system TLS certificates, add ``--system-certs`` to the uv commands.
 	cd Epiplexity
 	uv sync --extra dev
 	.venv/bin/pytest tests/
-	.venv/bin/ruff check src/ tests/ code/
+	.venv/bin/ruff check src/ tests/ experiments/demos/
 
 Building the documentation locally
 ==================================

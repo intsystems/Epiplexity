@@ -21,16 +21,15 @@ Abstract
 ========
 
 Epiplexity (`Finzi, Qiu et al., 2026 <https://arxiv.org/abs/2601.03220>`_) measures the structure
-that a computationally bounded learner can extract from data. This project estimates epiplexity
-with small models (MLPs and convolutional networks) on small datasets on a single GPU. The
-``epimeter`` library gives one interface that returns the model part and the data part of a code
-length in bits for the prequential, requential, variational and Laplace codes, the classical
-criteria, EDL and the reservoir score. With it we estimate epiplexity on elementary cellular
-automata, label noise, permuted pixels and a planted teacher–student task, measure the spread
-over seeds under a fixed protocol, and find when Bayesian model parts agree with epiplexity.
+that a computationally bounded learner can extract from data. This project estimates epiplexity on
+synthetic time series: a small model (Moirai-Small) is trained on a stream of windows from a
+generator, the loss of each window is logged before the step on it, and the area under the loss
+curve (the prequential code length) is compared with the model's quality on the short-horizon
+GIFT-Eval tasks. The ``episynth`` package implements the generators, task windows, Moirai port,
+training with per-window loss logging, the analysis layer and pluggable estimators of epiplexity.
 
 Research publications
-===============================
+=====================
 1.
 
 Presentations at conferences on the topic of research
@@ -38,32 +37,28 @@ Presentations at conferences on the topic of research
 1.
 
 Software modules developed as part of the study
-======================================================
-1. A python package *epimeter* with all implementation `here <https://github.com/intsystems/Epiplexity/tree/main/src>`_.
-2. Runnable examples wired through the registries `here <https://github.com/intsystems/Epiplexity/tree/main/code>`_. The Colab demo notebook will be added to the same folder.
+===============================================
+1. The python package *episynth* with all implementation `here <https://github.com/intsystems/Epiplexity/tree/main/src/episynth>`_.
+2. Runnable demo notebook `here <https://github.com/intsystems/Epiplexity/tree/main/experiments/demos>`_.
 
 Repository layout
 =================
 
 .. code-block:: text
 
-    src/epimeter/   the package: estimators, models, samplers, training, eval
-    src/episynth/   time-series track: synthetic generators, task windows, Moirai port, training with
-                    per-window loss logging, GIFT-Eval evaluation (overview in src/episynth/README.md)
-    tests/          pytest
-    code/           experiment code and demo
-    experiments/    saved experiment outputs: episynth/ — two training series (configs, training
-                    curves, held-out losses, GIFT-Eval summaries, analysis tables, figures, scripts);
-                    per-window losses are release assets (see experiments/episynth/README.md)
-    doc/            Sphinx documentation
-    paper/          arXiv-style manuscript
-    figures/        figures for the paper
-    slides/         presentations: project/ (project plan), talk/ (talk on the epiplexity paper)
-    blogpost/       blog post and its preview script
-    notes/          literature review (pdf + tex + refs)
-    research_notes/ source notes behind the literature review
-    plan/           plan, roles, protocol, calendar
-    description.md  architecture and public API of the package
+    src/episynth/      the package: generators, task windows, Moirai port, training with per-window
+                       loss logging, analysis, evaluation on GIFT-Eval, pluggable estimators of
+                       epiplexity (overview in src/episynth/README.md)
+    tests/             pytest
+    experiments/       experiment code and demo (demos/) plus saved outputs (episynth/): two training
+                       series (configs, training curves, held-out losses, GIFT-Eval summaries,
+                       analysis tables, figures, scripts)
+    doc/               Sphinx documentation (autodoc); deploys to GitHub Pages on push to main
+    publications/      non-code material for the article and project: paper/ (arXiv manuscript),
+                       blogpost/, notes/ (literature review), research_notes/, slides/, plan/,
+                       figures/, description.md
+    pyproject.toml     package metadata (name = episynth)
+    README.rst         this file
 
 Development
 ===========
@@ -75,4 +70,15 @@ certificates, add ``--system-certs`` to the uv commands.
 
     uv sync --extra dev
     .venv/bin/pytest tests/
-    .venv/bin/ruff check src/ tests/ code/
+    .venv/bin/ruff check src/ tests/ experiments/demos/
+
+Documentation
+=============
+
+The Sphinx documentation (with autodoc) is built and deployed to GitHub Pages automatically on
+every push to ``main`` by `.github/workflows/docs.yaml`. To build it locally:
+
+.. code-block:: bash
+
+    .venv/bin/sphinx-build -b html doc/source doc/_build
+    # open doc/_build/index.html

@@ -21,7 +21,7 @@ jobs:
 
       - name: Linting
         run: |
-          ruff check src/ tests/ code/
+          ruff check src/ tests/ experiments/demos/
 
   pytest:
     name: pytest
@@ -44,4 +44,4 @@ jobs:
 
       - name: Testing
         run: |
-          pytest tests/ --cov=epimeter --cov-report=term-missing
+          pytest tests/ --cov=episynth --cov-report=term-missing
