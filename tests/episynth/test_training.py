@@ -40,6 +40,9 @@ def test_smoke_run_writes_logs_and_resumes(tmp_path):
     assert [h["fraction"] for h in held] == [0.5, 1.0]
     assert all(np.isfinite(h["ema"]["nats_per_point"]) for h in held)
     assert (out / "ckpt_0.5.pt").exists() and (out / "ckpt_1.pt").exists()
+    per_window = np.fromfile(out / "heldout_ema_1.f32", dtype=np.float32)
+    assert per_window.shape == (16,) and abs(per_window.mean() - held[-1]["ema"]["nats_per_window"]) < 1e-3
+    assert (out / "heldout_raw_0.5.f32").exists()
     steps = (out / "steps.csv").read_text().splitlines()
     assert len(steps) == 1 + cfg.n_steps
     again, _ = _setup(tmp_path, 48)

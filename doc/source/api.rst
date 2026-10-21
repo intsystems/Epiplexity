@@ -18,7 +18,16 @@ episynth
 .. automodule:: episynth.model.moirai
    :members:
 
+.. automodule:: episynth.corpus
+   :members:
+
 .. automodule:: episynth.training
+   :members:
+
+.. automodule:: episynth.train
+   :members:
+
+.. automodule:: episynth.analysis
    :members:
 
 .. automodule:: episynth.evaluation
