@@ -15,16 +15,16 @@ import sys
 
 sys.path.insert(0, os.path.abspath('../../src/'))
 
-from epimeter import __version__
+import episynth  # noqa: E402
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'epimeter'
+project = 'episynth'
 copyright = '2026, Epiplexity team'
 author = 'Epiplexity team'
 
-version = __version__
+version = getattr(episynth, '__version__', '0.1.0')
 master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------

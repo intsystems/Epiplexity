@@ -1,9 +1,9 @@
-.. epimeter documentation master file
+.. episynth documentation master file
 
-Welcome to epimeter!
+Welcome to episynth!
 ====================
 
-Estimating epiplexity with small models on small datasets on a single GPU.
+Estimating epiplexity on synthetic time series with small models on a single GPU.
 
 .. toctree::
    :maxdepth: 1
@@ -17,6 +17,12 @@ Estimating epiplexity with small models on small datasets on a single GPU.
 
    installation.rst
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Architecture:
+
+   architecture.rst
+   extending.rst
 
 .. toctree::
    :maxdepth: 1

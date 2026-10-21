@@ -32,6 +32,8 @@ dev = [
     "ruff>=0.4",
     "matplotlib>=3.7",
     "jupyter>=1.0",
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
 ]
 # episynth checks against the original generators (Mix, Don't Pick) need their libraries
 checks = ["fbm==0.3.0", "timesynth @ git+https://github.com/TimeSynth/TimeSynth.git"]

@@ -50,8 +50,7 @@ class TrainConfig(BaseModel):
         first_seed: Сид первого обучающего окна.
         eval_batch_size: Окон на батч при оценке.
         precision: Точность прямого прохода при обучении; лосс всегда в float32.
-        eval_precision: Дополнительная точность оценки на отложенном наборе; в точности обучения оценка
-            делается всегда, чтобы финальный лосс был сопоставим с лоссами окон при расчёте площади.
+        eval_precision: Точность оценки на отложенном наборе; в точности обучения оценка делается всегда, чтобы финальный лосс был сопоставим с лоссами окон при расчёте площади.
         compile: Компилировать ли модель `torch.compile`.
         fused_adam: Использовать ли fused AdamW (только CUDA).
         init_seed: Сид инициализации весов.
@@ -111,6 +110,12 @@ def param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
 class Trainer:
     """Прогон обучения одной модели на одном генераторе с записью всех величин в каталог.
 
+    Общий движок обучения: окна, чекпойнты, EMA весов, возобновление и heldout-оценка общие для
+    всех протоколов оценки эпиплексии. Протокол-специфичный шаг вынесен в переопределяемый метод
+    :meth:`compute_loss`, который возвращает лосс каждого окна батча и (необязательно) логарфим
+    масштаба нормировки для записи. По умолчанию реализует prequential-протокол (площадь над
+    кривой лосса): подклассы, например requential-учитель-студент, переопределяют `compute_loss`.
+
     Args:
         model: Модель; инициализирована извне, веса заменяются при возобновлении.
         generator: Генератор рядов.
@@ -146,6 +151,24 @@ class Trainer:
         if self.config.warmup_steps == 0:
             return self.config.lr
         return self.config.lr * min(1.0, (step + 1) / self.config.warmup_steps)
+
+    def compute_loss(self, batch: WindowBatch) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """Лосс каждого окна батча и (необязательно) лог масштаба нормировки.
+
+        Протокол-специфичный шаг. Prequential-реализация возвращает `window_nll` по окну и лог
+        масштаба нормировки модели; requential-реализация переопределяет и возвращает KL-оценку.
+
+        Args:
+            batch: Окна на устройстве модели.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor | None]: лосс `(B,)` в натах на окно и либо лог
+                масштаба нормировки `(B,)`, либо `None`, если протокол его не пишет.
+        """
+        mix = self._forward(**batch.model_inputs(), patch_size=self.spec.patch_size)
+        per_window = window_nll(mix, batch, self.spec.patch_size)
+        scale_log = torch.log(mix.scale[:, -1, 0]).detach().float().cpu().numpy()
+        return per_window, scale_log
 
     def _autocast(self, precision: str):
         return torch.autocast(device_type=str(self.config.device).split(":")[0], dtype=torch.bfloat16, enabled=precision == "bf16")
@@ -209,8 +232,8 @@ class Trainer:
         for i in range(0, len(batch), self.config.eval_batch_size):
             part = batch.slice(i, i + self.config.eval_batch_size)
             with self._autocast(precision):
-                mix = self._forward(**part.model_inputs(), patch_size=self.spec.patch_size)
-            total += float(window_nll(mix, part, self.spec.patch_size).double().sum())
+                per_window, _ = self.compute_loss(part)
+            total += float(per_window.double().sum())
             n += len(part)
         self.model.train()
         if use_ema:
@@ -263,8 +286,7 @@ class Trainer:
             for group in self.optimizer.param_groups:
                 group["lr"] = lr
             with self._autocast(cfg.precision):
-                mix = self._forward(**batch.model_inputs(), patch_size=self.spec.patch_size)
-            per_window = window_nll(mix, batch, self.spec.patch_size)
+                per_window, scale_log_vals = self.compute_loss(batch)
             loss = per_window.mean() / self.spec.horizon
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -275,7 +297,8 @@ class Trainer:
                 torch._foreach_add_(self.ema, [p.detach().float() for p in self.params], alpha=1 - self.ema_decay)
             start = self.step * cfg.batch_size
             loss_log[start : start + cfg.batch_size] = per_window.detach().float().cpu().numpy()
-            scale_log[start : start + cfg.batch_size] = torch.log(mix.scale[:, -1, 0]).detach().float().cpu().numpy()
+            if scale_log_vals is not None:
+                scale_log[start : start + cfg.batch_size] = scale_log_vals
             self.step += 1
             acc_loss += loss.item() * cfg.batch_size
             acc_n += cfg.batch_size
