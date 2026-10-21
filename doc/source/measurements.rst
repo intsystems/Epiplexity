@@ -1,6 +1,11 @@
 Measurement methods and library contracts
 =========================================
 
+The practical goal is to select productive synthetic-data generators for training
+a time-series foundation model. Productivity is measured by downstream forecasting
+quality on real datasets under a fixed training-data budget. The measurement
+methods below support the investigation of generator-selection signals.
+
 The proposed four-method library scope is **prequential coding**, **requential
 coding**, **predictive V-information**, and **Bayesian predictive log-loss**.
 Prequential coding is the method used in the saved transfer experiments. The

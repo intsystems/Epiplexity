@@ -1,11 +1,23 @@
 {
-  "source_commit": "6352438ad740603103d45a39414eca2bf3b3c20d",
+  "source_commit": "9b47254a9f23c518f82be8f5f4e423c39af83292",
   "run_count": 23,
   "primary_runs": 22,
   "waveform_repeats": 1,
   "total_training_windows": 501992448,
   "configs_per_run": 55,
   "export_precision": "six significant digits per step",
+  "analysis_script_sha256": "b9389ed1b292421a4d5ea3a38637638ba2e842ebaff3aaa2a7c86373aa25c58e",
+  "downstream_nll": {
+    "source_field": "nll_per_point",
+    "aggregation": "arithmetic mean of all 55 configuration-level NLLs; equal configuration weights",
+    "units": "nats per target point, in original series units",
+    "window_selection": "retains the saved evaluator's exclusion of windows with zero seasonal error",
+    "baseline_normalized": false,
+    "plotted_exploratory_subset_excludes": [
+      "chaotic",
+      "waveform"
+    ]
+  },
   "max_area_rounding_bound_nats": 12799.83616,
   "archived_area_comparisons": [
     {

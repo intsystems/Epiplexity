@@ -137,7 +137,11 @@ def load_run(series, run):
             val = float(scores[config][metric])
             assert np.isfinite([base, val]).all() and base > 0 and val > 0
             row[name + "_ratio"] = val / base
+        # NLL can be negative, so retain its units and aggregate arithmetically.
+        row["nll_nats_per_point"] = float(scores[config]["nll_per_point"])
+        assert np.isfinite(row["nll_nats_per_point"]), (run, config)
         tasks.append(row)
+    rec["nll_mean_nats_per_point"] = float(np.mean([r["nll_nats_per_point"] for r in tasks]))
     for name in METRICS:
         values = np.array([r[name + "_ratio"] for r in tasks])
         rec[name + "_geo"] = float(np.exp(np.log(values).mean()))
@@ -184,13 +188,14 @@ def main():
     correlations = []
     subsets = {
         "all_11": set(), "without_chaotic_stepfunction": {"chaotic", "stepfunction"},
+        "without_chaotic_waveform": {"chaotic", "waveform"},
         "without_chaotic_waveform_stepfunction": {"chaotic", "waveform", "stepfunction"},
     }
     for series in [1, 2]:
         for subset, excluded in subsets.items():
             keep = [r for r in rows if r["series"] == series and r["init_seed"] == 0 and r["generator"] not in excluded]
             for pred in ["area_ema_mnats", "area_raw_mnats", "final_ema_nats_per_point", "loss_drop"]:
-                for target in ["crps_geo", "crps_median", "crps_mean_rank", "mase_geo", "mwsql_geo"]:
+                for target in ["crps_geo", "crps_median", "crps_mean_rank", "mase_geo", "mwsql_geo", "nll_mean_nats_per_point"]:
                     stat = bootstrap_rho([r[pred] for r in keep], [r[target] for r in keep])
                     correlations.append({"series": series, "subset": subset, "predictor": pred, "target": target, **stat})
     # A separate replacement analysis keeps all families, using seed 1 for Waveform.
@@ -255,6 +260,15 @@ def main():
         "source_commit": commit, "run_count": len(rows), "primary_runs": 22, "waveform_repeats": 1,
         "total_training_windows": sum(r["n_windows"] for r in rows),
         "configs_per_run": 55, "export_precision": "six significant digits per step",
+        "analysis_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "downstream_nll": {
+            "source_field": "nll_per_point",
+            "aggregation": "arithmetic mean of all 55 configuration-level NLLs; equal configuration weights",
+            "units": "nats per target point, in original series units",
+            "window_selection": "retains the saved evaluator's exclusion of windows with zero seasonal error",
+            "baseline_normalized": False,
+            "plotted_exploratory_subset_excludes": ["chaotic", "waveform"],
+        },
         "max_area_rounding_bound_nats": max(r["area_export_error_bound_nats"] for r in rows),
         "archived_area_comparisons": area_checks, "point_baseline_max_relative_difference": baseline_check,
         "bootstrap": {"unit": "generator family", "replicates": 10000, "seed": 0, "interval": "95% percentile"},

@@ -1,4 +1,4 @@
-"""Build publication figures only from saved numerical arrays; no fitted curves."""
+"""Build figures from saved results, labeling exploratory descriptive trend fits."""
 
 import csv
 from pathlib import Path
@@ -7,7 +7,9 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
+from scipy.stats import theilslopes
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "figures"
@@ -119,34 +121,73 @@ def training_results():
 
 def transfer_results():
     rows = read_rows("run_statistics.csv")
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.1), sharey=True, layout="constrained")
+    correlations = read_rows("correlations.csv")
+    fig, axes = plt.subplots(2, 2, figsize=(7.1, 4.7), sharex="col", sharey="row", layout="constrained")
+    excluded = {"chaotic", "waveform"}
     offsets = [
-        {"kernelsynth": (-43, -10), "ets": (-9, -14), "waveform": (5, 8), "sde": (7, 6), "stepfunction": (-23, 8), "tsi": (-23, -15), "arima": (4, -13), "fbm": (4, -13), "garch": (-12, 9), "chaotic": (-24, 8), "timesynth": (5, 3)},
-        {"kernelsynth": (-38, 0), "ets": (-9, -14), "waveform": (-30, 9), "sde": (-8, 10), "stepfunction": (6, 2), "tsi": (-8, -13), "arima": (5, -7), "fbm": (6, -13), "garch": (-15, 10), "chaotic": (-26, 8), "timesynth": (-42, -5)},
+        {"kernelsynth": (-43, 3), "ets": (-9, -14), "waveform": (5, 8), "sde": (7, 6), "stepfunction": (-23, 8), "tsi": (-23, -15), "arima": (8, 4), "fbm": (4, -13), "garch": (-12, 9), "chaotic": (-24, 8), "timesynth": (5, 3)},
+        {"kernelsynth": (-25, -11), "ets": (-9, -14), "waveform": (-30, 9), "sde": (-8, 10), "stepfunction": (-5, 10), "tsi": (-30, 4), "arima": (5, -7), "fbm": (6, -13), "garch": (-15, 10), "chaotic": (-26, 8), "timesynth": (-42, -5)},
     ]
     short = {"kernelsynth": "Kernel", "stepfunction": "Step", "timesynth": "Time", "waveform": "Wave", "chaotic": "Chaos"}
-    for series, ax in enumerate(axes, 1):
-        for row in rows:
-            if int(row["series"]) != series or int(row["init_seed"]) != 0:
-                continue
-            gen = row["generator"]
-            x, y = float(row["area_ema_mnats"]), float(row["crps_geo"])
-            ax.scatter(x, y, c=[COLORS[gen]], s=28, zorder=3)
-            ax.annotate(short.get(gen, NAMES[gen]), (x, y), xytext=offsets[series - 1][gen],
-                        textcoords="offset points", fontsize=7.5, color=COLORS[gen])
-        ax.axhline(1, color="#6a747c", lw=0.8, ls="--")
-        ax.set_xscale("log")
-        ax.set_ylim(0.59, 1.74)
-        ax.set_xlabel("Excess area A (million nats; log scale)")
-        ax.set_title(f"Series {series} ({'2M' if series == 1 else '40M'}); all 11: rho = {'-0.18' if series == 1 else '0.00'}", fontsize=9, loc="left")
-        ax.grid(alpha=0.13)
-    repeat = next(r for r in rows if r["run"] == "s2_waveform_seed1")
-    origin = next(r for r in rows if r["run"] == "s2_waveform")
-    x, y = float(repeat["area_ema_mnats"]), float(repeat["crps_geo"])
-    axes[1].scatter(x, y, facecolors="white", edgecolors=[COLORS["waveform"]], s=35, zorder=4)
-    axes[1].plot([float(origin["area_ema_mnats"]), x], [float(origin["crps_geo"]), y], color=COLORS["waveform"], lw=0.8, ls=":")
-    axes[1].annotate("Wave seed 1", (x, y), xytext=(-51, -10), textcoords="offset points", fontsize=7, color=COLORS["waveform"])
-    axes[0].set_ylabel("Geometric mean scaled CRPS / seasonal naive")
+    for col, series in enumerate((1, 2)):
+        primary = [r for r in rows if int(r["series"]) == series and int(r["init_seed"]) == 0]
+        subset = [r for r in primary if r["generator"] not in excluded]
+        for metric_row, target in enumerate(("crps_geo", "nll_mean_nats_per_point")):
+            ax = axes[metric_row, col]
+            for row in primary:
+                gen = row["generator"]
+                x, y = float(row["area_ema_mnats"]), float(row[target])
+                color = "#858585" if gen in excluded else COLORS[gen]
+                ax.scatter(x, y, c=[color], marker="x" if gen in excluded else "o", s=24, zorder=3)
+                offset = offsets[col][gen]
+                if metric_row == 1:
+                    offset = {
+                        "kernelsynth": (-40, -10), "ets": (-9, -13), "waveform": (-25, -12),
+                        "sde": (5, -10), "stepfunction": (-18, 7), "tsi": (-15, 7),
+                        "arima": (5, 5), "fbm": (3, 7), "garch": (5, -8),
+                        "chaotic": (-26, 5), "timesynth": (-28, 7),
+                    }[gen]
+                ax.annotate(short.get(gen, NAMES[gen]), (x, y), xytext=offset,
+                            textcoords="offset points", fontsize=7, color=color)
+            x = np.array([float(r["area_ema_mnats"]) for r in subset])
+            y = np.array([float(r[target]) for r in subset])
+            # A robust descriptive line keeps individual loss magnitudes from
+            # dominating the display; correlations remain Spearman statistics.
+            slope, intercept, _, _ = theilslopes(y, np.log10(x))
+            grid = np.geomspace(x.min(), x.max(), 100)
+            ax.plot(grid, intercept + slope * np.log10(grid), color="#384e60", ls=":", lw=1)
+            stats = {}
+            for key in ("all_11", "without_chaotic_waveform"):
+                match = next(r for r in correlations if int(r["series"]) == series
+                             and r["subset"] == key and r["predictor"] == "area_ema_mnats" and r["target"] == target)
+                stats[key] = float(match["rho"])
+            ax.text(0.02, 0.97, f"All 11: rho = {stats['all_11']:+.2f}\nSubset 9: rho = {stats['without_chaotic_waveform']:+.2f}",
+                    transform=ax.transAxes, va="top", fontsize=7.5,
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.85, "pad": 1.5})
+            ax.set_xscale("log")
+            ax.grid(alpha=0.13)
+            if metric_row == 0:
+                ax.axhline(1, color="#6a747c", lw=0.8, ls="--")
+                ax.set_ylim(0.53, 1.78)
+                ax.set_title(f"{'2M' if series == 1 else '40M'} training windows", fontsize=10, loc="left")
+            else:
+                ax.set_ylim(4.5, 6.35)
+                ax.set_xlabel("Epiplexity proxy A (million nats; log scale)", fontsize=8)
+            if series == 2:
+                repeat = next(r for r in rows if r["run"] == "s2_waveform_seed1")
+                origin = next(r for r in primary if r["generator"] == "waveform")
+                x, y = float(repeat["area_ema_mnats"]), float(repeat[target])
+                ax.scatter(x, y, facecolors="white", edgecolors="#858585", s=30, zorder=4)
+                ax.plot([float(origin["area_ema_mnats"]), x], [float(origin[target]), y], color="#858585", lw=0.8, ls="--")
+    axes[0, 0].set_ylabel("Downstream CRPS\n(geometric mean ratio to naive)", fontsize=8)
+    axes[1, 0].set_ylabel("Downstream NLL\n(mean nats / target point)", fontsize=8)
+    handles = [
+        Line2D([], [], marker="o", color="#384e60", ls="", label="Subset: 9 generators"),
+        Line2D([], [], marker="x", color="#858585", ls="", label="Excluded: Chaotic, Waveform"),
+        Line2D([], [], color="#384e60", ls=":", label="Subset trend (Theil-Sen in log A)"),
+        Line2D([], [], marker="o", markerfacecolor="white", color="#858585", ls="", label="Waveform seed 1 (outside correlations)"),
+    ]
+    fig.legend(handles=handles, loc="outside lower center", ncol=2, frameon=False, fontsize=7.5)
     save(fig, "transfer_results")
 
 

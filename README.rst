@@ -22,8 +22,11 @@
 Abstract
 ========
 
-This project studies whether structure learned from synthetic time-series priors predicts
-forecasting transfer. The implemented ``episynth`` package generates forecasting tasks, trains
+The practical goal is to train a time-series foundation model on high-quality synthetic
+data and select productive generators for that data. A productive generator supplies
+pretraining data that improve forecasting on real datasets under a fixed training-data
+budget. We study epiplexity-based measurements as possible signals for this selection.
+The implemented ``episynth`` package generates forecasting tasks, trains
 a probabilistic Moirai transformer with pre-update loss logging and EMA weights, estimates
 signed excess prequential loss, and evaluates transfer on GIFT-Eval. Saved experiments cover
 eleven priors at approximately 2 million and 40 million training windows, plus one additional

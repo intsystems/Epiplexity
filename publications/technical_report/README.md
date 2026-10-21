@@ -11,6 +11,12 @@ GIFT-Eval configurations. It uses the actual outputs uploaded in repository comm
 `7d2b001d972169efdb19e3c8e256a182ba4c09f8`, informed by the supplied
 `lit_talk_v2.pdf` and `proposal_3.4.pdf`.
 
+The practical problem is training a time-series foundation model on high-quality
+synthetic data and selecting productive generators for that data. Productivity
+means improved forecasting on real datasets under a fixed training-data budget.
+The report tests excess prequential loss as a possible signal for generator
+selection, using the saved small-Moirai experiments.
+
 The article moves from the research question and contributions through problem
 formulation, methods, implementation, experimental evaluation, and discussion.
 The supplied [Bensemble report](https://github.com/intsystems/bensemble/blob/master/paper/bensemble_tech_report.pdf)
@@ -79,6 +85,10 @@ The analysis reads committed files under
 It recomputes signed excess areas from every exported training-step mean and the
 final held-out EMA floor, geometric mean score ratios to seasonal naive, and
 Spearman correlations with 10,000 paired bootstrap resamples of generator families.
+It also extracts downstream `nll_per_point` values and averages them arithmetically
+across the same 55 configurations, retaining nats per target point. NLL is neither
+divided by the seasonal-naive baseline nor averaged geometrically. The saved
+evaluator excludes windows with zero seasonal error for this field.
 It also generates `data/results_table.tex` directly from the recomputed run records
 so that the report's results table uses the same values and rounding as the CSVs.
 It checks contiguous step/window counts and matching evaluation configurations,
@@ -87,11 +97,19 @@ and verifies the seasonal-naive point metrics against the committed leaderboard.
 Large per-window vectors, model checkpoints, and the original benchmark data are
 not required for this analysis.
 
-The three experiment figures are:
+The three experiment figures are listed below. Training and downstream-loss
+figures appear in the article; the prefix figure is supplementary so the main
+comparison can show both losses at both budgets within the seven-page limit.
 
 - `figures/training_results.pdf`: training curves for both budgets.
-- `figures/transfer_results.pdf`: excess area versus aggregate CRPS.
-- `figures/prefix_results.pdf`: checkpoint statistics versus final transfer.
+- `figures/transfer_results.pdf`: epiplexity proxy versus downstream CRPS and NLL
+  at both budgets. All eleven generators remain visible; filled circles and
+  descriptive Theil–Sen trends show the exploratory subset excluding Chaotic and
+  Waveform. The 40M subset CRPS correlation is −0.82, matching the anticorrelation
+  in Chernousov's original regression figure. The corresponding 2M correlation
+  is −0.47; mean-NLL correlations are −0.55 and −0.45. Full-set and subset
+  correlations are labeled separately; the Waveform seed-1 repeat enters neither.
+- `figures/prefix_results.pdf`: supplementary checkpoint statistics versus final transfer.
 
 Each also has a PNG version. The optional `generator_gallery` and
 `forecast_windows` figures contain newly generated descriptive examples and
@@ -122,7 +140,7 @@ repeating the tests and retains the existing test-result files.
 | --- | --- |
 | `run_statistics.csv` | Areas, endpoint losses, metric aggregates, and sensitivity statistics for 23 runs |
 | `results_table.tex` | Generated main results table |
-| `task_ratios.csv` | CRPS, MASE, and quantile-loss ratios for every run/configuration |
+| `task_ratios.csv` | CRPS, MASE, and quantile-loss ratios, plus raw-unit NLL for every run/configuration |
 | `correlations.csv` | Full-set and exploratory subset associations with bootstrap intervals |
 | `checkpoint_statistics.csv`, `prefix_correlations.csv` | Prefix areas/losses and final-transfer associations |
 | `analysis_verification.json` | Input hashes, rounding bounds, archived-area and point-baseline comparisons |

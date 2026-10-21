@@ -34,9 +34,11 @@ pdfkeywords={epiplexity, time series, synthetic data, prequential coding, foreca
 \maketitle
 \vspace{-7mm}
 \begin{abstract}
-Synthetic pretraining offers controllable forecasting tasks, but selecting useful
-data distributions remains difficult. We investigate whether excess prequential
-loss, a learning-curve proxy for epiplexity, predicts transfer to real time series.
+We address the practical problem of training a time-series foundation model on
+high-quality synthetic data by selecting productive data generators. Productivity
+means better forecasting on real datasets after pretraining under a fixed data
+budget. We test excess prequential loss, a learning-curve proxy for epiplexity,
+as a signal for this generator-selection decision.
 Using \texttt{episynth}, we compare eleven synthetic priors at training budgets
 of approximately 2 and 40 million windows. A probabilistic Moirai transformer is
 trained from scratch on each prior and evaluated on 55 short-term GIFT-Eval
@@ -51,13 +53,15 @@ not establish a reliable rule for selecting pretraining data.
 \end{abstract}
 
 \section{Introduction}
-Synthetic data make the pretraining distribution an experimental choice.
-For forecasting, one can generate trends, periodic signals, stochastic innovations,
-or chaotic trajectories in arbitrary quantities. These distributions differ in
-both predictability and the structure a model can learn. A low synthetic
-prediction loss therefore need not imply useful representations for real series.
-The practical question is which property of a synthetic prior can guide data
-selection before an expensive downstream evaluation.
+Our practical goal is to train a time-series foundation model on synthetic data
+that support accurate forecasting across real datasets. This requires selecting
+productive generators: sources whose data improve downstream forecasting under
+a fixed training-data budget. Generators can supply trends, periodic signals,
+stochastic innovations, or chaotic trajectories in arbitrary quantities, but
+their usefulness depends on the structure they teach the model. A low synthetic
+prediction loss alone does not identify a productive generator. We therefore
+study whether training-time measurements can guide generator selection before
+an expensive downstream evaluation.
 
 Epiplexity describes structure accessible to a computationally bounded
 observer~\cite{finzi2026}. This suggests a testable hypothesis: priors from which
@@ -87,7 +91,9 @@ informs the proposed oracle decomposition~\cite{jeon2024}.
 
 \section{Methodology}
 \subsection{Problem formulation}
-Let $g$ denote a synthetic prior over context--target pairs $(C,Y)$, where
+The practical objective is to select a generator whose synthetic data minimize
+forecasting error on real datasets for a fixed architecture and training-window
+budget. Let $g$ denote a synthetic prior over context--target pairs $(C,Y)$, where
 $Y=(Y_1,\ldots,Y_h)$. A probabilistic forecaster $q_\theta$ is trained with loss
 $\ell_\theta(C,Y)=-\sum_{t=1}^{h}\log q_\theta(Y_t\mid C)$.
 We ask whether the excess loss accumulated while learning $g$ predicts the
@@ -194,6 +200,11 @@ Smaller ratios are better; $R<1$ beats the baseline. The main metric is the
 sample-based \texttt{scaled\_crps}; the separate nine-quantile
 \texttt{mean\_weighted\_sum\_quantile\_loss} field is not substituted for it.
 MASE, median ratios, and average configuration ranks are sensitivity checks.
+We also report downstream negative log-likelihood (NLL), in nats per target
+point: $L_g^{\rm down}=\frac1{55}\sum_{j=1}^{55}\mathrm{NLL}_{g,j}$,
+the arithmetic mean of the saved \texttt{nll\_per\_point} values. These are
+original-unit density losses, without baseline normalization; they retain the
+evaluator's exclusion of windows with zero seasonal error.
 We compute Spearman correlations across the eleven generator families and 95\%
 percentile intervals from 10,000 paired bootstrap resamples of families (seed 0).
 These intervals describe variation across the small set of priors, not training
@@ -244,7 +255,9 @@ specified; the seed-1 repeat is excluded from the eleven-family correlations.}
 \input{data/results_table.tex}
 \end{table}
 
-\subsection{Does excess area explain transfer?}
+\subsection{Epiplexity versus downstream loss}
+Figure~\ref{fig:transfer} plots the epiplexity proxy $A$ against downstream
+CRPS and NLL. Both measure error on real data; lower values are better.
 Across all eleven priors, the association between area and aggregate CRPS is
 weak: $\rho=-0.18$ (95\% interval $[-0.81,0.51]$) at 2M and
 $\rho=0.00$ ($[-0.89,0.61]$) at 40M (Figure~\ref{fig:transfer}).
@@ -256,18 +269,25 @@ transfer better than final loss.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/transfer_results.pdf}
-\caption{Area and transfer for every prior. The horizontal line is seasonal
-naive. Waveform's extra initialization (open marker) changes aggregate CRPS
-markedly despite an almost identical area. Horizontal axes are logarithmic.}
+\caption{Epiplexity proxy versus downstream loss: CRPS ratios (top) and mean
+NLL (bottom). All eleven priors are shown. Filled circles form the exploratory
+nine-generator subset excluding Chaotic and Waveform (gray crosses).
+Dotted lines are descriptive Theil--Sen fits against $\log A$ on that subset;
+annotations report Spearman correlations. Open markers show Waveform seed 1,
+excluded from both correlations. The CRPS baseline is seasonal naive.}
 \label{fig:transfer}
 \end{figure}
 
-Selected subsets show stronger associations. Excluding Chaotic and StepFunction
-gives $\rho=-0.73$ at 2M ($n=9$, interval $[-0.95,-0.14]$), but only $-0.28$
-at 40M. Additionally excluding Waveform at 40M gives $-0.83$
-($n=8$, $[-1.00,-0.24]$). The sensitivity analysis also explores fifteen
-area variants. Such exclusions and metric choices are exploratory, selected
-after seeing the results; they do not establish a universal ranking rule.
+The subset in Chernousov's regression figure excludes Chaotic and Waveform
+($n=9$). It shows the expected anticorrelation with CRPS: $\rho=-0.47$ at 2M
+and $-0.82$ at 40M (95\% intervals $[-0.95,0.39]$ and $[-1.00,-0.28]$).
+Mean downstream NLL gives $-0.55$ and $-0.45$ on the same subset, with intervals
+$[-1.00,0.21]$ and $[-0.95,0.39]$; full-set NLL correlations are $-0.15$ and
+$-0.16$. Thus the strongest observed anticorrelation concerns 40M subset CRPS.
+Alternative exclusions give $-0.73$ at 2M without Chaotic and StepFunction,
+and $-0.83$ at 40M without those two and Waveform. These exclusions and the
+fifteen explored area variants were selected after seeing results; they do not
+establish a universal ranking rule.
 
 Waveform illustrates sensitivity to forecast tails. At 40M, a second
 initialization gives almost identical areas (1061.2 versus 1063.6 million nats)
@@ -288,21 +308,13 @@ full-set association.
 \subsection{Short prefixes and a compression baseline}
 The seven held-out checkpoints permit a first look at early prediction.
 At each prefix, we recompute area using that checkpoint's own EMA floor,
-and compare its ranking with final downstream CRPS
-(Figure~\ref{fig:prefix}). We also compare checkpoint loss and the loss drop
+and compare its ranking with final downstream CRPS (see the repository's
+\href{https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/figures/prefix_results.pdf}{supplementary prefix figure}).
+We also compare checkpoint loss and the loss drop
 from the mean loss in the initial 1\% of training steps. No future endpoint
 loss enters a prefix estimate. Associations vary with budget and checkpoint;
 this is an exploratory correlation analysis, without a predictor trained and
 validated on unseen generator families.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/prefix_results.pdf}
-\caption{Prefix statistics versus final aggregate CRPS across all eleven priors.
-Negative values favor larger predictor values. Checkpoints use their own floor;
-the curves do not constitute an out-of-sample prediction test.}
-\label{fig:prefix}
-\end{figure}
 
 The gzip baseline uses 5,000 series for each of ten priors (TimeSynth absent),
 with raw float32 and range-normalized int16 rates. Int16-rate correlations with
@@ -310,7 +322,9 @@ CRPS are $-0.59$ at 2M and $-0.47$ at 40M; both intervals include zero.
 Current uncertainty establishes no advantage for either proxy.
 
 \section{Discussion and conclusion}
-KernelSynth and ETS provide the strongest aggregate transfer in our comparison.
+For the practical task of selecting synthetic data for foundation-model
+pretraining, KernelSynth and ETS provide the strongest aggregate transfer in
+our comparison.
 Excess prequential loss, however, does not consistently rank all eleven priors.
 This limits its present use as a data-selection criterion: a large area measures
 learning progress on the synthetic task, which need not capture the structure

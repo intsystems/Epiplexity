@@ -1,9 +1,12 @@
 episynth
 ========
 
-``episynth`` measures how much structure a small forecasting model learns from a
-synthetic time-series generator, and compares the resulting epiplexity estimates
-with forecasting quality on GIFT-Eval. The project repository is
+The practical goal is to train a time-series foundation model on high-quality
+synthetic data and select productive data generators. A generator is productive
+when its pretraining data improve forecasting on real datasets under a fixed
+training-data budget. ``episynth`` compares generators through controlled training
+and GIFT-Eval evaluation, and tests epiplexity-based measurements as selection
+signals. The current experiments use a small Moirai model. The project repository is
 `intsystems/Epiplexity <https://github.com/intsystems/Epiplexity>`_.
 
 .. toctree::
