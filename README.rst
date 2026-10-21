@@ -29,15 +29,15 @@ Waveform initialization. KernelSynth transfers best at both budgets; the full-se
 between excess area and aggregate CRPS is weak. The technical report documents the evidence,
 endpoint sensitivity, forecast failures, and limits of interpreting the area as epiplexity.
 
-The earlier estimator roadmap in ``plan/`` is **outdated**. The ``epimeter`` estimator classes
-remain stubs. Current scope and results are documented in ``src/episynth/README.md`` and
-``technical_report/README.md``.
+The earlier research roadmap in ``publications/plan/`` is **outdated**.
+Current implementation details are in ``src/episynth/README.md`` and
+``publications/description.md``; the report documents the saved experiments.
 
 Technical report and four algorithms
 ====================================
 
-Read the `technical report PDF <technical_report/main.pdf>`_ and its
-`reproduction instructions <technical_report/README.md>`_. The methodology specifies:
+Read the `technical report PDF <publications/technical_report/main.pdf>`_ and its
+`reproduction instructions <publications/technical_report/README.md>`_. The methodology specifies:
 
 1. Seeded synthetic task generation: reproducible context/target windows, dequantization and masks.
 2. Probabilistic training with AdamW and EMA: checkpoints and pre-update/held-out NLL logs.
@@ -45,7 +45,7 @@ Read the `technical report PDF <technical_report/main.pdf>`_ and its
 4. Transfer evaluation and ranking uncertainty: GIFT-Eval scores, baseline ratios and paired bootstrap intervals.
 
 Research publications
-===============================
+=====================
 1.
 
 Presentations at conferences on the topic of research
@@ -53,35 +53,28 @@ Presentations at conferences on the topic of research
 1.
 
 Software modules developed as part of the study
-======================================================
-1. The implemented time-series package `episynth <src/episynth/README.md>`_:
-   generators, task windows, Moirai model, training, evaluation and analysis.
-2. The ``epimeter`` interfaces and registries, with runnable extension examples in ``code/``;
-   its estimator and training routines remain stubs.
+===============================================
+1. The python package *episynth* with all implementation `here <https://github.com/intsystems/Epiplexity/tree/main/src/episynth>`_.
+2. Runnable demo notebook `here <https://github.com/intsystems/Epiplexity/tree/main/experiments/demos>`_.
 
 Repository layout
 =================
 
 .. code-block:: text
 
-    src/epimeter/   the package: estimators, models, samplers, training, eval
-    src/episynth/   time-series track: synthetic generators, task windows, Moirai port, training with
-                    per-window loss logging, GIFT-Eval evaluation (overview in src/episynth/README.md)
-    tests/          pytest
-    code/           experiment code and demo
-    experiments/    saved experiment outputs: episynth/ — two training series (configs, training
-                    curves, held-out losses, GIFT-Eval summaries, analysis tables, figures, scripts);
-                    per-window losses are release assets (see experiments/episynth/README.md)
-    doc/            Sphinx documentation
-    technical_report/ report PDF and source; reproducible analysis of saved episynth experiments
-    paper/          earlier arXiv-style manuscript scaffold
-    figures/        figures for the paper
-    slides/         presentations: project/ (project plan), talk/ (talk on the epiplexity paper)
-    blogpost/       blog post and its preview script
-    notes/          literature review (pdf + tex + refs)
-    research_notes/ source notes behind the literature review
-    plan/           outdated plan, roles, protocol and calendar (historical)
-    description.md  historical epimeter architecture and proposed public API
+    src/episynth/      the package: generators, task windows, Moirai port, training with per-window
+                       loss logging, analysis, evaluation on GIFT-Eval, pluggable estimators of
+                       epiplexity (overview in src/episynth/README.md)
+    tests/             pytest
+    experiments/       experiment code and demo (demos/) plus saved outputs (episynth/): two training
+                       series (configs, training curves, held-out losses, GIFT-Eval summaries,
+                       analysis tables, figures, scripts)
+    doc/               Sphinx documentation (autodoc); deploys to GitHub Pages on push to main
+    publications/      non-code material for the article and project: paper/ (arXiv manuscript),
+                       blogpost/, notes/ (literature review), research_notes/, slides/, plan/,
+                       figures/, technical_report/ (article and reproducible analysis), description.md
+    pyproject.toml     package metadata (name = episynth)
+    README.rst         this file
 
 Development
 ===========
@@ -91,6 +84,23 @@ certificates, add ``--system-certs`` to the uv commands.
 
 .. code-block:: bash
 
-    uv sync --extra dev
-    .venv/bin/pytest tests/
-    .venv/bin/ruff check src/ tests/ code/
+    uv sync --locked --extra dev
+    uv run --no-sync pytest tests/
+    uv run --no-sync ruff check src/ tests/ experiments/demos/ doc/source/conf.py
+
+Documentation
+=============
+
+The Sphinx documentation (with autodoc) is built and deployed to GitHub Pages automatically on
+every push to ``main`` by `.github/workflows/docs.yaml`. To build it locally:
+
+.. code-block:: bash
+
+    uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build
+    # open doc/_build/index.html
+
+The generated API example is ``doc/_build/api/estimators.html``. See
+``doc/source/installation.rst`` for standalone hosting and GitHub Pages setup.
+The Pages source must be configured as **GitHub Actions**. The expected URL is
+https://intsystems.github.io/Epiplexity/; a successful deployment is required to
+update the online site. Pull requests build documentation without publishing.

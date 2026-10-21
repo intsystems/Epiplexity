@@ -19,9 +19,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
 
 from .corpus import Corpus
+from .estimators import available as estimators_available
+from .estimators import build as build_estimator
 from .generators import GENERATORS, Generator, Mixture
 from .model.moirai import MoiraiConfig, small
-from .training import TrainConfig, Trainer, build_model
+from .training import TrainConfig, build_model
 from .windows import WindowSpec
 
 
@@ -50,6 +52,7 @@ class RunConfig(BaseModel):
         model: Конфигурация модели; по умолчанию Moirai-Small с патчем 32 и тремя непрерывными компонентами.
         train: Параметры прогона.
         context_table: Путь к JSON с `lengths` и `probs`; задаёт распределение длин контекста в `spec`.
+        estimator: Имя алгоритма оценки эпиплексии в реестре `episynth.estimators` (по умолчанию `prequential`).
     """
 
     data: DataConfig
@@ -57,6 +60,7 @@ class RunConfig(BaseModel):
     model: MoiraiConfig = Field(default_factory=lambda: small(patch_sizes=(32,), components=("student_t", "normal_fixed", "log_normal")))
     train: TrainConfig
     context_table: str | None = None
+    estimator: str = "prequential"
 
     @model_validator(mode="after")
     def _check(self) -> "RunConfig":
@@ -64,6 +68,8 @@ class RunConfig(BaseModel):
             raise ValueError(f"размер патча {self.spec.patch_size} не входит в {self.model.patch_sizes}")
         if self.spec.n_tokens > self.model.max_seq_len:
             raise ValueError("окно длиннее max_seq_len модели")
+        if self.estimator not in estimators_available():
+            raise ValueError(f"неизвестный оценщик {self.estimator!r}; доступны {sorted(estimators_available())}")
         return self
 
 
@@ -152,7 +158,9 @@ def main() -> None:
     generator = build_generator(config.data, config.spec.series_length)
     check_seed_ranges(generator, config.train)
     model = build_model(config.model, config.train.init_seed)
-    Trainer(model, generator, config.spec, config.train, out).run()
+    result = build_estimator(config.estimator).run(model, generator, config.spec, config.train, out)
+    (out / "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
+    print(json.dumps({"estimator": config.estimator, "result": result}, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

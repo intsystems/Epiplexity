@@ -1,34 +1,25 @@
-API
-===
+Public API
+==========
 
-.. automodule:: epimeter
-   :members:
-   :undoc-members:
-   :show-inheritance:
+These pages are generated from the implementation's docstrings and annotations by
+``sphinx.ext.autodoc``. Parameters, return values and exceptions use Google-style
+sections rendered by ``sphinx.ext.napoleon``. Class pages include public methods
+and constructor documentation. Private helpers (names starting with ``_``) are internal.
 
-episynth
---------
+The package is ``episynth``; the GitHub repository remains ``intsystems/Epiplexity``.
+Use the registries exported by ``episynth.generators`` and ``episynth.estimators``
+for normal experiments; the implementation modules below give the full contracts.
 
-.. automodule:: episynth.generators
-   :members:
+.. automodule:: episynth
 
-.. automodule:: episynth.windows
-   :members:
+.. toctree::
+   :maxdepth: 2
 
-.. automodule:: episynth.model.moirai
-   :members:
-
-.. automodule:: episynth.corpus
-   :members:
-
-.. automodule:: episynth.training
-   :members:
-
-.. automodule:: episynth.train
-   :members:
-
-.. automodule:: episynth.analysis
-   :members:
-
-.. automodule:: episynth.evaluation
-   :members:
+   api/generators
+   api/windows
+   api/model
+   api/training
+   api/estimators
+   api/analysis
+   api/evaluation
+   api/checks

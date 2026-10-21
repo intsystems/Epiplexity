@@ -1,44 +1,51 @@
 name: docs
 
-# Docs are built on every push and pull request to main. Deploy to GitHub Pages
-# runs only on a manual start (Actions → docs → Run workflow): autodeploy is off
-# at the request of the BMM course.
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      UV_HTTP_TIMEOUT: "300"
+      UV_CONCURRENT_DOWNLOADS: "4"
     steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-
-      - name: Install Dependencies
-        run: |
-          pip install -U torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -U -e . sphinx sphinx-rtd-theme
-
-      - name: Build Docs
-        run: |
-          sphinx-build -b html ./doc/source/ public
-          touch public/.nojekyll
-
-      - name: Deploy 🚀
-        if: github.event_name == 'workflow_dispatch'
-        uses: JamesIves/github-pages-deploy-action@v4
+      - uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --locked --extra dev --system-certs
+      - name: Build Sphinx docs
+        run: uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
-          branch: gh-pages
-          folder: public
+          path: doc/_build
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

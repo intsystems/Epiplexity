@@ -11,6 +11,7 @@ dist/
 
 # Sphinx documentation (built into public/ by .github/workflows/docs.yaml)
 public/
+doc/_build/
 
 # Unit test / coverage reports
 htmlcov/
@@ -36,6 +37,7 @@ venv/
 results/
 logs/
 checkpoints/
+runs/
 
 # LaTeX (paper/, slides/, notes/)
 *.aux
@@ -44,11 +46,5 @@ checkpoints/
 *.blg
 *.out
 *.toc
-*.synctex.gz
-*.fdb_latexmk
-*.fls
-*.nav
-*.snm
-*.vrb
-
+# macOS
 .DS_Store

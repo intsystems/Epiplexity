@@ -77,6 +77,10 @@ def test_cli_runs_tiny_training(tmp_path, monkeypatch):
     assert json.loads((out / "run.json").read_text())["train"]["lr"] == 5e-4
     assert (out / "config.json").exists() and (out / "steps.csv").exists() and (out / "last.pt").exists()
     assert np.fromfile(out / "window_loss.f32", dtype=np.float32).shape == (8,)
+    # выбранный по умолчанию оценщик пишет результат и финальный лосс на отложенном наборе
+    result = json.loads((out / "estimator_result.json").read_text())
+    assert {"model_part_bits", "data_part_bits", "total_bits"} <= set(result)
+    assert (out / "heldout_ema_1.f32").exists()
 
 
 def test_seed_range_check(tmp_path):

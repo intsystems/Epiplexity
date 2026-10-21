@@ -1,11 +1,11 @@
 r"""Анализ прогонов: площадь над финальным лоссом с её ошибкой, сводки качества, ранговые корреляции.
 
-Площадь прогона $A = \sum_{i=1}^{N} \ell_i - N L_{\mathrm{fin}}$ в натах: $\ell_i$ — лосс $i$-го
-окна до шага по нему (`window_loss.f32`), $L_{\mathrm{fin}}$ — средний лосс окна на отложенном
+Площадь прогона :math:`A = \sum_{i=1}^{N} \ell_i - N L_{\mathrm{fin}}` в натах: :math:`\ell_i` — лосс :math:`i`-го
+окна до шага по нему (`window_loss.f32`), :math:`L_{\mathrm{fin}}` — средний лосс окна на отложенном
 наборе у последнего чекпойнта для выбранного варианта весов (`heldout_<вариант>_1.f32`, точность
-обучения). Ошибка площади от конечного отложенного набора равна $N$, умноженному на стандартную
-ошибку $L_{\mathrm{fin}}$ по окнам набора; обучающие лоссы входят в площадь как есть, это
-свойство прогона, а не оценка. Кривая площади по префиксам $A(n) = \sum_{i \le n} \ell_i - n L_{\mathrm{fin}}$
+обучения). Ошибка площади от конечного отложенного набора равна :math:`N`, умноженному на стандартную
+ошибку :math:`L_{\mathrm{fin}}` по окнам набора; обучающие лоссы входят в площадь как есть, это
+свойство прогона, а не оценка. Кривая площади по префиксам :math:`A(n) = \sum_{i \le n} \ell_i - n L_{\mathrm{fin}}`
 нужна для предсказания по началу обучения.
 
 Сводки качества по задачам бенчмарка из `summary.csv` прогонов и сезонного наива: средний ранг
@@ -29,12 +29,12 @@ class RunArea:
     """Площадь прогона и её составляющие.
 
     Attributes:
-        n_windows: Число обучающих окон $N$.
+        n_windows: Число обучающих окон :math:`N`.
         sum_loss: Сумма лоссов окон до шага, нат.
         l_fin: Финальный лосс, нат на окно.
         l_fin_se: Стандартная ошибка финального лосса по окнам отложенного набора.
         n_heldout: Размер отложенного набора.
-        area: Площадь $A$, нат.
+        area: Площадь :math:`A`, нат.
         area_se: Ошибка площади от конечного отложенного набора, нат.
         variant: Вариант весов финального лосса: `ema` или `raw`.
     """
@@ -69,7 +69,7 @@ def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
 
 
 def area_curve(run_dir: str | Path, variant: str = "ema", points: int = 200) -> tuple[np.ndarray, np.ndarray]:
-    """Кривая площади по префиксам обучения: номера окон `(points,)` и $A(n)$ в тех же точках."""
+    """Кривая площади по префиксам обучения: номера окон `(points,)` и :math:`A(n)` в тех же точках."""
     run_dir = Path(run_dir)
     losses = np.fromfile(run_dir / "window_loss.f32", dtype=np.float32).astype(np.float64)
     l_fin = float(np.fromfile(run_dir / f"heldout_{variant}_1.f32", dtype=np.float32).astype(np.float64).mean())
@@ -147,8 +147,18 @@ def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0
     return rho, float(lo), float(hi)
 
 
-def correlation_table(predictors: Mapping[str, Mapping[str, float]], quality: Mapping[str, float], **kwargs) -> dict[str, dict[str, float]]:
-    """Корреляции Спирмена каждого предсказателя с качеством по общим объектам: `rho`, `lo`, `hi`, `n`."""
+def correlation_table(predictors: Mapping[str, Mapping[str, float]], quality: Mapping[str, float], **kwargs: int | float) -> dict[str, dict[str, float]]:
+    """Корреляции Спирмена каждого предсказателя с качеством по общим объектам.
+
+    Args:
+        predictors: Значения предсказателей по именам объектов.
+        quality: Качество по тем же именам объектов.
+        **kwargs: Параметры :func:`spearman_ci`: ``n_boot`` и ``seed`` (int),
+            ``level`` (float). Передаются без изменения.
+
+    Returns:
+        Словарь по предсказателям с полями ``rho``, ``lo``, ``hi`` и ``n``.
+    """
     out = {}
     for name, pred in predictors.items():
         keys = sorted(set(pred) & set(quality))

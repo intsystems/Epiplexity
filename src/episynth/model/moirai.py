@@ -11,11 +11,11 @@ r"""Перенос Moirai 1.x (Woo и др., 2024, arXiv:2402.02592) из uni2ts
   через `torch.distributions`;
 - без jaxtyping, einops и hydra.
 
-Сохранённая ради чекпойнтов особенность оригинала: проекция логитов смеси для патча $P$
-заполняет весами первые $K P$ строк матрицы ширины $K P_{\max}$, а читается как
-$(K, P_{\max})$, поэтому при нескольких размерах патчей и $P < P_{\max}$ логиты части компонент
+Сохранённая ради чекпойнтов особенность оригинала: проекция логитов смеси для патча :math:`P`
+заполняет весами первые :math:`K P` строк матрицы ширины :math:`K P_{\max}`, а читается как
+:math:`(K, P_{\max})`, поэтому при нескольких размерах патчей и :math:`P < P_{\max}` логиты части компонент
 не зависят от представления и равны обучаемым смещениям. При одном размере патча в
-конфигурации ($P_{\max} = P$) особенность исчезает.
+конфигурации (:math:`P_{\max} = P`) особенность исчезает.
 """
 
 import math
@@ -159,7 +159,10 @@ class Attention(nn.Module):
         self.var_attn_bias = BinaryAttentionBias(num_heads)
         self.rope = rope
 
-    def forward(self, x, attn_mask, time_id, variate_id) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, attn_mask: torch.Tensor,
+        time_id: torch.Tensor, variate_id: torch.Tensor,
+    ) -> torch.Tensor:
         """Выход внимания `(B, S, d)` для `x` той же формы, булевой маски `(B, S, S)` и индексов `(B, S)`."""
         B, S, _ = x.shape
         q = self.q_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
@@ -208,7 +211,10 @@ class EncoderLayer(nn.Module):
         self.norm1 = RMSNorm(d_model)
         self.norm2 = RMSNorm(d_model)
 
-    def forward(self, x, attn_mask, time_id, variate_id) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, attn_mask: torch.Tensor,
+        time_id: torch.Tensor, variate_id: torch.Tensor,
+    ) -> torch.Tensor:
         """Выход слоя той же формы, что `x`."""
         x = x + self.self_attn(self.norm1(x), attn_mask, time_id, variate_id)
         return x + self.ffn(self.norm2(x))
@@ -230,7 +236,10 @@ class Encoder(nn.Module):
         self.layers = nn.ModuleList([EncoderLayer(d_model, num_heads, self.rope) for _ in range(num_layers)])
         self.norm = RMSNorm(d_model)
 
-    def forward(self, x, attn_mask, time_id, variate_id) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, attn_mask: torch.Tensor,
+        time_id: torch.Tensor, variate_id: torch.Tensor,
+    ) -> torch.Tensor:
         """Представления `(B, S, d)` после всех слоёв."""
         for layer in self.layers:
             x = layer(x, attn_mask, time_id, variate_id)
@@ -345,11 +354,11 @@ def _constrain(name: str, raw: dict[str, torch.Tensor]) -> dict[str, torch.Tenso
 class Mixture:
     r"""Смесь распределений на каждую точку патча в исходных единицах ряда.
 
-    Компоненты заданы в нормированных единицах $z = (y - \mathrm{loc}) / \mathrm{scale}$, где
+    Компоненты заданы в нормированных единицах :math:`z = (y - \mathrm{loc}) / \mathrm{scale}`, где
     `loc` и `scale` получены по наблюдаемому контексту. Лог-плотность в исходных единицах равна
-    лог-плотности смеси в $z$ минус $\log \mathrm{scale}$. Компоненты с ограниченным носителем
-    (отрицательное биномиальное на $z \ge 0$, логнормальное на $z > 0$) вне носителя дают нулевую
-    плотность. Отрицательное биномиальное вычисляется на нецелых $z$ через гамма-функцию, как в
+    лог-плотности смеси в :math:`z` минус :math:`\log \mathrm{scale}`. Компоненты с ограниченным носителем
+    (отрицательное биномиальное на :math:`z \ge 0`, логнормальное на :math:`z > 0`) вне носителя дают нулевую
+    плотность. Отрицательное биномиальное вычисляется на нецелых :math:`z` через гамма-функцию, как в
     оригинале: на вещественной оси это не плотность, и смесь с ним не нормирована.
 
     Args:
@@ -467,7 +476,10 @@ class PackedStdScaler(nn.Module):
         super().__init__()
         self.minimum_scale = minimum_scale
 
-    def forward(self, target, observed_mask, sample_id, variate_id) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, target: torch.Tensor, observed_mask: torch.Tensor,
+        sample_id: torch.Tensor, variate_id: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Сдвиг и масштаб `(B, S, 1)` float32 для `target` `(B, S, P)`, маски `(B, S, P)` и индексов `(B, S)`."""
         x = target.double()
         same = (sample_id.unsqueeze(-1) == sample_id.unsqueeze(-2)) & (variate_id.unsqueeze(-1) == variate_id.unsqueeze(-2))
