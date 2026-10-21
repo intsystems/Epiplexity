@@ -1,0 +1,18 @@
+{
+  "pages": 15,
+  "main_slides": 12,
+  "appendix_slides": 3,
+  "visual_review": "All 15 pages reviewed via rendered contact sheet; final overflowing frames corrected.",
+  "standalone_source_archive_compiles": true,
+  "overfull_boxes": false,
+  "missing_glyphs": false,
+  "undefined_references": false,
+  "pdf_sha256": "0db177e98d44b0dfc24467fed2de6d77132a8c245cbcfde5d3e53feef7f8f288",
+  "source_sha256": {
+    "main.tex": "a3974c32cce37f8ed263896b1c0c33fcd7cd5cfb5110a50298e099d40efa0398",
+    "figures/demo_notebook.png": "2d5d05c81b88f086a5f9d744c9fae956475beeba9c81f373e9e70394821fda52",
+    "figures/area_schematic.pdf": "a8a1e7ee59156297f6f52155d05e9947b20007ccf9224fbae62c0f6639fba0d0",
+    "figures/large_series_context.pdf": "f818b02e981e83f0433b62cee8e105892b946d2306f3a7634577f4c7f041d299"
+  },
+  "known_build_notice": "TeX installation has no Russian hyphenation patterns; no overflow occurs with the final explicit layout."
+}

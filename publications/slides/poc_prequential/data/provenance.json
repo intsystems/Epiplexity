@@ -1,0 +1,34 @@
+{
+  "notebook": "experiments/demos/demo_estimators.ipynb",
+  "notebook_executed_code_cells": 6,
+  "demo_result_bits": {
+    "model_part_bits": 788.2840652217938,
+    "data_part_bits": 5499.0586563787765,
+    "total_bits": 6287.34272160057,
+    "n_windows": 64.0
+  },
+  "illustrative_figure": "area_schematic is a synthetic illustration, not measured data",
+  "report_runs": "publications/technical_report/data/run_statistics.csv",
+  "report_correlations": [
+    {
+      "series": "1",
+      "subset": "all_11",
+      "predictor": "area_ema_mnats",
+      "target": "crps_geo",
+      "rho": "-0.18181818181818182",
+      "lo": "-0.8055555555555556",
+      "hi": "0.5094384978229317",
+      "n": "11"
+    },
+    {
+      "series": "2",
+      "subset": "all_11",
+      "predictor": "area_ema_mnats",
+      "target": "crps_geo",
+      "rho": "0.0",
+      "lo": "-0.8878504672897196",
+      "hi": "0.6074766355140186",
+      "n": "11"
+    }
+  ]
+}
