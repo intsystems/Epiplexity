@@ -52,6 +52,9 @@ Repository layout
                     per-window loss logging, GIFT-Eval evaluation (overview in src/episynth/README.md)
     tests/          pytest
     code/           experiment code and demo
+    experiments/    saved experiment outputs: episynth/ — two training series (configs, training
+                    curves, held-out losses, GIFT-Eval summaries, analysis tables, figures, scripts);
+                    per-window losses are release assets (see experiments/episynth/README.md)
     doc/            Sphinx documentation
     paper/          arXiv-style manuscript
     figures/        figures for the paper
