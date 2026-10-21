@@ -40,6 +40,18 @@ analysis + GIFT-Eval evaluation → tables, plots, generator comparisons
 - `episynth.analysis` and `episynth.evaluation`: area uncertainty, prefix curves,
   quality comparisons, forecast distributions and GIFT-Eval metrics.
 
+## Measurement-method scope
+
+The [measurement contracts](../doc/source/measurements.rst) propose four methods:
+prequential coding (implemented), requential coding (registered stub), predictive
+V-information (requires implementation), and Bayesian predictive log-loss using
+the implemented OU reference (public wrapper proposed). They specify the quantity,
+inputs, outputs, units and readiness of each method. Generation, training and
+forecast scoring are shared operations; the saved experiments use prequential
+coding. The common result contract must identify the measured quantity:
+V-information is a predictive-loss reduction, while the current estimator
+protocol returns a model/data code decomposition.
+
 ## Public API and annotations
 
 The complete reference is generated from the actual annotated Python definitions,

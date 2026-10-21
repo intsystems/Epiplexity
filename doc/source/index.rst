@@ -19,6 +19,7 @@ with forecasting quality on GIFT-Eval. The project repository is
    :caption: Design and experiments
 
    architecture
+   measurements
    stack
    extending
    experiments

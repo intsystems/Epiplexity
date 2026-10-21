@@ -7,6 +7,10 @@ Estimators
 ``build`` and ``available`` from the modules below. Prequential is implemented;
 requential is a planned algorithm whose ``run`` raises ``NotImplementedError``.
 
+See :doc:`../measurements` for the four-method library proposal, scientific
+quantities, input/output contracts, and implementation status. Registry names
+include stubs; V-information and a common Bayesian wrapper are not implemented.
+
 estimators.base
 ---------------
 

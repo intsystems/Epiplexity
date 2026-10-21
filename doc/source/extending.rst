@@ -1,6 +1,12 @@
 Extending: adding your own estimator
 ====================================
 
+The current protocol returns a model/data code decomposition. See
+:doc:`measurements` for the four-method proposal and its quantity-specific
+contracts, including the planned predictive-information result and Bayesian
+reference wrapper. Registering a class supplies a name; its algorithm still
+needs an implementation.
+
 Чтобы добавить новый алгоритм оценки эпиплексии, достаточно написать **один модуль** и не менять
 остальные части библиотеки. Всё, что нужно, — реализовать контракт
 :class:`episynth.estimators.base.EpiplexityEstimator` и зарегистрировать его.

@@ -35,16 +35,26 @@ The earlier research roadmap in ``publications/plan/`` is **outdated**.
 Current implementation details are in ``src/episynth/README.md`` and
 ``publications/description.md``; the report documents the saved experiments.
 
-Technical report and four algorithms
-====================================
+Technical report and measurement methods
+========================================
 
 Read the `technical report PDF <publications/technical_report/main.pdf>`_ and its
-`reproduction instructions <publications/technical_report/README.md>`_. The methodology specifies:
+`reproduction instructions <publications/technical_report/README.md>`_. The proposed
+four-method library scope is described in the
+`measurement contracts <doc/source/measurements.rst>`_:
 
-1. Seeded synthetic task generation: reproducible context/target windows, dequantization and masks.
-2. Probabilistic training with AdamW and EMA: checkpoints and pre-update/held-out NLL logs.
-3. Excess prequential-loss estimation: signed area above the held-out endpoint, with stated units.
-4. Transfer evaluation and ranking uncertainty: GIFT-Eval scores, baseline ratios and paired bootstrap intervals.
+1. **Prequential coding (implemented):** measure the predictive cost of the training
+   sequence; return total, residual-data and signed model-proxy costs in bits.
+2. **Requential coding (registered stub):** describe a student's learned predictions
+   through teacher-selected synthetic training samples and their coding costs.
+3. **Predictive V-information (proposed):** fit predictors with and without context;
+   estimate the held-out log-loss reduction in bits per window.
+4. **Bayesian predictive log-loss (OU reference implemented):** marginalize the known
+   AR(1) prior to obtain joint and pointwise forecast-loss references. A common public
+   wrapper remains proposed.
+
+Seeded task generation, AdamW/EMA training, and GIFT-Eval scoring provide shared
+infrastructure. The saved transfer experiments use the prequential method.
 
 Research publications
 =====================

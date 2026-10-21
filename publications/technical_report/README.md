@@ -22,22 +22,33 @@ has weak association with aggregate CRPS; stronger subset associations are
 exploratory. The report explains sensitivity to the EMA endpoint and Waveform's
 forecast tails, and distinguishes completed experiments from proposed studies.
 
-## Four required algorithms
+## Four measurement methods and library contracts
 
-The report's implementation section states the four algorithms used by the current
-`episynth` experiment. Appendix B gives their steps, outputs, code locations,
-and existing checks.
+Appendix B now proposes four measurement methods, with scientific purpose,
+inputs, formulas, outputs and implementation status. The proposed library scope
+is separate from the generation/training/evaluation infrastructure:
 
-| Algorithm | Implementation | Output |
+| Method | What it computes | Current status |
 | --- | --- | --- |
-| Seeded synthetic task generation | [`make_windows`, `WindowStream`](../../src/episynth/windows.py), [`generators/`](../../src/episynth/generators/) | Reproducible, patched and masked context/target windows |
-| Probabilistic training with AdamW and EMA | [`Trainer`](../../src/episynth/training.py) | Raw/EMA checkpoints, pre-update NLL logs, held-out losses |
-| Excess prequential-loss estimation | [`run_area`](../../src/episynth/analysis.py), [`analyze_runs.py`](analyze_runs.py) | Signed excess area, bits, endpoint sensitivity; floor error when per-window losses are available |
-| Transfer evaluation and ranking uncertainty | [`evaluation/`](../../src/episynth/evaluation/), [`quality_table`, `spearman_ci`](../../src/episynth/analysis.py) | GIFT-Eval metrics, baseline ratios, ranks and paired bootstrap intervals |
+| Prequential coding with held-out-floor decomposition | Total pre-update log-loss and its residual-data / signed model-proxy decomposition, in bits | Implemented: `PrequentialEstimator.run` and `from_run_dir` |
+| Requential coding | Cost of teacher-selected synthetic training samples used to reconstruct a student's predictions | Registered stub: `run` raises `NotImplementedError` |
+| Predictive V-information | Improvement in held-out prediction when context is available, for a specified predictive family | Proposed; requires two fitted predictors and a new result contract |
+| Bayesian predictive log-loss by quadrature | Joint and pointwise predictive-loss references under the known OU/AR(1) prior | Implemented in `checks.ou_bayes`; a common public wrapper is proposed |
 
-The earlier estimator roadmap in [`plan/`](../plan/README.md) is outdated.
-The current package includes an implemented prequential estimator and a
-requential stub; the report describes the completed `episynth` experiments.
+Prequential coding is the implemented information-estimation algorithm in the
+saved transfer experiments. The OU reference is implemented and tested, but
+has no archived training/transfer runs in that comparison. The other two
+methods are described as future library implementations, with no claimed
+experimental results. The OU method is proposed as the fourth method because
+its computation already exists in the repository.
+
+The [library measurement guide](../../doc/source/measurements.rst) gives current
+entry points, file requirements, result fields, units, side effects, and proposed
+contracts for the missing implementations. Generation supplies reproducible
+context/target windows; training fits density models and logs their trajectory;
+GIFT-Eval scoring and ranking analysis assess downstream utility.
+
+The earlier research roadmap in [`plan/`](../plan/README.md) remains outdated.
 
 ## Rebuild the document
 
@@ -51,7 +62,7 @@ The included figures, generated results table, and test-count file are sufficien
 to compile the report.
 The build runs LaTeX, BibTeX, and two further LaTeX passes, checks the seven-page
 limit and unresolved references/overfull boxes, and writes
-`data/build_verification.json`. The document has twelve bibliography entries.
+`data/build_verification.json`. The document has fourteen bibliography entries.
 
 ## Recompute results and plots
 
@@ -119,7 +130,7 @@ repeating the tests and retains the existing test-result files.
 | `test_results.json`, `pytest_output.txt` | Fresh outcomes of the existing tests |
 | `check_summary.tex` | Generated test counts included in the report |
 | `build_verification.json` | Compiled page count, bibliography count, and document hashes |
-| `bibliography_metadata.json` | Primary-source metadata for the eight research papers |
+| `bibliography_metadata.json` | Primary-source metadata for the original research references |
 | `figure_protocol.json`, `generator_examples.npz`, `window_examples.npz` | Supplementary descriptive-example provenance and arrays |
 
 `collect_sources.py` optionally retrieves the papers' arXiv metadata into

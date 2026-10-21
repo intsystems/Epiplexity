@@ -201,16 +201,24 @@ seed uncertainty. The 55 configurations include related datasets/frequencies
 and are not 55 independent training replications.
 
 \section{Implementation}
-The \texttt{episynth} package separates four algorithms: seeded task generation,
-probabilistic training with AdamW and EMA, excess prequential-loss estimation,
-and transfer evaluation with ranking uncertainty (Appendix~\ref{sec:algorithms}).
-Generators and precomputed corpora share a batch interface; window draws depend
-on series seeds, allowing parallel generation without changing task identity.
-The trainer records pre-update losses and saves model, optimizer, and EMA states
-for resumption. The analysis operates on these logs separately from training;
-batch means suffice to reconstruct the signed area. Evaluation writes per-window
-statistics and configuration summaries for the model and seasonal naive.
-Source, configurations, and experiment outputs are available in the
+The measurement layer currently implements prequential coding through
+\texttt{estimators.build("prequential")}. For the deployable library we propose
+four measurement methods: prequential coding, requential coding~\cite{qiu2026},
+predictive $\mathcal V$-information~\cite{xu2020}, and Bayesian predictive
+log-loss using the existing OU reference. Appendix~\ref{sec:algorithms} states
+each method's scientific purpose, inputs, computation, outputs, and readiness.
+Prequential coding is implemented; requential is a registered stub;
+$\mathcal V$-information requires implementation; the OU reference is implemented
+under \texttt{checks/} and needs a public measurement wrapper.
+Only prequential experiments enter the transfer results reported here.
+
+These methods use shared infrastructure: seeded context--target generation,
+AdamW/EMA training, checkpointing, and GIFT-Eval evaluation. Generation supplies
+tasks, training fits a predictor and records its trajectory, and evaluation
+measures downstream forecast error. The estimator specifies which information
+quantity is computed from these artifacts. Current interfaces, proposed method
+contracts, and examples are documented in the repository's library guide.
+Source and experiment outputs are available in the
 \href{https://github.com/intsystems/Epiplexity}{project repository}.
 
 \section{Experimental evaluation}
@@ -324,77 +332,147 @@ but does not establish a general epiplexity-based ranking rule.
 \bibliographystyle{plainnat}
 \bibliography{references}
 
-\clearpage
 \appendix
 \section{Evidence and reproducibility}
-The archived training runs were conducted by Danila Chernousov
-(\texttt{Chernousovdv}); this article analyzes the resulting shared experiment
-artifacts. No training is rerun for the report analysis.
-
-The analysis uses \texttt{experiments/episynth/series1\_2026-10-19/} and
-\texttt{series2\_2026-10-19/} at commit \texttt{7d2b001}: run configurations,
-training curves, held-out logs, and evaluation summaries. Scripts hash every
+Danila Chernousov (\texttt{Chernousovdv}) conducted the archived training;
+this article analyzes the shared artifacts without rerunning training.
+Inputs at commit \texttt{7d2b001} are configurations, training curves,
+held-out logs and evaluation summaries under \texttt{experiments/episynth/},
+in \texttt{series1\_2026-10-19/} and \texttt{series2\_2026-10-19/}. Scripts hash every
 input. Training used RTX 4090/A100 hardware; KernelSynth's long series used a
 GPU-generated float64 corpus. Its interrupted first checkpoint was recovered
 from saved weights; exported steps are contiguous.
 
-Batch means suffice for the linear signed area. Their six-significant-digit
-export introduces a worst-case area rounding bound below 0.013 million nats.
-All 22 primary estimates agree with the uploaded per-window analysis to its
-displayed precision of 0.1 million nats. We did not download the release's large
-per-window loss vectors or model weights. Consequently, we do not reconstruct
-clipped per-window variants, held-out standard errors, or individual forecast
-failures. Bootstrap intervals have no correction for the exploratory comparisons.
+Batch means reconstruct the linear signed area. Six-significant-digit exports
+imply a worst-case rounding bound below 0.013 million nats. All 22 primary
+areas match the uploaded per-window analysis to its 0.1-million-nat precision.
+Release weights and large per-window loss vectors were not downloaded;
+clipped variants, held-out standard errors and individual forecast failures
+are consequently not reconstructed. Bootstrap intervals have no adjustment
+for exploratory comparisons.
 
-Saved seasonal-naive point metrics match the committed original leaderboard
-on all 55 configurations, with maximum relative discrepancy below
-$1.7\times10^{-7}$ across MASE, sMAPE, ND, MAE, and MSE. A fresh rerun of the
-existing \texttt{tests/episynth} suite gives \ChecksPassed{} passed,
-\ChecksSkipped{} skipped, and \ChecksFailed{} failed; the skips require external
-GIFT-Eval data and the original Moirai checkpoint. These are report-time checks,
-distinct from the archived training. An OU Bayesian-reference check is implemented
-and covered by this rerun; no OU training/transfer run appears in the saved series.
-The earlier Moirai-port agreement claim
-($7\times10^{-4}$ nats/point) is reported in the author's implementation
-commit~\cite{chernousovcode}, not independently remeasured here.
+Seasonal-naive point metrics match the original leaderboard on all 55
+configurations, with maximum relative discrepancy below $1.7\times10^{-7}$
+across MASE, sMAPE, ND, MAE and MSE. Report-time checks of
+\texttt{tests/episynth} give \ChecksPassed{} passed, \ChecksSkipped{} skipped
+and \ChecksFailed{} failed; the skips need external GIFT-Eval data and the
+original Moirai checkpoint. The OU Bayesian reference is covered by these
+checks; no archived OU training/transfer run is present. The earlier Moirai-port
+agreement claim ($7\times10^{-4}$ nats/point) comes from the author's
+implementation commit~\cite{chernousovcode}, not an independent remeasurement.
 
-One unit convention deserves care: if context scaling uses $z=(y-\mu)/s$, then
-$\mathrm{NLL}_{\rm raw}=\mathrm{NLL}_z+h\log s$.
-Thus normalized NLL is raw NLL \emph{minus} $h\log s$; an existing training
-docstring states the opposite sign. Our analysis retains raw-unit scores.
+For scaling $z=(y-\mu)/s$,
+$\mathrm{NLL}_{\rm raw}=\mathrm{NLL}_z+h\log s$:
+normalized NLL subtracts $h\log s$, contrary to an existing training docstring.
+This analysis retains raw-unit scores.
+\texttt{analyze\_runs.py} rebuilds statistics/tables, \texttt{make\_plots.py}
+figures, and \texttt{build\_report.py} the checked PDF.
+\texttt{reproduce.py} also records the environment and reruns checks.
+Evidence is in \texttt{data/}; versions are pinned in \texttt{requirements.txt}.
 
-Rebuild statistics and tables with \texttt{analyze\_runs.py}, plots with
-\texttt{make\_plots.py}, and the checked PDF with \texttt{build\_report.py}.
-\texttt{reproduce.py} also reruns tests and records the environment.
-Evidence is under \texttt{data/}; versions are pinned in \texttt{requirements.txt}.
-
-\section{Implementation contracts for the four algorithms}
+\clearpage
+\section{Four measurement methods and their library contracts}
 \label{sec:algorithms}
-Code paths below are relative to \texttt{src/episynth/}; tests are under \texttt{tests/episynth/}.
+\begingroup
+\small
+\setlength{\abovedisplayskip}{6pt}
+\setlength{\belowdisplayskip}{6pt}
+\setlength{\abovedisplayshortskip}{3pt}
+\setlength{\belowdisplayshortskip}{5pt}
+These four measurement methods define the proposed library scope. Generation,
+optimization and forecast scoring supply shared infrastructure; statuses describe current code.
+
 \begin{enumerate}
-\setlength{\itemsep}{1pt}
+\setlength{\itemsep}{3pt}
 \setlength{\parskip}{0pt}
-\item \textbf{Seeded task generation.} Given a prior, seed range and window
-specification, generate series; use separate SplitMix64-derived streams to draw
-context length, start and dequantization noise; patch and mask the result.
-Output: \texttt{WindowBatch}. Code: \texttt{windows.make\_windows} and
-\texttt{WindowStream}; tests: \texttt{test\_windows.py} and \texttt{test\_corpus.py}.
-\item \textbf{Probabilistic training.} Evaluate and retain each window's NLL
-before updating; optimize mean NLL per target point with AdamW, warmup and
-gradient clipping; update EMA; checkpoint raw/EMA weights and score independent
-held-out seeds. Output: weights and loss logs. Code: \texttt{training.Trainer};
-tests: \texttt{test\_training.py}.
-\item \textbf{Excess-loss estimation.} Sum pre-update window NLLs, subtract
-$N$ times the selected held-out endpoint, retain the sign, and convert nats to
-bits. With per-window held-out losses, report $N\,\mathrm{SE}(\widehat\ell_N)$;
-batch-mean exports alone cannot supply that error. Code:
-\texttt{analysis.run\_area}; report reconstruction: \texttt{analyze\_runs.py};
-tests: \texttt{test\_analysis.py}.
-\item \textbf{Transfer evaluation and ranking.} Generate forecasts on matched
-GIFT-Eval windows; compute sample CRPS and point metrics; aggregate ratios to
-seasonal naive by Eq.~\eqref{eq:quality}; correlate prior-level scores with area
-using Spearman ranks and paired family bootstrap intervals. Output: configuration
-scores, rankings and intervals. Code: \texttt{evaluation/} and \texttt{analysis.py};
-tests: \texttt{test\_evaluation.py} and \texttt{test\_analysis.py}.
+\item \textbf{Prequential coding with a held-out-floor decomposition (implemented).}
+\emph{Purpose:} measure the predictive cost of the actual training sequence and
+separate the final predictor's residual cost from the excess incurred while learning.
+\emph{Input:} ordered context--target windows, initial model, update rule and budget;
+for recomputation, pre-update losses $\ell_i$ and $M$ held-out endpoint losses
+$\ell_j^{\rm H}$, all in nats per window. With $N$ training windows,
+\begin{equation}
+ L_{\rm pre}=\frac{\sum_{i=1}^{N}\ell_i}{\ln2},\quad
+ \widehat H=\frac{N}{M\ln2}\sum_{j=1}^{M}\ell_j^{\rm H},\quad
+ \widehat S=L_{\rm pre}-\widehat H.
+\end{equation}
+Score each batch before its update, then train; evaluate the selected final
+raw/EMA predictor on held-out seeds and compute the decomposition.
+\emph{Output:} \texttt{total\_bits} $=L_{\rm pre}$,
+\texttt{data\_part\_bits} $=\widehat H$,
+\texttt{model\_part\_bits} $=\widehat S$, and \texttt{n\_windows} $=N$.
+$\widehat S$ is a signed, training-dependent structural proxy.
+Continuous-density log-loss requires quantization and a codec to yield a literal
+bitstream. Code: \texttt{PrequentialEstimator.run/from\_run\_dir} in
+\texttt{estimators/prequential.py}; checks:
+\texttt{test\_estimators.py}, \texttt{test\_analysis.py}.
+
+\item \textbf{Requential coding (registered stub; implementation required).}
+\emph{Purpose:} describe a student's learned predictive behavior by transmitting
+teacher-selected synthetic training samples, with cost driven by disagreement.
+\emph{Input:} teacher and student predictors, real-data teacher updates, shared
+contexts, initialization/update rules, and reproducible proposal randomness.
+Relative entropy coding selects a student proposal with the teacher's distribution;
+the decoder regenerates that proposal from its index and repeats the student update.
+For whole-message teacher/student distributions $Q_k,P_k$ and KL measured in bits,
+\begin{equation}
+ D_k=\mathbb E_{Y\sim Q_k}\log_2\frac{Q_k(Y)}{P_k(Y)},\qquad
+ \mathbb E L_{\rm req}\le C_{\rm setup}+
+ \sum_k\mathbb E[D_k+2\log_2(1+D_k)+\kappa].
+\end{equation}
+Here $\kappa<5.21$; the outer expectations include trajectory randomness.
+\emph{Required output:} student checkpoint, cumulative KL estimate and
+coding-overhead bound, with units and shared-side-information assumptions.
+Distinguish measured KL, a code-length bound, and a realized bitstream.
+Seeded sampling and projection/decoding rules remain to be implemented.
+\texttt{RequentialEstimator.run} in \texttt{estimators/requential.py} raises
+\texttt{NotImplementedError}; registration alone does not make it runnable.
+
+\item \textbf{Predictive $\mathcal V$-information (proposed; implementation required).}
+\emph{Purpose:} measure how much observing context improves prediction of the
+future for a specified predictive family $\mathcal V$. Define
+\begin{equation}
+ H_{\mathcal V}(Y\mid X)=\inf_{q\in\mathcal V}
+ \mathbb E[-\log_2q(Y\mid X)],\qquad
+ I_{\mathcal V}(C\!\to\!Y)=H_{\mathcal V}(Y\mid\varnothing)
+ -H_{\mathcal V}(Y\mid C).
+\end{equation}
+\emph{Input:} paired contexts/targets, a predictive family permitting context to
+be ignored, common train/validation/test splits, and fitting budgets. Fit a
+context-free predictor $q_0(Y)$ and a conditional predictor $q_1(Y\mid C)$;
+score both on the same untouched $M$ test windows:
+\begin{equation}
+ \widehat I_{\mathcal V}=\frac1M\sum_{j=1}^{M}
+ \log_2\frac{q_1(Y_j\mid C_j)}{q_0(Y_j)}.
+\end{equation}
+\emph{Required output:} both test cross-entropies and their gain in bits per
+window, with family, fitting and split metadata. Larger gain means more usable
+context information. Finite fitting/test error can give a negative estimate;
+retain its sign and report fitting error as a limitation to approximating
+the population optima. This method needs its own predictive-gain result contract.
+
+\item \textbf{Bayesian predictive log-loss by quadrature (OU reference implemented).}
+\emph{Purpose:} calibrate forecast loss against a known generative prior and
+separate fitting error from the cost of factorizing future predictions.
+\emph{Input:} OU context--target windows (horizon $h$) and quadrature nodes $\varphi_j$ for the
+known AR(1) prior, $\varphi=\sin u$ with uniform $u$. For $J$ equal-weight nodes,
+\begin{equation}
+ M_J(x)=\frac1J\sum_{j=1}^{J}p_{\varphi_j}(x),\quad
+ w_j(C)=\frac{p_{\varphi_j}(C)}{\sum_r p_{\varphi_r}(C)},\quad
+ \ell_{\rm joint}=-\log\frac{M_J(C,Y)}{M_J(C)},
+\end{equation}
+\begin{equation}
+ \ell_{\rm point}=-\sum_{t=1}^{h}\log\!\left[
+ \sum_{j=1}^{J}w_j(C)\,
+ \mathcal N(Y_t;\varphi_j^t C_c,1-\varphi_j^{2t})\right].
+\end{equation}
+$C_c$ is the last context value. The joint score uses the chain rule;
+the pointwise score conditions only on context, matching Moirai's factorization.
+\emph{Output:} two per-window NLL arrays in nats; their means divided by $h$
+give nats/point. Compare model NLL to the pointwise reference on the same windows.
+Code: \texttt{checks.ou\_bayes.exact\_window\_nll/pointwise\_window\_nll};
+checks: \texttt{test\_ou\_bayes.py}. Verify quadrature convergence and use clean
+OU windows. A common public-method wrapper remains proposed.
 \end{enumerate}
+\endgroup
 \end{document}
