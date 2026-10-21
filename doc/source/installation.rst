@@ -65,12 +65,14 @@ reviewer if the repository has deployment protection rules.
 
 The workflow ``.github/workflows/docs.yaml`` then:
 
-#. Builds and checks Sphinx documentation on pull requests to ``main``.
-#. Builds and uploads a Pages artifact on pushes to ``main`` or a manual run
-   (**Actions → docs → Run workflow**).
-#. Deploys that artifact with ``actions/deploy-pages`` after a successful build.
+#. Builds and checks Sphinx documentation on pushes and pull requests to ``main``.
+#. Uploads a Pages artifact only on a manual run: **Actions → docs → Run workflow**,
+   select ``main``, then start the workflow.
+#. Deploys that artifact with ``actions/deploy-pages`` after a successful manual build.
 
-Pull requests never publish. Deployment uses Pages artifacts, without a
+Automatic deployment is disabled as required by the course. Pushes and pull requests
+never publish; the existing online site stays available until the next manual deployment.
+Deployment uses Pages artifacts, without a
 ``gh-pages`` branch. The expected project URL is
 ``https://intsystems.github.io/Epiplexity/``. After a deployment, check the URL
 reported by the deployment job and open its API page. A passing local build

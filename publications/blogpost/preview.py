@@ -2,8 +2,9 @@
 
     python preview.py        # then open preview.html in Firefox
 
-To publish, copy epiplexity.md to _blogs/epiplexity.md and images/* to images/blog/epiplexity/ in the
-intsystems.github.io repository; the post then appears at /materials/blog/epiplexity/.
+Image paths in epiplexity.md are relative so the post renders on GitHub. For publication
+on intsystems.github.io, export a copy with site-relative image paths as described in
+README.md, then copy that Markdown and the images to the site repository.
 
 Citations link to the reference list (<a id="ref-..."> anchors). The site navbar is fixed, and the site
 CSS offsets only headings when a link jumps to them, so a clicked reference would land under the navbar.

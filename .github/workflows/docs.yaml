@@ -1,5 +1,6 @@
 name: docs
 
+# Build on pushes and pull requests; publish only on a manual run (course requirement).
 on:
   push:
     branches: [main]
@@ -27,13 +28,13 @@ jobs:
       - name: Build Sphinx docs
         run: uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build
       - name: Upload Pages artifact
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-pages-artifact@v3
         with:
           path: doc/_build
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     permissions:

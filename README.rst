@@ -1,5 +1,7 @@
 |test| |docs|
 
+`Documentation website <https://intsystems.github.io/Epiplexity/>`_
+
 .. |test| image:: https://github.com/intsystems/Epiplexity/actions/workflows/test.yml/badge.svg?branch=main
     :target: https://github.com/intsystems/Epiplexity/actions/workflows/test.yml
     :alt: Test status
@@ -69,7 +71,7 @@ Repository layout
     experiments/       experiment code and demo (demos/) plus saved outputs (episynth/): two training
                        series (configs, training curves, held-out losses, GIFT-Eval summaries,
                        analysis tables, figures, scripts)
-    doc/               Sphinx documentation (autodoc); deploys to GitHub Pages on push to main
+    doc/               Sphinx documentation (autodoc); GitHub Pages publication is manual
     publications/      non-code material for the article and project: paper/ (arXiv manuscript),
                        blogpost/, notes/ (literature review), research_notes/, slides/, plan/,
                        figures/, technical_report/ (article and reproducible analysis), description.md
@@ -91,8 +93,10 @@ certificates, add ``--system-certs`` to the uv commands.
 Documentation
 =============
 
-The Sphinx documentation (with autodoc) is built and deployed to GitHub Pages automatically on
-every push to ``main`` by `.github/workflows/docs.yaml`. To build it locally:
+The Sphinx documentation (with autodoc) is built on pushes and pull requests to ``main``.
+Automatic publication is disabled as required by the course. To update GitHub Pages, open
+**Actions → docs → Run workflow**, select ``main``, and start the workflow manually.
+To build it locally:
 
 .. code-block:: bash
 

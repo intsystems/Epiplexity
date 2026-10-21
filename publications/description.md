@@ -99,8 +99,10 @@ uv run --no-sync jupyter lab experiments/demos/demo_estimators.ipynb
 ```
 
 Open `doc/_build/index.html` locally and `doc/_build/api/estimators.html` for an
-automatically generated API page. The docs workflow builds pull requests and
-publishes successful main-branch builds through GitHub Pages artifacts. Select
+automatically generated API page. The docs workflow builds pushes and pull requests
+to main. Automatic publication is disabled as required by the course; to publish,
+use **Actions → docs → Run workflow** with branch `main`. A successful manual run
+publishes through GitHub Pages artifacts. Select
 **Settings → Pages → Source: GitHub Actions** once. Full local/online deployment
 instructions are in [Installation and deployment](../doc/source/installation.rst).
 
