@@ -36,3 +36,15 @@ def test_exact_mode_runs(name):
     gen = GENERATORS[name](length=256)
     x = gen.generate(SEEDS[:2], exact=True)
     assert x.shape == (2, 256) and np.isfinite(x).all()
+
+
+def test_timesynth_batch_matches_rowwise():
+    """Пакетные рекурсии TimeSynth совпадают с построчной реализацией до бита при регулярной и нерегулярной сетке."""
+    from episynth.generators.timesynth import TimeSynth
+
+    for prob in (0.0, 1.0, 0.2):
+        gen = TimeSynth(length=256, irregular_prob=prob)
+        seeds = np.arange(900, 960)
+        batch = gen.generate(seeds)
+        rows = np.stack([gen._one(int(s), prob) for s in seeds]).astype(np.float32)
+        assert np.array_equal(batch, rows)

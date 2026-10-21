@@ -1,0 +1,152 @@
+{
+ "timesfm3": {
+  "MASE": {
+   "geo_mean_ratio": 0.6477227361245066,
+   "median_ratio": 0.7029947265961742,
+   "share_better": 1.0,
+   "n": 55
+  },
+  "MWSQL": {
+   "geo_mean_ratio": 0.4751524478162522,
+   "median_ratio": 0.5488874212104837,
+   "share_better": 1.0,
+   "n": 55
+  }
+ },
+ "ours": {
+  "s2_arima": {
+   "scaled_crps_geo": 0.8331005022738452,
+   "mwsql_geo": 0.8435957155276571,
+   "scaled_crps_median": 0.7389212115604503,
+   "mwsql_median": 0.7865636528961379,
+   "mase_geo": 1.0885818194981312
+  },
+  "s2_chaotic": {
+   "scaled_crps_geo": 1.2853172962567567,
+   "mwsql_geo": 1.343256899770217,
+   "scaled_crps_median": 1.2053367799874997,
+   "mwsql_median": 1.2319974055036342,
+   "mase_geo": 1.6161019625722455
+  },
+  "s2_ets": {
+   "scaled_crps_geo": 0.7174166795303215,
+   "mwsql_geo": 0.7386860938841915,
+   "scaled_crps_median": 0.7097050320771018,
+   "mwsql_median": 0.7414287466204869,
+   "mase_geo": 0.9407173073775044
+  },
+  "s2_fbm": {
+   "scaled_crps_geo": 0.8674227437445716,
+   "mwsql_geo": 0.9003967663784529,
+   "scaled_crps_median": 0.7771458131817146,
+   "mwsql_median": 0.8026547410783859,
+   "mase_geo": 1.1099895746954802
+  },
+  "s2_garch": {
+   "scaled_crps_geo": 0.8741298471206432,
+   "mwsql_geo": 0.9010223433217885,
+   "scaled_crps_median": 0.7673974161825802,
+   "mwsql_median": 0.8397394997642293,
+   "mase_geo": 1.115528403876869
+  },
+  "s2_kernelsynth": {
+   "scaled_crps_geo": 0.6394854996151956,
+   "mwsql_geo": 0.6624591919786795,
+   "scaled_crps_median": 0.6250822025438538,
+   "mwsql_median": 0.680667318077505,
+   "mase_geo": 0.8281718055760937
+  },
+  "s2_sde": {
+   "scaled_crps_geo": 0.8606937585962824,
+   "mwsql_geo": 0.8740255588139582,
+   "scaled_crps_median": 0.7326560151784733,
+   "mwsql_median": 0.8470859793301626,
+   "mase_geo": 1.1420167624877753
+  },
+  "s2_stepfunction": {
+   "scaled_crps_geo": 0.8389617778376272,
+   "mwsql_geo": 0.8382313428076438,
+   "scaled_crps_median": 0.7932864341151515,
+   "mwsql_median": 0.7997619657469226,
+   "mase_geo": 1.092028534031583
+  },
+  "s2_timesynth": {
+   "scaled_crps_geo": 0.8514729411184534,
+   "mwsql_geo": 0.8540767523934816,
+   "scaled_crps_median": 0.7713887229409738,
+   "mwsql_median": 0.833958116294668,
+   "mase_geo": 1.1226236060355912
+  },
+  "s2_tsi": {
+   "scaled_crps_geo": 0.7755124690558148,
+   "mwsql_geo": 0.7943001031881385,
+   "scaled_crps_median": 0.7034023327828451,
+   "mwsql_median": 0.7429863438685332,
+   "mase_geo": 1.0276695045470419
+  },
+  "s2_waveform": {
+   "scaled_crps_geo": 1.3728702217513895,
+   "mwsql_geo": 0.7575485187507074,
+   "scaled_crps_median": 0.7502524073029699,
+   "mwsql_median": 0.7791761545153276,
+   "mase_geo": 0.9862993383830695
+  }
+ },
+ "configs": [
+  "bitbrains_fast_storage/5T/short",
+  "bitbrains_fast_storage/H/short",
+  "bitbrains_rnd/5T/short",
+  "bitbrains_rnd/H/short",
+  "bizitobs_application/10S/short",
+  "bizitobs_l2c/5T/short",
+  "bizitobs_l2c/H/short",
+  "bizitobs_service/10S/short",
+  "car_parts/M/short",
+  "covid_deaths/D/short",
+  "electricity/15T/short",
+  "electricity/D/short",
+  "electricity/H/short",
+  "electricity/W/short",
+  "ett1/15T/short",
+  "ett1/D/short",
+  "ett1/H/short",
+  "ett1/W/short",
+  "ett2/15T/short",
+  "ett2/D/short",
+  "ett2/H/short",
+  "ett2/W/short",
+  "hierarchical_sales/D/short",
+  "hierarchical_sales/W/short",
+  "hospital/M/short",
+  "jena_weather/10T/short",
+  "jena_weather/D/short",
+  "jena_weather/H/short",
+  "kdd_cup_2018/D/short",
+  "kdd_cup_2018/H/short",
+  "loop_seattle/5T/short",
+  "loop_seattle/D/short",
+  "loop_seattle/H/short",
+  "m4_daily/D/short",
+  "m4_hourly/H/short",
+  "m4_monthly/M/short",
+  "m4_quarterly/Q/short",
+  "m4_weekly/W/short",
+  "m4_yearly/A/short",
+  "m_dense/D/short",
+  "m_dense/H/short",
+  "restaurant/D/short",
+  "saugeen/D/short",
+  "saugeen/M/short",
+  "saugeen/W/short",
+  "solar/10T/short",
+  "solar/D/short",
+  "solar/H/short",
+  "solar/W/short",
+  "sz_taxi/15T/short",
+  "sz_taxi/H/short",
+  "temperature_rain/D/short",
+  "us_births/D/short",
+  "us_births/M/short",
+  "us_births/W/short"
+ ]
+}

@@ -10,8 +10,11 @@ r"""Обучение модели на потоке окон с логом ло�
 Файлы в каталоге прогона: `config.json`; `window_loss.f32` и `window_log_scale.f32` — лосс
 окна в натах (сумма по горизонту, в исходных единицах ряда) и логарифм масштаба нормировки
 окна, по номеру окна, float32 без заголовка; `steps.csv` — шаги; `heldout.jsonl` — оценки на
-отложенном наборе; `ckpt_<доля>.pt` и `last.pt`. Лосс в нормированных единицах равен лоссу
-окна плюс горизонт, умноженный на логарифм масштаба.
+отложенном наборе; `heldout_<вариант>_<доля>.f32` — лоссы окон отложенного набора на каждом
+чекпойнте по вариантам `raw`, `ema` (точность обучения) и `raw_<точность>`, `ema_<точность>`
+(другая точность оценки), float32 по номеру окна набора, для бутстрепа финального лосса;
+`ckpt_<доля>.pt` и `last.pt`. Лосс в нормированных единицах равен лоссу окна плюс горизонт,
+умноженный на логарифм масштаба.
 """
 
 import csv
@@ -28,11 +31,11 @@ from torch import nn
 
 from .generators.base import Generator
 from .model.moirai import MoiraiConfig, MoiraiModule, MultiInSizeLinear, MultiOutSizeLinear, RMSNorm
-from .windows import WindowBatch, WindowSpec, WindowStream, window_batch
+from .windows import WindowBatch, WindowSpec, WindowStream, collect_windows
 
 
 class TrainConfig(BaseModel):
-    """Параметры прогона обучения.
+    r"""Параметры прогона обучения.
 
     Attributes:
         n_windows: Бюджет: число обучающих окон; кратно `batch_size`.
@@ -50,12 +53,16 @@ class TrainConfig(BaseModel):
         first_seed: Сид первого обучающего окна.
         eval_batch_size: Окон на батч при оценке.
         precision: Точность прямого прохода при обучении; лосс всегда в float32.
-        eval_precision: Точность оценки на отложенном наборе; в точности обучения оценка делается всегда, чтобы финальный лосс был сопоставим с лоссами окон при расчёте площади.
-        compile: Компилировать ли модель `torch.compile`.
+        eval_precision: Дополнительная точность оценки на отложенном наборе; в точности обучения оценка
+            делается всегда, чтобы финальный лосс был сопоставим с лоссами окон при расчёте площади.
+        compile: Компилировать ли модель `torch.compile` для шагов обучения; оценка на отложенном наборе
+            всегда идёт без компиляции (те же числа до $3 \cdot 10^{-9}$ нат на точку, без перекомпиляций
+            под режим оценки и другую точность).
         fused_adam: Использовать ли fused AdamW (только CUDA).
         init_seed: Сид инициализации весов.
         device: Устройство.
         log_every: Через сколько шагов писать строку в `steps.csv`.
+        stream_workers: Число процессов генерации окон; 0 — один фоновый поток.
     """
 
     n_windows: int
@@ -79,6 +86,7 @@ class TrainConfig(BaseModel):
     init_seed: int = 0
     device: str = "cuda"
     log_every: int = 50
+    stream_workers: int = 0
 
     @property
     def n_steps(self) -> int:
@@ -112,7 +120,7 @@ class Trainer:
 
     Общий движок обучения: окна, чекпойнты, EMA весов, возобновление и heldout-оценка общие для
     всех протоколов оценки эпиплексии. Протокол-специфичный шаг вынесен в переопределяемый метод
-    :meth:`compute_loss`, который возвращает лосс каждого окна батча и (необязательно) логарфим
+    :meth:`compute_loss`, который возвращает лосс каждого окна батча и (необязательно) логарифм
     масштаба нормировки для записи. По умолчанию реализует prequential-протокол (площадь над
     кривой лосса): подклассы, например requential-учитель-студент, переопределяют `compute_loss`.
 
@@ -205,19 +213,18 @@ class Trainer:
         """Отложенный набор окон, генерируется один раз и держится на устройстве."""
         if self._heldout is None:
             seeds = np.arange(self.config.heldout_first_seed, self.config.heldout_first_seed + self.config.heldout_windows)
-            parts = [window_batch(self.generator, seeds[i : i + 4096], self.spec) for i in range(0, len(seeds), 4096)]
-            merged = WindowBatch(**{k: torch.cat([getattr(p, k) for p in parts]) for k in parts[0].__dict__})
-            self._heldout = merged.to(self.config.device)
+            self._heldout = collect_windows(self.generator, self.spec, seeds, workers=self.config.stream_workers).to(self.config.device)
         return self._heldout
 
     @torch.no_grad()
-    def evaluate(self, batch: WindowBatch, use_ema: bool, precision: str | None = None) -> dict[str, float]:
+    def evaluate(self, batch: WindowBatch, use_ema: bool, precision: str | None = None, save_to: Path | None = None) -> dict[str, float]:
         """Средний лосс на окно и на точку по батчу окон для текущих или EMA весов.
 
         Args:
             batch: Окна на устройстве модели.
             use_ema: Подставить ли EMA веса на время оценки.
             precision: Точность прямого прохода; `None` — `eval_precision` из конфига.
+            save_to: Куда записать лоссы окон float32 по порядку окон батча; `None` — не писать.
 
         Returns:
             dict[str, float]: `nats_per_window`, `nats_per_point`, `n_windows`.
@@ -228,18 +235,21 @@ class Trainer:
             for p, e in zip(self.params, self.ema, strict=True):
                 p.copy_(e)
         self.model.eval()
-        total, n = 0.0, 0
+        losses = []
         for i in range(0, len(batch), self.config.eval_batch_size):
             part = batch.slice(i, i + self.config.eval_batch_size)
             with self._autocast(precision):
                 per_window, _ = self.compute_loss(part)
-            total += float(per_window.double().sum())
-            n += len(part)
+            losses.append(per_window.double().cpu().numpy())
         self.model.train()
         if use_ema:
             for p, b in zip(self.params, backup, strict=True):
                 p.copy_(b)
-        return {"nats_per_window": total / n, "nats_per_point": total / n / self.spec.horizon, "n_windows": n}
+        per_window = np.concatenate(losses)
+        if save_to is not None:
+            per_window.astype(np.float32).tofile(save_to)
+        n = len(per_window)
+        return {"nats_per_window": float(per_window.sum() / n), "nats_per_point": float(per_window.sum() / n / self.spec.horizon), "n_windows": n}
 
     def run(self) -> None:
         """Выполняет или возобновляет прогон до конца бюджета."""
@@ -276,7 +286,7 @@ class Trainer:
         cfg = self.config
         ckpts = self.checkpoint_steps()
         last = self.out_dir / "last.pt"
-        stream = WindowStream(self.generator, self.spec, cfg.batch_size, cfg.first_seed, cfg.n_steps, first_batch=self.step)
+        stream = WindowStream(self.generator, self.spec, cfg.batch_size, cfg.first_seed, cfg.n_steps, first_batch=self.step, workers=cfg.stream_workers)
         self.model.train()
         t0 = time.perf_counter()
         acc_loss, acc_n = 0.0, 0
@@ -312,15 +322,16 @@ class Trainer:
                 self.save(self.out_dir / f"ckpt_{ckpts[self.step]:g}.pt")
                 self.save(last)
                 held = self.heldout()
+                tag = f"{ckpts[self.step]:g}"
                 rec = {
                     "step": self.step,
                     "fraction": ckpts[self.step],
-                    "raw": self.evaluate(held, use_ema=False, precision=cfg.precision),
-                    "ema": self.evaluate(held, use_ema=True, precision=cfg.precision),
+                    "raw": self.evaluate(held, use_ema=False, precision=cfg.precision, save_to=self.out_dir / f"heldout_raw_{tag}.f32"),
+                    "ema": self.evaluate(held, use_ema=True, precision=cfg.precision, save_to=self.out_dir / f"heldout_ema_{tag}.f32"),
                 }
                 if cfg.eval_precision != cfg.precision:
-                    rec["raw_" + cfg.eval_precision] = self.evaluate(held, use_ema=False)
-                    rec["ema_" + cfg.eval_precision] = self.evaluate(held, use_ema=True)
+                    for name, use_ema in (("raw", False), ("ema", True)):
+                        rec[f"{name}_{cfg.eval_precision}"] = self.evaluate(held, use_ema=use_ema, save_to=self.out_dir / f"heldout_{name}_{cfg.eval_precision}_{tag}.f32")
                 with open(self.out_dir / "heldout.jsonl", "a") as f:
                     f.write(json.dumps(rec) + "\n")
 

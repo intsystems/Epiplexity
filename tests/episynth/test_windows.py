@@ -44,3 +44,60 @@ def test_stream_is_resumable():
     tail = list(WindowStream(gen, SPEC, batch_size=4, first_seed=100, n_batches=3, first_batch=2))
     assert len(full) == 3 and len(tail) == 1
     assert torch.equal(full[2].target, tail[0].target) and torch.equal(full[2].seeds, tail[0].seeds)
+
+
+def test_context_length_distribution_follows_probs():
+    """Частоты длин контекста по многим сидам близки к заданным вероятностям; начало окна допустимо."""
+    spec = WindowSpec(**{**SPEC.model_dump(), "context_lengths": (40, 64, 128), "context_probs": (0.2, 0.3, 0.5)})
+    n = 20000
+    batch = make_windows(np.zeros((n, 256), dtype=np.float32), np.arange(n), spec)
+    freq = np.array([(batch.context_length.numpy() == c).mean() for c in spec.context_lengths])
+    assert np.abs(freq - np.array(spec.context_probs)).max() < 0.015
+    assert batch.observed_mask.reshape(n, -1).sum(1).numpy().tolist() == (batch.context_length.numpy() + 32).tolist()
+
+
+def test_pool_stream_matches_thread_stream():
+    """Поток из процессов даёт те же батчи в том же порядке, что поток из одного фонового потока."""
+    from episynth.windows import collect_windows
+
+    gen = GENERATORS["waveform"](length=256)
+    a = list(WindowStream(gen, SPEC, batch_size=8, first_seed=50, n_batches=4))
+    b = list(WindowStream(gen, SPEC, batch_size=8, first_seed=50, n_batches=4, workers=2, prefetch=1))
+    assert len(b) == 4 and all(torch.equal(x.target, y.target) and torch.equal(x.seeds, y.seeds) for x, y in zip(a, b, strict=True))
+    big = collect_windows(gen, SPEC, np.arange(50, 82), workers=2, batch_size=8)
+    assert torch.equal(big.target, torch.cat([x.target for x in a])) and len(big) == 32
+    tail = list(WindowStream(gen, SPEC, batch_size=8, first_seed=50, n_batches=4, first_batch=3, workers=2))
+    assert len(tail) == 1 and torch.equal(tail[0].target, a[3].target)
+
+
+def test_generators_pickle_for_workers(tmp_path):
+    """Корпус сериализуется путями, KernelSynth без тензора на устройстве; после десериализации ряды те же."""
+    import pickle
+
+    from episynth.corpus import Corpus, generate_corpus
+    from episynth.generators import Mixture
+
+    out = tmp_path / "sde"
+    generate_corpus("sde", first_seed=0, n=8, out=out, length=128, workers=1)
+    corpus = Corpus(out)
+    again = pickle.loads(pickle.dumps(corpus))
+    assert np.array_equal(again.generate([3, 5]), corpus.generate([3, 5])) and again.name == "sde"
+    ks = GENERATORS["kernelsynth"](length=128)
+    ks2 = pickle.loads(pickle.dumps(ks))
+    assert np.array_equal(ks2.generate([1, 2]), ks.generate([1, 2]))
+    mix = pickle.loads(pickle.dumps(Mixture([corpus, ks])))
+    assert mix.name == "mixture(sde,kernelsynth)" and mix.generate([0, 1]).shape == (2, 128)
+
+
+def test_collect_windows_respects_corpus_bounds(tmp_path):
+    """Сбор отложенного набора не запрашивает сиды за концом корпуса: последний батч короче."""
+    from episynth.corpus import Corpus, generate_corpus
+    from episynth.windows import collect_windows
+
+    out = tmp_path / "held"
+    generate_corpus("waveform", first_seed=1000, n=10, out=out, length=256, workers=1)
+    corpus = Corpus(out)
+    batch = collect_windows(corpus, SPEC, np.arange(1000, 1010), workers=0, batch_size=4)
+    assert len(batch) == 10 and batch.seeds.tolist() == list(range(1000, 1010))
+    batch2 = collect_windows(corpus, SPEC, np.arange(1000, 1010), workers=2, batch_size=4)
+    assert torch.equal(batch.target, batch2.target)

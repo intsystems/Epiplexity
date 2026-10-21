@@ -1,0 +1,52 @@
+{
+ "arima": {
+  "raw_bytes_per_point": 3.766785546875,
+  "q16_bytes_per_point": 1.9443978515625,
+  "n_series": 5000
+ },
+ "chaotic": {
+  "raw_bytes_per_point": 3.4711193359375,
+  "q16_bytes_per_point": 1.8819833984375,
+  "n_series": 5000
+ },
+ "ets": {
+  "raw_bytes_per_point": 3.6257544921875,
+  "q16_bytes_per_point": 1.948090234375,
+  "n_series": 5000
+ },
+ "fbm": {
+  "raw_bytes_per_point": 3.7715375,
+  "q16_bytes_per_point": 1.93945859375,
+  "n_series": 5000
+ },
+ "garch": {
+  "raw_bytes_per_point": 3.769355078125,
+  "q16_bytes_per_point": 1.9368419921875,
+  "n_series": 5000
+ },
+ "kernelsynth": {
+  "raw_bytes_per_point": 3.6888783203125,
+  "q16_bytes_per_point": 1.9510619140625,
+  "n_series": 5000
+ },
+ "sde": {
+  "raw_bytes_per_point": 3.661783984375,
+  "q16_bytes_per_point": 1.944771484375,
+  "n_series": 5000
+ },
+ "stepfunction": {
+  "raw_bytes_per_point": 2.6425537109375,
+  "q16_bytes_per_point": 1.408274609375,
+  "n_series": 5000
+ },
+ "tsi": {
+  "raw_bytes_per_point": 3.243897265625,
+  "q16_bytes_per_point": 1.716967578125,
+  "n_series": 5000
+ },
+ "waveform": {
+  "raw_bytes_per_point": 3.6341248046875,
+  "q16_bytes_per_point": 1.9120349609375,
+  "n_series": 5000
+ }
+}

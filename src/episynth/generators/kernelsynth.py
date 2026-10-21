@@ -88,6 +88,20 @@ class KernelSynth(Generator):
             self._mats_dev = torch.as_tensor(self._mats, device=device)
         self.stats = {"series": 0, **{f"jitter_{j:g}": 0 for j in _JITTERS}, "eigh": 0}
 
+    def __getstate__(self) -> dict:
+        """Состояние без тензора банка ядер на устройстве: он строится заново после десериализации."""
+        state = dict(self.__dict__)
+        state["_mats_dev"] = None
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        """Восстанавливает генератор и при заданном устройстве заново кладёт банк ядер на него."""
+        self.__dict__.update(state)
+        if self.device is not None:
+            import torch
+
+            self._mats_dev = torch.as_tensor(self._mats, device=self.device)
+
     def _mean(self, rng: np.random.Generator) -> np.ndarray:
         if rng.random() > 0.5:
             return np.zeros(self.length)
