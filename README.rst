@@ -87,7 +87,8 @@ Repository layout
     doc/               Sphinx documentation (autodoc); GitHub Pages publication is manual
     publications/      non-code material for the article and project: paper/ (arXiv manuscript),
                        blogpost/, notes/ (literature review), research_notes/, slides/, plan/,
-                       figures/, technical_report/ (article and reproducible analysis), description.md
+                       figures/, technical_report/ (article and reproducible analysis), journal/ (research
+                       journal of the time-series track: landscape and experiment, journal.pdf), description.md
     pyproject.toml     package metadata (name = episynth)
     README.rst         this file
 
