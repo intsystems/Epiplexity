@@ -48,3 +48,6 @@ runs/
 *.toc
 # macOS
 .DS_Store
+
+# Local work tracks (not part of the repository content)
+progress/
