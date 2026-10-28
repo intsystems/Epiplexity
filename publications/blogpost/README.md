@@ -1,9 +1,10 @@
 # Blog post
 
-Read [epiplexity.md](epiplexity.md) directly on GitHub. The article connects 
-epiplexity and prequential coding to our synthetic time-series
-transfer study. The [technical report](../technical_report/README.md) is the
-source for our experimental claims.
+Read [epiplexity.md](epiplexity.md) directly on GitHub. This ten-minute tour of
+`episynth` explains when to use the library, how to generate data and run a
+prequential estimate, and what our synthetic time-series transfer study found.
+The [technical report](../technical_report/README.md) is the source for our
+experimental claims.
 
 ## Local preview
 
