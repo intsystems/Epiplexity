@@ -9,6 +9,9 @@
 читается как JSON, иначе как строка). Разрешённая конфигурация пишется в каталог прогона как
 `run.json`; существующий `run.json` не перезаписывается, а прогон с `last.pt` возобновляется.
 
+Поле `estimator` выбирает алгоритм, а `estimator_config` передаёт параметры его конструктора.
+V-information использует два подкаталога прогона и отдельные train/validation/test сплиты.
+
     python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth --set train.lr=3e-4
 """
 
@@ -23,6 +26,7 @@ from .estimators import available as estimators_available
 from .estimators import build as build_estimator
 from .generators import GENERATORS, Generator, Mixture
 from .model.moirai import MoiraiConfig, small
+from .splits import seeds_available
 from .training import TrainConfig, build_model
 from .windows import WindowSpec
 
@@ -52,6 +56,7 @@ class RunConfig(BaseModel):
         model: Конфигурация модели; по умолчанию Moirai-Small с патчем 32 и тремя непрерывными компонентами.
         train: Параметры прогона.
         context_table: Путь к JSON с `lengths` и `probs`; задаёт распределение длин контекста в `spec`.
+        estimator_config: Аргументы конструктора выбранного оценщика.
         estimator: Имя алгоритма оценки эпиплексии в реестре `episynth.estimators` (по умолчанию `prequential`).
     """
 
@@ -61,6 +66,7 @@ class RunConfig(BaseModel):
     train: TrainConfig
     context_table: str | None = None
     estimator: str = "prequential"
+    estimator_config: dict = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check(self) -> "RunConfig":
@@ -104,17 +110,6 @@ def build_generator(data: DataConfig, length: int) -> Generator:
     return GENERATORS[data.generator](length=length, **data.generator_args)
 
 
-def seeds_available(generator: Generator, first_seed: int, n: int) -> bool:
-    """Покрывает ли источник рядов сиды `[first_seed, first_seed + n)`: корпус — своими диапазонами, смесь — компонентами, генератор — всегда."""
-    if isinstance(generator, Mixture):
-        k = len(generator.components)
-        lo, hi = first_seed // k, (first_seed + n - 1) // k + 1
-        return all(seeds_available(g, lo, hi - lo) for g in generator.components)
-    if isinstance(generator, Corpus):
-        return any(first_seed >= a and first_seed + n <= b for a, b in generator.seed_ranges)
-    return True
-
-
 def check_seed_ranges(generator: Generator, train: TrainConfig) -> None:
     """Проверяет до запуска, что обучающие и отложенные сиды есть в источнике рядов; иначе `ValueError`."""
     for name, first, n in (("обучающие", train.first_seed, train.n_windows), ("отложенные", train.heldout_first_seed, train.heldout_windows)):
@@ -153,12 +148,16 @@ def main() -> None:
     config = load_run_config(args.config, args.set)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    if config.estimator == "v_information" and (out / "run.json").exists():
+        previous = RunConfig.model_validate_json((out / "run.json").read_text())
+        if previous != config:
+            raise ValueError("incompatible V-information run configuration")
     if not (out / "run.json").exists():
         (out / "run.json").write_text(config.model_dump_json(indent=1))
     generator = build_generator(config.data, config.spec.series_length)
     check_seed_ranges(generator, config.train)
     model = build_model(config.model, config.train.init_seed)
-    result = build_estimator(config.estimator).run(model, generator, config.spec, config.train, out)
+    result = build_estimator(config.estimator, **config.estimator_config).run(model, generator, config.spec, config.train, out)
     (out / "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
     print(json.dumps({"estimator": config.estimator, "result": result}, indent=2, ensure_ascii=False))
 

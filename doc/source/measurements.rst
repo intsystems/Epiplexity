@@ -10,8 +10,8 @@ The proposed four-method library scope is **prequential coding**, **requential
 coding**, **predictive V-information**, and **Bayesian predictive log-loss**.
 Prequential coding is the method used in the saved transfer experiments. The
 Bayesian method uses the existing OU reference and has narrower applicability.
-The other two methods need implementations. This is a concrete proposal for the
-library. Generation, fitting, and benchmark evaluation provide the shared
+V-information is implemented; requential remains a stub. This is a concrete
+proposal for the library. Generation, fitting, and benchmark evaluation provide the shared
 execution layer.
 
 Method status
@@ -36,8 +36,9 @@ Method status
      - Registered stub; raises ``NotImplementedError``
    * - Predictive V-information
      - How much does context improve prediction for a specified model family?
-     - No entry point or registry name yet
-     - Proposed implementation
+     - ``build("v_information").run(...)``;
+       ``VInformationEstimator.from_run_dir(...)``
+     - Implemented estimator
    * - Bayesian predictive log-loss
      - What loss is achievable under the known OU prior and forecast factorization?
      - ``checks.ou_bayes.exact_window_nll`` and
@@ -45,9 +46,9 @@ Method status
      - Implemented reference; common public wrapper proposed
 
 ``estimators.available()`` lists registered names, including stubs. Currently
-it returns ``prequential`` and ``requential``; only the former runs a complete
-estimation procedure. No V-information estimator or general Bayesian estimator
-is registered. The OU functions remain in ``episynth.checks.ou_bayes``.
+it returns ``prequential``, ``requential`` and ``v_information``; the first and
+last run complete estimation procedures. A general Bayesian estimator is not
+registered. The OU functions remain in ``episynth.checks.ou_bayes``.
 
 1. Prequential coding and its structural proxy
 ----------------------------------------------
@@ -133,29 +134,76 @@ is available to a constrained predictive family; see
 `Xu et al. (ICLR 2020) <https://arxiv.org/abs/2002.10689>`_. The report's
 Appendix B gives the population definition and paired empirical estimate.
 
-**Proposed estimation inputs.** Context/target examples, predictive family and
-its context-free baseline, train/validation/test split identifiers, model
-initializations, fitting budgets, and a density/unit convention. The family
-must permit ignoring context. Implementing a context-free predictor is an
-explicit requirement; padding an existing model's input is insufficient as
-a specification.
+**Entry points.** ``build("v_information", variant="ema", test_first_seed=2_000_000_000,
+test_windows=100_000).run(model, generator, spec, config, out_dir)`` and
+``VInformationEstimator.from_run_dir(out_dir)``. Parameters are also accepted via
+``RunConfig.estimator_config`` or ``episynth.estimators.run --estimator-config``
+(a JSON object). ``variant`` is ``ema`` or ``raw``; test size must be at least two.
 
-**Proposed computation.** Fit the baseline and conditional predictors using
-the training split, select them on validation data, then evaluate their
-log-density difference on the same untouched test windows. Both fits and the
-held-out comparison form one estimation procedure.
+**Task and family.** X is the observed context and Y is the forecast horizon from
+``WindowSpec``. Two independent copies of the supplied initial Moirai are fitted
+on the same seeded windows, each with the full training budget. The family uses
+continuous density components and the existing product of pointwise forecast
+densities. It explicitly includes ignoring context: the conditional selection
+may use the fitted context-free predictor. Arbitrary supervised tasks and joint
+autoregressive horizon densities are outside this implementation.
 
-**Proposed outputs.** Context-free and conditional test cross-entropies and
-their difference, in bits per window; family, fitting-budget and split metadata;
-optionally paired-window uncertainty. Preserve negative empirical estimates
-so fitting or sampling errors remain observable. The trained predictors are
-artifacts; the information gain is the measurement.
+**Normalization and null input.** An additional streaming pass computes mean and
+population variance over train horizon points in float64. Both models use the
+same fixed shift and ``sqrt(variance + 1e-5)`` scale. The fixed constants are saved
+in ``MoiraiConfig.fixed_scaling``; log densities retain their original units and
+Jacobian correction. ``ignore_context=True`` removes context values, masks,
+padding structure, lengths and time IDs from the horizon's inputs inside Moirai.
+Forecast tokens receive canonical IDs and fixed mask representations. No target
+values enter the prediction. Other Moirai runs retain their existing defaults.
 
-**API consequence.** The current ``EpiplexityEstimator`` protocol requires
-``model_part_bits`` and ``data_part_bits``. A predictive-loss reduction needs
-a result contract identifying that quantity and its normalization. It must
-not be silently stored in a model-description field. No V-information
-implementation or CLI choice is present yet.
+**Splits and selection.** ``TrainConfig.first_seed/n_windows`` defines train;
+``heldout_first_seed/heldout_windows`` defines validation; the estimator settings
+define test. Reject empty or overlapping ranges and missing corpus coverage,
+including overlaps after projecting nested mixture seeds to their source rows.
+Checkpoints must include the final fraction 1.0. Choose the lowest validation NLL
+for the requested weight variant at ``eval_precision``. Select baseline
+independently, then choose the conditional predictor from conditional checkpoints
+and that baseline. Ties prefer baseline, then the earlier step. Only after this
+selection is persisted, evaluate both roles on the identical untouched test
+windows, including identical dequantization.
+
+For paired test losses in nats, reduce in float64:
+
+.. math::
+
+   d_i = (\ell_{\varnothing,i}-\ell_{X,i})/\ln 2,\qquad
+   \widehat I_{\mathcal V}=\bar d,\qquad
+   \mathrm{SE}=s_d/\sqrt M.
+
+**Outputs and interpretation.** ``method="v_information"``,
+``units="bits_per_window"``, ``unconditional_entropy_bits_per_window``,
+``conditional_entropy_bits_per_window``, ``v_information_bits_per_window``,
+``standard_error_bits_per_window``, ``n_test_windows`` and metadata for the family,
+initialization, budgets, splits, normalization and selected checkpoints. Negative
+empirical information is retained. The standard error conditions on fitted
+models; it does not include variation across training runs. This is a
+budget-limited approximation, not a claim of exact family optimization or of
+satisfying the paper's PAC assumptions. No model/data coding-cost fields are used.
+
+**Artifacts and resume.** ``unconditional/`` and ``conditional/`` hold normal
+Trainer runs. ``v_information.json`` stores shared settings and selection;
+``test_unconditional.f32`` and ``test_conditional.f32`` store ordered NLL in nats;
+``pvi_bits.f64`` stores paired differences in bits. Independent branch resume
+reuses normalization and rejects changed settings or initialization. Recomputing
+with ``from_run_dir`` is read-only and rejects incomplete, nonfinite or
+inconsistent artifacts. The CLI and estimator write ``estimator_result.json``.
+
+**Executable CPU example.** From the repository root:
+
+.. code-block:: bash
+
+   python -m episynth.train --config experiments/demos/v_information.json \
+       --out runs/v_information_cpu
+
+Tests in ``test_v_information.py`` cover Gaussian analytical information,
+independence, null-input invariance, train-only normalization, validation-only
+selection, split coverage/isolation, interruption recovery and both CLIs.
 
 4. Bayesian predictive log-loss by OU quadrature
 ------------------------------------------------
@@ -210,8 +258,10 @@ methods above and remain useful independent library operations.
 For a future common measurement API, each result should declare its method,
 quantity definition, units and normalization, predictive family/prior, data
 split and seed identifiers, compute/optimization budget, and artifact paths.
-Existing prequential fields remain documented above; this shared result schema
-and wrappers for the additional methods are proposals, not implemented APIs.
+The estimator protocol accepts method-specific JSON-compatible results. Existing
+prequential fields remain unchanged; V-information has the result contract above.
+A unified schema for all four methods and wrappers for the remaining methods
+remain proposals.
 
 A released method should have an executable example and a check against its
 mathematical definition. For prequential this includes the sum/decomposition

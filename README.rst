@@ -50,8 +50,9 @@ four-method library scope is described in the
    sequence; return total, residual-data and signed model-proxy costs in bits.
 2. **Requential coding (registered stub):** describe a student's learned predictions
    through teacher-selected synthetic training samples and their coding costs.
-3. **Predictive V-information (proposed):** fit predictors with and without context;
-   estimate the held-out log-loss reduction in bits per window.
+3. **Predictive V-information (implemented):** fit predictors with and without context,
+   select on validation, then estimate paired test log-loss reduction in bits per window.
+   CPU example: ``python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_cpu``.
 4. **Bayesian predictive log-loss (OU reference implemented):** marginalize the known
    AR(1) prior to obtain joint and pointwise forecast-loss references. A common public
    wrapper remains proposed.

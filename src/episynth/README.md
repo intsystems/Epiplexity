@@ -25,7 +25,7 @@
   лидерборда и в масштабированном виде, лог-плотность правды.
 - `episynth.estimators` — плагинный интерфейс оценки эпиплексии: алгоритмы регистрируются по
   имени и выбираются полем `estimator` в конфигурации `episynth.train`. Встроены `prequential`
-  (площадь над кривой лосса) и скелет `requential`; пользователь добавляет свой алгоритм одним
+  (площадь над кривой лосса), `v_information` (польза контекста для прогноза) и скелет `requential`; пользователь добавляет свой алгоритм одним
   модулем через `@register`.
 
 ```python
@@ -68,9 +68,59 @@ python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynt
 
 Плагинный интерфейс описан в `episynth.estimators`: встроены `prequential` (площадь над кривой
 лосса, финальный лосс берётся с отложенного набора `heldout_ema_1.f32` через
-`episynth.analysis.run_area`) и скелет `requential`. Свой алгоритм добавляется одним модулем:
+`episynth.analysis.run_area`), `v_information` и скелет `requential`. Свой алгоритм добавляется одним модулем:
 класс, реализующий `EpiplexityEstimator`, помечается `@register("имя")`; выбирается по имени в
 `--set estimator=имя`.
+
+## V-information
+
+`estimator=v_information` обучает два Moirai с одинаковыми начальными весами и бюджетом:
+с контекстом и без него. Параметры конструктора передаются через `estimator_config`:
+`variant` (`ema` по умолчанию или `raw`), `test_first_seed` (2 000 000 000),
+`test_windows` (100 000, не меньше двух). Существующий `train.heldout_*` задаёт validation;
+train, validation и test должны быть непересекающимися и покрываться источником данных,
+включая исходные сиды компонентов смеси. Поддерживаются непрерывные компоненты плотности.
+
+```bash
+python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_cpu
+python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_raw \
+    --set estimator_config.variant=raw
+python -m episynth.estimators.run --estimator v_information --generator waveform \
+    --config-json experiments/demos/v_information.json --out runs/v_information_cli \
+    --estimator-config '{"test_first_seed":2000,"test_windows":32}'
+```
+
+Среднее и масштаб вычисляются дополнительным проходом только по точкам горизонта train,
+потоково в float64. Обе модели используют эту фиксированную нормировку; `log_prob` и NLL
+остаются в исходных единицах ряда. `MoiraiConfig.fixed_scaling=(loc, scale)` требует
+`scaling=True`, конечных констант и положительного масштаба. `ignore_context=True` задаёт
+контекстно-независимый режим внутри модели; оба режима сохраняются с конфигурацией.
+
+Чекпойнты выбранного `variant` сравниваются на validation в `train.eval_precision`.
+Условный предиктор выбирается среди условных чекпойнтов и лучшего baseline; при равенстве
+предпочитается baseline, затем более ранний шаг. Только после фиксации выбора читается test.
+Обе роли оцениваются на идентичных целях, включая деквантование. Сумма NLL по горизонту
+использует текущую факторизацию Moirai в произведение плотностей точек.
+
+Результат содержит `unconditional_entropy_bits_per_window`,
+`conditional_entropy_bits_per_window`, их разность `v_information_bits_per_window`,
+парную `standard_error_bits_per_window`, `n_test_windows` и метаданные. Отрицательные
+оценки сохраняются; ошибка отражает test-выборку при фиксированных моделях, а не разброс
+обучения. Это оценка при ограниченном бюджете оптимизации, без утверждения о достижении
+инфимума семейства или PAC-гарантии. Полей разложения стоимости кода у неё нет.
+
+Каталоги `unconditional/` и `conditional/` содержат обычные артефакты Trainer.
+`v_information.json` хранит нормировку, конфигурации, сплиты и выбранные чекпойнты;
+`test_unconditional.f32` и `test_conditional.f32` — NLL в натах в порядке test-сидов,
+`pvi_bits.f64` — их оконные разности в битах. Повторный запуск проверяет совместимость
+исходных весов и настроек и возобновляет незавершённые ветви. Пересчёт готового результата
+читает только сохранённые файлы и проверяет их полноту и согласованность:
+
+```python
+from episynth.estimators.v_information import VInformationEstimator
+result = VInformationEstimator().from_run_dir("runs/v_information_cpu")
+print(result["v_information_bits_per_window"])
+```
 
 Оценка чекпойнта прогона на краткосрочной части GIFT-Eval (снимок датасета — `huggingface_hub.snapshot_download("Salesforce/GiftEval", repo_type="dataset")`):
 

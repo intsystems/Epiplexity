@@ -47,13 +47,13 @@ analysis + GIFT-Eval evaluation → tables, plots, generator comparisons
 
 The [measurement contracts](../doc/source/measurements.rst) propose four methods:
 prequential coding (implemented), requential coding (registered stub), predictive
-V-information (requires implementation), and Bayesian predictive log-loss using
+V-information (implemented with paired test scoring), and Bayesian predictive log-loss using
 the implemented OU reference (public wrapper proposed). They specify the quantity,
 inputs, outputs, units and readiness of each method. Generation, training and
 forecast scoring are shared operations; the saved experiments use prequential
-coding. The common result contract must identify the measured quantity:
-V-information is a predictive-loss reduction, while the current estimator
-protocol returns a model/data code decomposition.
+coding. The method-specific result contract identifies the measured quantity:
+V-information is a predictive-loss reduction; prequential returns a model/data
+code decomposition. Both use the shared registry with method-specific outputs.
 
 ## Public API and annotations
 
@@ -77,15 +77,20 @@ class EpiplexityEstimator(Protocol):
         spec: WindowSpec,
         config: TrainConfig,
         out_dir: str | Path,
-    ) -> dict[str, float]: ...
+    ) -> Mapping[str, Any]: ...
 ```
 
-Results contain `model_part_bits` and `data_part_bits`; prequential also returns
+Prequential results contain `model_part_bits` and `data_part_bits`; it also returns
 `total_bits` and `n_windows`. Per-window training losses are saved in nats and
 converted to bits by dividing by `ln(2)`; the model part is the area above the
 held-out final loss. See the [experiment protocol](../doc/source/experiments.rst).
 
-Prequential is implemented. Requential is a registered skeleton whose `run`
+V-information returns predictive entropies, their paired test difference and standard error
+in bits per window, plus split, normalization, fitting and selection metadata.
+It is available as `build("v_information")` or `estimator=v_information`; constructor
+settings go in `estimator_config`. See `experiments/demos/v_information.json`.
+
+Prequential and V-information are implemented. Requential is a registered skeleton whose `run`
 raises `NotImplementedError`. Bayesian codes and proxies in the older research
 plans are future directions; no old model/sampler registries are part of this API.
 

@@ -1,10 +1,9 @@
 Extending: adding your own estimator
 ====================================
 
-The current protocol returns a model/data code decomposition. See
-:doc:`measurements` for the four-method proposal and its quantity-specific
-contracts, including the planned predictive-information result and Bayesian
-reference wrapper. Registering a class supplies a name; its algorithm still
+The protocol returns method-specific JSON-compatible results. See
+:doc:`measurements` for coding decompositions, the implemented predictive-information
+result and the proposed Bayesian reference wrapper. Registering a class supplies a name; its algorithm still
 needs an implementation.
 
 Чтобы добавить новый алгоритм оценки эпиплексии, достаточно написать **один модуль** и не менять
@@ -21,7 +20,7 @@ needs an implementation.
     def run(
         self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
         config: TrainConfig, out_dir: str | Path,
-    ) -> dict[str, float]:
+    ) -> Mapping[str, Any]:
         """Выполнить прогон обучения и вернуть оценку в битах."""
 
 Аргументы:
@@ -32,7 +31,10 @@ needs an implementation.
 * ``config`` (:class:`~episynth.training.TrainConfig`) — параметры прогона;
 * ``out_dir`` — каталог для артефактов.
 
-Возврат — словарь с ключами ``model_part_bits`` и ``data_part_bits`` (и любыми дополнительными).
+Возврат — JSON-совместимый словарь с полями метода. У prequential это
+``model_part_bits`` и ``data_part_bits``; у V-information — энтропии и их разность
+в битах на окно. Протокол аннотирован как ``Mapping[str, Any]`` для поддержки
+типизированных словарей результатов.
 
 Шаг 2. Модуль алгоритма
 -----------------------
@@ -79,6 +81,8 @@ needs an implementation.
     result = est.run(model, generator, spec, config, "runs/my")
 
 Для встроенного оценщика достаточно поля ``estimator`` в конфигурации CLI.
+``estimator_config`` передаёт аргументы конструктора, например
+``{"variant": "raw", "test_windows": 1000}`` для V-information.
 Внешний плагин нужно импортировать **в том же процессе** перед вызовом CLI:
 
 .. code-block:: python
@@ -86,8 +90,11 @@ needs an implementation.
     import my_package.my_estimator
     from episynth.train import main
 
-    main(["--config", "configs/kernelsynth.json", "--out", "runs/epi",
-          "--set", "estimator=my_estimator"])
+    # episynth.train.main reads sys.argv, as in the shell CLI.
+    import sys
+    sys.argv = ["train", "--config", "configs/kernelsynth.json", "--out", "runs/epi",
+                "--set", "estimator=my_estimator"]
+    main()
 
 Если вы добавляете алгоритм в саму библиотеку ``episynth``, положите его в
 ``src/episynth/estimators/`` и убедитесь, что он импортируется (встроенные оценщики

@@ -4,12 +4,12 @@ Estimators
 .. automodule:: episynth.estimators
 
 ``episynth.estimators`` exports ``EpiplexityEstimator``, ``register``,
-``build`` and ``available`` from the modules below. Prequential is implemented;
+``build`` and ``available`` from the modules below. Prequential and V-information are implemented;
 requential is a planned algorithm whose ``run`` raises ``NotImplementedError``.
 
 See :doc:`../measurements` for the four-method library proposal, scientific
 quantities, input/output contracts, and implementation status. Registry names
-include stubs; V-information and a common Bayesian wrapper are not implemented.
+include stubs; a common Bayesian wrapper is not implemented.
 
 estimators.base
 ---------------
@@ -39,6 +39,14 @@ estimators.requential
 ---------------------
 
 .. automodule:: episynth.estimators.requential
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+estimators.v_information
+------------------------
+
+.. automodule:: episynth.estimators.v_information
    :members:
    :undoc-members:
    :show-inheritance:

@@ -23,7 +23,7 @@ from collections.abc import Sequence
 
 import torch
 import torch.nn.functional as F
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from torch import nn
 
 _COMPONENT_PARAMS = {
@@ -46,6 +46,8 @@ class MoiraiConfig(BaseModel):
         components: Компоненты смеси по порядку из {"student_t", "normal_fixed", "negative_binomial", "log_normal"}.
         normal_fixed_scale: Стандартное отклонение компоненты "normal_fixed" в нормированных единицах.
         scaling: Нормировать ли ряд по наблюдаемому контексту.
+        fixed_scaling: Фиксированные (сдвиг, масштаб) вместо статистик контекста.
+        ignore_context: Предсказывать только по постоянным признакам горизонта.
     """
 
     d_model: int = 384
@@ -55,6 +57,16 @@ class MoiraiConfig(BaseModel):
     components: tuple[str, ...] = ("student_t", "normal_fixed", "negative_binomial", "log_normal")
     normal_fixed_scale: float = 1e-3
     scaling: bool = True
+    fixed_scaling: tuple[float, float] | None = None
+    ignore_context: bool = False
+
+    @model_validator(mode="after")
+    def _check_scaling(self) -> "MoiraiConfig":
+        if self.fixed_scaling is not None:
+            loc, scale = self.fixed_scaling
+            if not self.scaling or not math.isfinite(loc) or not math.isfinite(scale) or scale <= 0:
+                raise ValueError("fixed_scaling requires scaling=True, finite loc and positive finite scale")
+        return self
 
 
 def small(patch_sizes: Sequence[int] = (8, 16, 32, 64, 128), components: Sequence[str] | None = None) -> MoiraiConfig:
@@ -542,7 +554,19 @@ class MoiraiModule(nn.Module):
             Mixture: Смесь с параметрами `(B, S, P_max, ...)` в исходных единицах ряда.
         """
         idx = self.config.patch_sizes.index(patch_size)
-        if self.scaler is not None:
+        if self.config.ignore_context:
+            # Canonical null input: neither values, padding nor context length can
+            # influence the horizon. The caller retains the original batch for NLL.
+            target = torch.zeros_like(target)
+            observed_mask = torch.zeros_like(observed_mask)
+            sample_id = prediction_mask.to(sample_id.dtype)
+            time_id = (prediction_mask.long().cumsum(-1) - 1).clamp_min(0)
+            variate_id = torch.zeros_like(variate_id)
+        if self.config.fixed_scaling is not None:
+            fixed_loc, fixed_scale = self.config.fixed_scaling
+            loc = torch.full((*target.shape[:2], 1), fixed_loc, device=target.device)
+            scale = torch.full_like(loc, fixed_scale)
+        elif self.scaler is not None:
             loc, scale = self.scaler(target, observed_mask & ~prediction_mask.unsqueeze(-1), sample_id, variate_id)
         else:
             loc = torch.zeros(*target.shape[:2], 1, device=target.device)

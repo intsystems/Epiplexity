@@ -5,8 +5,8 @@ Architecture
 
 Пакет ``episynth`` — это библиотека оценки эпиплексии синтетических временных рядов. Эксперимент
 устроен так: модель-наблюдатель обучается на потоке окон, сгенерированных синтетическим
-генератором, а оценщик эпиплексии переводит прогон обучения в разложение кодовой длины на
-(model part, data part) в битах.
+генератором, а оценщик возвращает разложение кодовой длины
+в битах или пользу контекста для прогноза в битах на окно (V-information).
 
 Слои
 ----
@@ -51,10 +51,11 @@ Architecture
         def run(
             self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
             config: TrainConfig, out_dir: str | Path,
-        ) -> dict[str, float]: ...
+        ) -> Mapping[str, Any]: ...
 
-Метод ``run`` выполняет полный прогон обучения и возвращает разложение кодовой длины на
-``model_part_bits`` и ``data_part_bits`` (в битах).
+Метод ``run`` выполняет обучение и возвращает JSON-совместимый словарь.
+Prequential возвращает ``model_part_bits`` и ``data_part_bits`` (в битах);
+V-information — predictive entropies и их разность в битах на окно.
 
 Алгоритмы регистрируются в :mod:`episynth.estimators.registry` по имени и создаются фабрикой
 :func:`episynth.estimators.registry.build`:
@@ -92,6 +93,10 @@ Architecture
   реконструируемого по индексам сэмплов из распределения учителя). Зарегистрирован, но его прогон
   пока скелет: бросает :class:`NotImplementedError`. См. ``publications/research_notes/.../requential_coding.md``.
 
+* :class:`episynth.estimators.v_information.VInformationEstimator` — два обучения
+  Moirai с общей нормировкой по train, выбор моделей на validation и парное
+  сравнение на test. Условный предиктор может игнорировать контекст.
+
 Взаимодействие ``Trainer`` и оценщика
 -------------------------------------
 
@@ -116,3 +121,5 @@ CLI
 ``prequential``). Прогон пишет обычные артефакты ``Trainer``, а результат оценки — в
 ``estimator_result.json`` в каталоге прогона. Поддерживается и программный вызов:
 ``build("prequential").run(model, generator, spec, config, out_dir)``.
+Параметры алгоритма передаются через ``estimator_config``. V-information пишет
+две ветви обучения и общий манифест; пример: ``experiments/demos/v_information.json``.

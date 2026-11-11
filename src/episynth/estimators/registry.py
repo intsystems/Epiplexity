@@ -62,6 +62,7 @@ def _import_estimators() -> None:
     from . import (
         prequential,  # noqa: F401
         requential,  # noqa: F401
+        v_information,  # noqa: F401
     )
 
 

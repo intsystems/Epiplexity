@@ -8,6 +8,10 @@ r"""Запуск оценщика эпиплексии из командной �
 `config.json` (поля `model` и `train`). Если `--config-json` не задан, используются аргументы
 `--n-windows`/`--batch-size` (обязательные) и значения `TrainConfig` по умолчанию.
 
+`--estimator-config` — JSON-объект параметров конструктора, например
+`{"variant": "raw", "test_windows": 1000}` для V-information.
+Результат сохраняется в `estimator_result.json`.
+
 Имена доступных алгоритмов — :func:`episynth.estimators.available`.
 """
 
@@ -44,8 +48,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--n-windows", type=int, help="Training budget in windows (required without --config-json).")
     parser.add_argument("--batch-size", type=int, help="Windows per step (required without --config-json).")
     parser.add_argument("--device", default="cuda", help="Device, e.g. cuda or cpu.")
-    parser.add_argument("--init-seed", type=int, default=0, help="Weight initialization seed.")
+    parser.add_argument("--init-seed", type=int, help="Weight initialization seed; overrides config train.init_seed.")
+    parser.add_argument("--estimator-config", default="{}", help="JSON object of estimator constructor arguments.")
     args = parser.parse_args(argv)
+    try:
+        estimator_config = json.loads(args.estimator_config)
+    except json.JSONDecodeError as exc:
+        parser.error(f"invalid --estimator-config: {exc}")
+    if not isinstance(estimator_config, dict):
+        parser.error("--estimator-config must be a JSON object")
 
     if args.config_json:
         config, spec, model_cfg = _build_from_config_json(Path(args.config_json))
@@ -53,13 +64,16 @@ def main(argv: list[str] | None = None) -> None:
         if args.n_windows is None or args.batch_size is None:
             parser.error("--n-windows and --batch-size are required unless --config-json is given.")
         spec = WindowSpec()
-        config = TrainConfig(n_windows=args.n_windows, batch_size=args.batch_size, device=args.device)
+        config = TrainConfig(n_windows=args.n_windows, batch_size=args.batch_size, device=args.device, init_seed=args.init_seed if args.init_seed is not None else 0)
         model_cfg = MoiraiConfig(patch_sizes=(spec.patch_size,), components=("student_t", "normal_fixed", "log_normal"))
 
-    generator = GENERATORS[args.generator]()
-    model = build_model(model_cfg, args.init_seed)
-    estimator = build(args.estimator)
+    if args.init_seed is not None:
+        config = config.model_copy(update={"init_seed": args.init_seed})
+    generator = GENERATORS[args.generator](length=spec.series_length)
+    model = build_model(model_cfg, config.init_seed)
+    estimator = build(args.estimator, **estimator_config)
     result = estimator.run(model, generator, spec, config, args.out)
+    Path(args.out, "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
     print(json.dumps({"estimator": args.estimator, "generator": args.generator, "result": result}, indent=2, ensure_ascii=False))
 
 
