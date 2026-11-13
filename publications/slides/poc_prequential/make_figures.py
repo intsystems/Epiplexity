@@ -78,9 +78,9 @@ fig.tight_layout()
 fig.savefig(OUT / "area_schematic.pdf")
 fig.savefig(OUT / "area_schematic.png", dpi=170)
 plt.close(fig)
-with (ROOT / "publications/technical_report/data/run_statistics.csv").open() as f:
+with (ROOT / "publications/article/data/run_statistics.csv").open() as f:
     runs = list(csv.DictReader(f))
-with (ROOT / "publications/technical_report/data/correlations.csv").open() as f:
+with (ROOT / "publications/article/data/correlations.csv").open() as f:
     corrs = [
         r
         for r in csv.DictReader(f)
@@ -118,7 +118,7 @@ plt.close(fig)
             "notebook_executed_code_cells": 6,
             "demo_result_bits": result,
             "illustrative_figure": "area_schematic is a synthetic illustration, not measured data",
-            "report_runs": "publications/technical_report/data/run_statistics.csv",
+            "report_runs": "publications/article/data/run_statistics.csv",
             "report_correlations": corrs,
         },
         ensure_ascii=False,

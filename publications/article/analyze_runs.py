@@ -1,4 +1,4 @@
-"""Recompute report statistics from committed training curves and evaluation summaries.
+"""Recompute article statistics from committed training curves and evaluation summaries.
 
 No training or model downloads. Linear areas are recovered from per-step averages
 (six significant digits); nonlinear per-window statistics are not reconstructed.
@@ -267,7 +267,8 @@ def main():
             "units": "nats per target point, in original series units",
             "window_selection": "retains the saved evaluator's exclusion of windows with zero seasonal error",
             "baseline_normalized": False,
-            "plotted_exploratory_subset_excludes": ["chaotic", "waveform"],
+            "plot_scope": "all eleven primary generators and a separate initialization repeat",
+            "exploratory_subset_excludes": ["chaotic", "waveform"],
         },
         "max_area_rounding_bound_nats": max(r["area_export_error_bound_nats"] for r in rows),
         "archived_area_comparisons": area_checks, "point_baseline_max_relative_difference": baseline_check,

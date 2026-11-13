@@ -38,7 +38,7 @@ cp build/main.pdf episynth_poc_prequential.pdf
 
 `figures/area_schematic.*` — явно обозначенная схематическая иллюстрация,
 а не экспериментальные данные. `large_series_context.*` построен из CSV
-`publications/technical_report/data/` по 11 основным генераторам каждой серии.
+`publications/article/data/` по 11 основным генераторам каждой серии.
 Точки дополнительного повторного сида Waveform не включены.
 
 Для регенерации рисунков из полного checkout нужны NumPy и Matplotlib:

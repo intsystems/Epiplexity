@@ -1,9 +1,7 @@
 # episynth: architecture and development stack
 
-The practical goal is to train a time-series foundation model on high-quality
-synthetic data and select productive generators for that data. Productivity means
-better forecasting on real datasets after pretraining under a fixed training-data
-budget. `episynth` supports this decision by generating data, training forecasting
+The practical goal is to choose synthetic pretraining data that improve
+forecasting on real datasets under a fixed training-data budget. `episynth` supports this decision by generating data, training forecasting
 models, measuring learned structure, and evaluating transfer on GIFT-Eval. We test
 epiplexity-based measurements as possible generator-selection signals. The Python
 distribution and import name are `episynth`; the repository is `intsystems/Epiplexity`.

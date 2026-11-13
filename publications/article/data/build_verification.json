@@ -1,0 +1,13 @@
+{
+  "pages": 8,
+  "max_pages": 8,
+  "includes_bibliography_and_appendix": true,
+  "bibliography_entries": 13,
+  "unresolved_references": false,
+  "overfull_boxes": false,
+  "sha256": {
+    "main.pdf": "861c8fd359f0599a3f2074fffdbcb657b158aecf07a6dd318fe718149877c47a",
+    "main.tex": "0c08b0ecb415e967efc6b363565da224d9e7d67e4990f081995e54eadafd4944",
+    "references.bib": "38d7c0e389ca25386a231841e9e91e90fb5d52a1d0cfd421da9095cf58c11f28"
+  }
+}

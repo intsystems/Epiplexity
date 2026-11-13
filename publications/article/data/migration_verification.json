@@ -1,0 +1,27 @@
+[
+  {
+    "file": "run_statistics.csv",
+    "rows": 23,
+    "identical_to_previous_analysis": true
+  },
+  {
+    "file": "checkpoint_statistics.csv",
+    "rows": 161,
+    "identical_to_previous_analysis": true
+  },
+  {
+    "file": "correlations.csv",
+    "rows": 195,
+    "identical_to_previous_analysis": true
+  },
+  {
+    "file": "prefix_correlations.csv",
+    "rows": 84,
+    "identical_to_previous_analysis": true
+  },
+  {
+    "file": "task_ratios.csv",
+    "rows": 1265,
+    "identical_to_previous_analysis": true
+  }
+]

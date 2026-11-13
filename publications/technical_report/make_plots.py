@@ -1,223 +1,91 @@
-"""Build figures from saved results, labeling exploratory descriptive trend fits."""
+"""Render architecture, execution, and the measured CPU learning curve."""
 
-import csv
+import json
 from pathlib import Path
 
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
+from matplotlib.patches import FancyArrowPatch, Rectangle
 import numpy as np
-from scipy.stats import theilslopes
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "figures"
 OUT.mkdir(exist_ok=True)
-GENERATORS = ["kernelsynth", "ets", "waveform", "sde", "stepfunction", "tsi", "arima", "fbm", "garch", "chaotic", "timesynth"]
-NAMES = {"kernelsynth": "KernelSynth", "ets": "ETS", "waveform": "Waveform", "sde": "SDE", "stepfunction": "StepFunction", "tsi": "TSI", "arima": "ARIMA", "fbm": "fBm", "garch": "GARCH", "chaotic": "Chaotic", "timesynth": "TimeSynth"}
-COLORS = dict(zip(GENERATORS, plt.get_cmap("tab20").colors[::2] + (plt.get_cmap("tab20").colors[1],)))
-plt.rcParams.update({
-    "font.family": "DejaVu Sans", "font.size": 9,
-    "axes.spines.top": False, "axes.spines.right": False,
-    "axes.labelcolor": "#303c46", "text.color": "#172d3d",
-    "xtick.color": "#52616b", "ytick.color": "#52616b",
-    "pdf.fonttype": 42, "savefig.bbox": "tight",
-})
+BLUE, INK, GRAY = "#1556b0", "#263342", "#84909c"
+plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10,
+                     "axes.spines.top": False, "axes.spines.right": False,
+                     "pdf.fonttype": 42, "savefig.bbox": "tight"})
 
 
 def save(fig, name):
-    fig.savefig(OUT / (name + ".pdf"))
-    fig.savefig(OUT / (name + ".png"), dpi=200)
+    fig.savefig(OUT / f"{name}.pdf")
+    fig.savefig(OUT / f"{name}.png", dpi=180)
     plt.close(fig)
 
 
-def gallery():
-    arrays = np.load(HERE / "data" / "generator_examples.npz")
-    labels = {
-        "kernelsynth": "KernelSynth", "ets": "ETS", "waveform": "Waveform", "sde": "SDE",
-        "stepfunction": "StepFunction", "tsi": "TSI", "arima": "ARIMA", "fbm": "fBm",
-        "garch": "GARCH", "chaotic": "Chaotic", "timesynth": "TimeSynth",
-    }
-    fig, axes = plt.subplots(3, 4, figsize=(7.1, 3.65), sharex=True, layout="constrained")
-    for ax, (key, label) in zip(axes.flat, labels.items()):
-        for row, color, alpha in zip(arrays[key], ("#1c6a93", "#d08038"), (1.0, 0.8)):
-            z = (row.astype(float) - row.mean()) / max(float(row.std()), 1e-12)
-            ax.plot(z, lw=0.85, color=color, alpha=alpha)
-        ax.set_title(label, fontsize=9, loc="left", pad=2, weight="bold")
-        ax.set_xlim(0, 255)
-        ax.set_xticks([0, 128, 255])
-        ax.tick_params(labelsize=7, pad=1)
-        ax.grid(axis="y", alpha=0.15)
-    axes.flat[-1].axis("off")
-    axes.flat[-1].text(
-        0.03, 0.72, "Generated for this report\n\nBlue: seed 3\nOrange: seed 11\n256 points per series\nStandardized for display",
-        transform=axes.flat[-1].transAxes, fontsize=8, va="top", linespacing=1.4,
-    )
-    fig.supxlabel("Time index", fontsize=9)
-    fig.supylabel("Standardized value", fontsize=9)
-    save(fig, "generator_gallery")
+def arrow(ax, start, stop, color=GRAY):
+    ax.add_patch(FancyArrowPatch(start, stop, arrowstyle="-|>", mutation_scale=10, lw=1, color=color))
 
 
-def windows():
-    arrays = np.load(HERE / "data" / "window_examples.npz")
-    fig, axes = plt.subplots(3, 1, figsize=(7.1, 2.85), sharex=True, layout="constrained")
-    for ax, row, observed, c, seed in zip(
-        axes, arrays["target"], arrays["observed"], arrays["context_length"], arrays["seeds"], strict=True,
-    ):
-        start, boundary, stop = 512 - int(c), 512, 576
-        context = row[start:boundary]
-        z = (row - context.mean()) / max(float(context.std()), 1e-12)
-        ax.axvspan(0, start, color="#edf0f3", lw=0)
-        ax.axvspan(boundary, stop, color="#fff0dc", lw=0)
-        ax.plot(np.arange(start, boundary), z[start:boundary], color="#1c6a93", lw=0.85)
-        ax.plot(np.arange(boundary - 1, stop), z[boundary - 1:stop], color="#c2762f", lw=0.85)
-        ax.axvline(boundary, color="#6d737b", ls="--", lw=0.65)
-        ax.set_ylabel(f"c = {int(c)}", fontsize=9)
-        ax.set_yticks([])
-        ax.set_xlim(0, 576)
-        ax.text(0.01, 0.83, f"seed {int(seed)}", transform=ax.transAxes, fontsize=7, va="top",
-                bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.8, "pad": 1})
-    axes[0].text(200, 0.25, "masked padding", color="#697682", fontsize=8, ha="center")
-    axes[0].set_title("Observed context (blue) and forecast target (orange); h = 64, patch size = 32", fontsize=9, loc="left")
-    axes[-1].set_xlabel("Position in the padded window")
-    axes[-1].set_xticks([0, 128, 256, 384, 512, 576])
-    save(fig, "forecast_windows")
+def architecture():
+    fig, ax = plt.subplots(figsize=(7.0, 2.45))
+    ax.set_xlim(-0.1, 9.1)
+    ax.set_ylim(-0.2, 3.15)
+    ax.axis("off")
+    def box(x, y, title, detail):
+        ax.add_patch(Rectangle((x, y), 2.4, 0.85, facecolor="white", edgecolor=GRAY, lw=0.8))
+        ax.text(x+1.2, y+0.57, title, ha="center", va="center", fontsize=10, color=INK)
+        ax.text(x+1.2, y+0.25, detail, ha="center", va="center", fontsize=8, color="#596776")
+    box(0, 2.1, "Data source", "Generator / Corpus / Mixture")
+    box(3.2, 2.1, "Forecast windows", "WindowSpec / WindowStream")
+    box(6.4, 2.1, "Predictive model", "Moirai density and samples")
+    box(0, 0.65, "Estimator", 'build("prequential") etc.')
+    box(3.2, 0.65, "Trainer", "Updates / EMA / checkpoints")
+    box(6.4, 0.65, "Run artifacts", "Losses / weights / metadata")
+    arrow(ax, (2.4, 2.52), (3.2, 2.52))
+    arrow(ax, (4.4, 2.1), (4.4, 1.5))
+    arrow(ax, (6.4, 2.1), (5.5, 1.5))
+    arrow(ax, (2.4, 1.07), (3.2, 1.07), BLUE)
+    arrow(ax, (5.6, 1.07), (6.4, 1.07))
+    arrow(ax, (7.6, 0.65), (7.6, 0.13))
+    ax.text(7.6, -0.06, "Analysis and GIFT-Eval", ha="center", va="center", fontsize=9, color=INK)
+    save(fig, "architecture")
 
 
-def read_rows(name):
-    with (HERE / "data" / name).open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle))
+def execution():
+    fig, ax = plt.subplots(figsize=(7.0, 2.4))
+    ax.set_xlim(-0.45, 3.55)
+    ax.set_ylim(-0.2, 4.7)
+    ax.axis("off")
+    for x, label in enumerate(("Window stream", "Trainer", "Model", "Artifacts")):
+        ax.text(x, 4.4, label, ha="center", color=INK, fontsize=10)
+        ax.plot([x, x], [0, 4.15], color="#d4dae0", lw=0.8)
+    for a, b, y, label in [(0, 1, 3.7, "Fresh batch"), (1, 2, 3.0, "Evaluate NLL"),
+                            (1, 2, 2.3, "Update weights"), (1, 3, 1.6, "Save scored losses"),
+                            (1, 3, 0.6, "Held-out scores and checkpoint")]:
+        arrow(ax, (a, y), (b, y), BLUE if label == "Evaluate NLL" else GRAY)
+        ax.text((a+b)/2, y+0.12, label, ha="center", va="bottom", fontsize=8)
+    save(fig, "execution")
 
 
-def training_results():
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.0), sharey=True)
-    base = HERE.parents[1] / "experiments" / "episynth"
-    for series, ax in enumerate(axes, 1):
-        for gen in GENERATORS:
-            prefix = "series_" if series == 1 else "s2_"
-            with (base / f"series{series}_2026-10-19/runs/{prefix}{gen}/train_curve.csv").open() as handle:
-                rows = list(csv.DictReader(handle))
-            x = np.array([int(r["windows_seen"]) for r in rows]) / 1e6
-            y = np.array([float(r["nats_per_point"]) for r in rows])
-            edges = np.unique(np.geomspace(1, len(x) + 1, 100).astype(int)) - 1
-            edges[-1] = len(x)
-            xb, yb = [], []
-            for lo, hi in zip(edges[:-1], edges[1:], strict=True):
-                if hi > lo:
-                    xb.append(x[lo:hi].mean())
-                    yb.append(y[lo:hi].mean())
-            ax.plot(xb, yb, color=COLORS[gen], lw=1.1, label=NAMES[gen])
-        ax.set_xscale("log")
-        ax.set_xlabel("Training windows (millions)")
-        ax.set_title(f"Series {series}: {'2' if series == 1 else '40'} million windows", fontsize=10, loc="left")
-        ax.grid(alpha=0.18)
-    axes[0].set_ylabel("Pre-update NLL (nats / target point)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=6, frameon=False, fontsize=7.5)
-    fig.subplots_adjust(bottom=0.27, wspace=0.12, left=0.09, right=0.99, top=0.9)
-    save(fig, "training_results")
-
-
-def transfer_results():
-    rows = read_rows("run_statistics.csv")
-    correlations = read_rows("correlations.csv")
-    fig, axes = plt.subplots(2, 2, figsize=(7.1, 4.7), sharex="col", sharey="row", layout="constrained")
-    excluded = {"chaotic", "waveform"}
-    offsets = [
-        {"kernelsynth": (-43, 3), "ets": (-9, -14), "waveform": (5, 8), "sde": (7, 6), "stepfunction": (-23, 8), "tsi": (-23, -15), "arima": (8, 4), "fbm": (4, -13), "garch": (-12, 9), "chaotic": (-24, 8), "timesynth": (5, 3)},
-        {"kernelsynth": (-25, -11), "ets": (-9, -14), "waveform": (-30, 9), "sde": (-8, 10), "stepfunction": (-5, 10), "tsi": (-30, 4), "arima": (5, -7), "fbm": (6, -13), "garch": (-15, 10), "chaotic": (-26, 8), "timesynth": (-42, -5)},
-    ]
-    short = {"kernelsynth": "Kernel", "stepfunction": "Step", "timesynth": "Time", "waveform": "Wave", "chaotic": "Chaos"}
-    for col, series in enumerate((1, 2)):
-        primary = [r for r in rows if int(r["series"]) == series and int(r["init_seed"]) == 0]
-        subset = [r for r in primary if r["generator"] not in excluded]
-        for metric_row, target in enumerate(("crps_geo", "nll_mean_nats_per_point")):
-            ax = axes[metric_row, col]
-            for row in primary:
-                gen = row["generator"]
-                x, y = float(row["area_ema_mnats"]), float(row[target])
-                color = "#858585" if gen in excluded else COLORS[gen]
-                ax.scatter(x, y, c=[color], marker="x" if gen in excluded else "o", s=24, zorder=3)
-                offset = offsets[col][gen]
-                if metric_row == 1:
-                    offset = {
-                        "kernelsynth": (-40, -10), "ets": (-9, -13), "waveform": (-25, -12),
-                        "sde": (5, -10), "stepfunction": (-18, 7), "tsi": (-15, 7),
-                        "arima": (5, 5), "fbm": (3, 7), "garch": (5, -8),
-                        "chaotic": (-26, 5), "timesynth": (-28, 7),
-                    }[gen]
-                ax.annotate(short.get(gen, NAMES[gen]), (x, y), xytext=offset,
-                            textcoords="offset points", fontsize=7, color=color)
-            x = np.array([float(r["area_ema_mnats"]) for r in subset])
-            y = np.array([float(r[target]) for r in subset])
-            # A robust descriptive line keeps individual loss magnitudes from
-            # dominating the display; correlations remain Spearman statistics.
-            slope, intercept, _, _ = theilslopes(y, np.log10(x))
-            grid = np.geomspace(x.min(), x.max(), 100)
-            ax.plot(grid, intercept + slope * np.log10(grid), color="#384e60", ls=":", lw=1)
-            stats = {}
-            for key in ("all_11", "without_chaotic_waveform"):
-                match = next(r for r in correlations if int(r["series"]) == series
-                             and r["subset"] == key and r["predictor"] == "area_ema_mnats" and r["target"] == target)
-                stats[key] = float(match["rho"])
-            ax.text(0.02, 0.97, f"All 11: rho = {stats['all_11']:+.2f}\nSubset 9: rho = {stats['without_chaotic_waveform']:+.2f}",
-                    transform=ax.transAxes, va="top", fontsize=7.5,
-                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.85, "pad": 1.5})
-            ax.set_xscale("log")
-            ax.grid(alpha=0.13)
-            if metric_row == 0:
-                ax.axhline(1, color="#6a747c", lw=0.8, ls="--")
-                ax.set_ylim(0.53, 1.78)
-                ax.set_title(f"{'2M' if series == 1 else '40M'} training windows", fontsize=10, loc="left")
-            else:
-                ax.set_ylim(4.5, 6.35)
-                ax.set_xlabel("Epiplexity proxy A (million nats; log scale)", fontsize=8)
-            if series == 2:
-                repeat = next(r for r in rows if r["run"] == "s2_waveform_seed1")
-                origin = next(r for r in primary if r["generator"] == "waveform")
-                x, y = float(repeat["area_ema_mnats"]), float(repeat[target])
-                ax.scatter(x, y, facecolors="white", edgecolors="#858585", s=30, zorder=4)
-                ax.plot([float(origin["area_ema_mnats"]), x], [float(origin[target]), y], color="#858585", lw=0.8, ls="--")
-    axes[0, 0].set_ylabel("Downstream CRPS\n(geometric mean ratio to naive)", fontsize=8)
-    axes[1, 0].set_ylabel("Downstream NLL\n(mean nats / target point)", fontsize=8)
-    handles = [
-        Line2D([], [], marker="o", color="#384e60", ls="", label="Subset: 9 generators"),
-        Line2D([], [], marker="x", color="#858585", ls="", label="Excluded: Chaotic, Waveform"),
-        Line2D([], [], color="#384e60", ls=":", label="Subset trend (Theil-Sen in log A)"),
-        Line2D([], [], marker="o", markerfacecolor="white", color="#858585", ls="", label="Waveform seed 1 (outside correlations)"),
-    ]
-    fig.legend(handles=handles, loc="outside lower center", ncol=2, frameon=False, fontsize=7.5)
-    save(fig, "transfer_results")
-
-
-def prefix_results():
-    rows = read_rows("prefix_correlations.csv")
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 2.55), sharey=True, layout="constrained")
-    for series, ax in enumerate(axes, 1):
-        for pred, color, label in [
-            ("area_mnats", "#1c6a93", "Area at checkpoint"),
-            ("final_loss_nats_per_point", "#c2762f", "Checkpoint loss"),
-            ("loss_drop", "#56834c", "Loss drop"),
-        ]:
-            keep = [r for r in rows if int(r["series"]) == series and r["target"] == "crps_geo" and r["predictor"] == pred]
-            ax.plot([float(r["n_windows"]) / 1e6 for r in keep], [float(r["rho"]) for r in keep],
-                    marker="o", ms=3, lw=1.2, color=color, label=label)
-        ax.set_xscale("log")
-        ax.axhline(0, color="#777777", lw=0.65)
-        ax.set_ylim(-1.05, 1.05)
-        ax.set_title(f"Series {series}: all 11 generators", loc="left", fontsize=9)
-        ax.set_xlabel("Windows observed (millions)")
-        ax.grid(alpha=0.15)
-    axes[0].set_ylabel("Spearman rho with final CRPS ratio")
-    axes[0].legend(fontsize=7, frameon=False, loc="lower left")
-    save(fig, "prefix_results")
+def demo():
+    record = json.loads((HERE / "data" / "example_results.json").read_text(encoding="utf-8"))["prequential_curve"]
+    curve = np.array(record["loss_nats_per_window"]) / record["horizon"]
+    x = np.arange(1, len(curve)+1) * record["batch_size"]
+    floor = record["heldout_nats_per_window"] / record["horizon"]
+    fig, ax = plt.subplots(figsize=(6, 2.25), layout="constrained")
+    ax.plot(x, curve, color=BLUE, lw=1.5)
+    ax.axhline(floor, color=GRAY, lw=1, ls="--")
+    ax.annotate("Held-out endpoint", (x[-1], floor), xytext=(-4, 5),
+                textcoords="offset points", ha="right", fontsize=9, color="#616d7a")
+    ax.set_xlabel("Training windows")
+    ax.set_ylabel("NLL (nats / target point)")
+    save(fig, "demo_loss")
 
 
 if __name__ == "__main__":
-    gallery()
-    windows()
-    training_results()
-    transfer_results()
-    prefix_results()
-    print("Wrote three experiment figures and two supplementary descriptive figures (PDF and PNG)")
+    architecture()
+    execution()
+    demo()
+    print("Wrote component diagram, sequence diagram, and measured demo curve.")

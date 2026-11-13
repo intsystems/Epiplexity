@@ -22,28 +22,27 @@
 Abstract
 ========
 
-The practical goal is to train a time-series foundation model on high-quality synthetic
-data and select productive generators for that data. A productive generator supplies
-pretraining data that improve forecasting on real datasets under a fixed training-data
-budget. We study epiplexity-based measurements as possible signals for this selection.
-The implemented ``episynth`` package generates forecasting tasks, trains
-a probabilistic Moirai transformer with pre-update loss logging and EMA weights, estimates
-signed excess prequential loss, and evaluates transfer on GIFT-Eval. Saved experiments cover
-eleven priors at approximately 2 million and 40 million training windows, plus one additional
-Waveform initialization. KernelSynth transfers best at both budgets; the full-set association
-between excess area and aggregate CRPS is weak. The technical report documents the evidence,
-endpoint sensitivity, forecast failures, and limits of interpreting the area as epiplexity.
+We develop ``episynth``, a Python library for studying what forecasting models
+learn from synthetic time series. It connects seeded generation, probabilistic
+training, information measurements, and evaluation on real forecasting tasks.
+Our research examines whether measurements collected during pretraining help
+select synthetic data sources. In the completed eleven-generator comparison,
+KernelSynth gives the best aggregate transfer and excess prequential loss has
+a weak association with forecasting quality across the full set.
 
 The earlier research roadmap in ``publications/plan/`` is **outdated**.
 Current implementation details are in ``src/episynth/README.md`` and
-``publications/description.md``; the report documents the saved experiments.
+``publications/description.md``. The research article analyzes the saved experiments.
 
 Technical report and measurement methods
 ========================================
 
-Read the `technical report PDF <publications/technical_report/main.pdf>`_ and its
-`reproduction instructions <publications/technical_report/README.md>`_. The proposed
-four-method library scope is described in the
+Read the `technical report PDF <publications/technical_report/main.pdf>`_ for
+architecture, interfaces, and examples, with
+`reproduction instructions <publications/technical_report/README.md>`_. The
+`research article <publications/article/main.pdf>`_ covers coding theory and
+experiments, with its own `analysis scripts <publications/article/README.md>`_.
+The four-method library scope is described in the
 `measurement contracts <doc/source/measurements.rst>`_:
 
 1. **Prequential coding (implemented):** measure the predictive cost of the training

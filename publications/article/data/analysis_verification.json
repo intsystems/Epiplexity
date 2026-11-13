@@ -1,19 +1,20 @@
 {
-  "source_commit": "9b47254a9f23c518f82be8f5f4e423c39af83292",
+  "source_commit": "282803a6f01f1c00d8d35d8554adad331155c546",
   "run_count": 23,
   "primary_runs": 22,
   "waveform_repeats": 1,
   "total_training_windows": 501992448,
   "configs_per_run": 55,
   "export_precision": "six significant digits per step",
-  "analysis_script_sha256": "b9389ed1b292421a4d5ea3a38637638ba2e842ebaff3aaa2a7c86373aa25c58e",
+  "analysis_script_sha256": "715a443ddb79c91c651c24a51989ee6df172b1e91a324d37c1165a4e986a921c",
   "downstream_nll": {
     "source_field": "nll_per_point",
     "aggregation": "arithmetic mean of all 55 configuration-level NLLs; equal configuration weights",
     "units": "nats per target point, in original series units",
     "window_selection": "retains the saved evaluator's exclusion of windows with zero seasonal error",
     "baseline_normalized": false,
-    "plotted_exploratory_subset_excludes": [
+    "plot_scope": "all eleven primary generators and a separate initialization repeat",
+    "exploratory_subset_excludes": [
       "chaotic",
       "waveform"
     ]

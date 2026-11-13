@@ -1,9 +1,8 @@
 Measurement methods and library contracts
 =========================================
 
-The practical goal is to select productive synthetic-data generators for training
-a time-series foundation model. Productivity is measured by downstream forecasting
-quality on real datasets under a fixed training-data budget. The measurement
+The practical goal is to select synthetic-data generators that improve forecasting
+on real datasets under a fixed training-data budget. The measurement
 methods below support the investigation of generator-selection signals.
 
 The proposed four-method library scope is **prequential coding**, **requential
@@ -91,7 +90,7 @@ per-window training and endpoint loss files and computes a dictionary:
 
 The directory must contain ``window_loss.f32`` and ``heldout_ema_1.f32`` (or
 ``heldout_raw_1.f32`` for ``variant="raw"``). A ``steps.csv`` export alone
-does not satisfy this entry point. The technical report's ``analyze_runs.py``
+does not satisfy this entry point. The research article's ``analyze_runs.py``
 reconstructs area from batch means as a separate analysis path.
 ``analysis.run_area`` also reports floor-only standard error when individual
 held-out losses are available. Tests: ``test_estimators.py`` and
@@ -132,7 +131,7 @@ unsupported status.
 The quantity measures the reduction in optimal predictive log-loss when context
 is available to a constrained predictive family; see
 `Xu et al. (ICLR 2020) <https://arxiv.org/abs/2002.10689>`_. The report's
-Appendix B gives the population definition and paired empirical estimate.
+measurement section gives the paired empirical estimate.
 
 **Entry points.** ``build("v_information", variant="ema", test_first_seed=2_000_000_000,
 test_windows=100_000).run(model, generator, spec, config, out_dir)`` and
@@ -270,5 +269,8 @@ costs; for V-information, paired held-out scoring; for the OU reference,
 the single-node Gaussian case and quadrature convergence.
 
 The `technical report <https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf>`_
-contains the formulas in Appendix B. See :doc:`api/estimators` for the current
+contains a comparison of the methods and executable examples. The
+`research article <https://github.com/intsystems/Epiplexity/blob/main/publications/article/main.pdf>`_
+develops the coding interpretation and analyzes the transfer experiments.
+See :doc:`api/estimators` for the current
 estimator API and :doc:`extending` for registration mechanics.

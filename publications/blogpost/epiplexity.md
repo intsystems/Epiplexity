@@ -170,7 +170,7 @@ python -m episynth.evaluation.run \
 
 It writes per-window metrics and `summary.csv`, with one row per configuration. A `--model seasonal_naive` run supplies baseline scores. This final stage answers whether a source teaches useful forecasting behavior for the benchmark you chose.
 
-Our [technical report](https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf) applies this workflow to eleven priors. We trained the same 10.75-million-parameter Moirai transformer from scratch at approximately **2 million and 40 million windows per prior**, with a horizon of 64. We evaluated the final EMA models without fine-tuning on 55 short-term [GIFT-Eval](https://arxiv.org/abs/2410.10393v2) configurations.
+Our [research article](https://github.com/intsystems/Epiplexity/blob/main/publications/article/main.pdf) applies this workflow to eleven priors. We trained the same 10.75-million-parameter Moirai transformer from scratch at approximately **2 million and 40 million windows per prior**, with a horizon of 64. We evaluated the final EMA models without fine-tuning on 55 short-term [GIFT-Eval](https://arxiv.org/abs/2410.10393v2) configurations.
 
 The main score is sample-based CRPS, which evaluates forecast distributions. We divide each configuration's score by seasonal naive and take their equally weighted geometric mean. **Lower is better; below one beats the baseline.** Selected results show why both the training measurement and downstream evaluation matter:
 

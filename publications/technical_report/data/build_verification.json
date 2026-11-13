@@ -1,10 +1,13 @@
 {
-  "pages": 7,
+  "pages": 5,
+  "max_pages": 5,
   "includes_bibliography_and_appendix": true,
-  "bibliography_entries": 14,
+  "bibliography_entries": 5,
   "unresolved_references": false,
   "overfull_boxes": false,
-  "pdf_sha256": "6892eb76f8426daa7945dafe1efc73dc4a5dd93f5d75254a5c9409f39d31680d",
-  "tex_sha256": "90750e65a90826b8602a531d88d3d34e0e076bdac95d9d5bcbff0085b7481f7f",
-  "bib_sha256": "bba5780aea2ef3b72e489614547f97cce3f570dcfd647f113959cfc7515bac6a"
+  "sha256": {
+    "main.pdf": "62de7606e29b380008ed627ae44b532b461de40da7d24fa9d9c0b110ec262bdb",
+    "main.tex": "be7223aa0214d3d2a841f27a67714432eb7893cec73080b42f61a614ff7d1dea",
+    "references.bib": "c0883577782c6555833bd3f96960fa910edb1bd659f1561166d2520a8daa15d0"
+  }
 }

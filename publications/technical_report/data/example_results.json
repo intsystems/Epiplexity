@@ -1,0 +1,241 @@
+{
+  "examples": {
+    "prequential": {
+      "model_part_bits": 1484.5265956926726,
+      "data_part_bits": 13344.135341609925,
+      "total_bits": 14828.661937302597,
+      "n_windows": 256.0
+    },
+    "v_information": {
+      "method": "v_information",
+      "units": "bits_per_window",
+      "unconditional_entropy_bits_per_window": 68.44016484425178,
+      "conditional_entropy_bits_per_window": 68.44016484425178,
+      "v_information_bits_per_window": 0.0,
+      "standard_error_bits_per_window": 0.0,
+      "n_test_windows": 32,
+      "metadata": {
+        "family": "Moirai + optional ignorance; pointwise product over horizon",
+        "request": {
+          "source": {
+            "class": "episynth.generators.waveform.Waveform",
+            "name": "waveform",
+            "length": 64,
+            "parameters": {
+              "length": 64
+            }
+          },
+          "spec": {
+            "series_length": 64,
+            "context_max": 32,
+            "horizon": 16,
+            "patch_size": 8,
+            "context_lengths": [
+              16,
+              32
+            ],
+            "context_probs": null,
+            "dequantize_width": 0.001
+          },
+          "train": {
+            "n_windows": 64,
+            "batch_size": 8,
+            "lr": 0.0003,
+            "warmup_steps": 1,
+            "weight_decay": 0.1,
+            "betas": [
+              0.9,
+              0.98
+            ],
+            "eps": 1e-06,
+            "grad_clip": 1.0,
+            "ema_fraction": 0.02,
+            "checkpoint_fractions": [
+              0.5,
+              1.0
+            ],
+            "heldout_windows": 32,
+            "heldout_first_seed": 1000,
+            "first_seed": 0,
+            "eval_batch_size": 8,
+            "precision": "fp32",
+            "eval_precision": "fp32",
+            "compile": false,
+            "fused_adam": false,
+            "init_seed": 0,
+            "device": "cpu",
+            "log_every": 4,
+            "stream_workers": 0
+          },
+          "model": {
+            "d_model": 64,
+            "num_layers": 1,
+            "patch_sizes": [
+              8
+            ],
+            "max_seq_len": 16,
+            "components": [
+              "student_t",
+              "normal_fixed",
+              "log_normal"
+            ],
+            "normal_fixed_scale": 0.001,
+            "scaling": true,
+            "fixed_scaling": null,
+            "ignore_context": false
+          },
+          "variant": "ema",
+          "splits": {
+            "train": {
+              "first_seed": 0,
+              "n_windows": 64
+            },
+            "validation": {
+              "first_seed": 1000,
+              "n_windows": 32
+            },
+            "test": {
+              "first_seed": 2000,
+              "n_windows": 32
+            }
+          },
+          "initial_weights_sha256": "3ac9db22db11628edb0a3f9daefafd0f834c340c9dafd45eed552cded694c160"
+        },
+        "normalization": {
+          "loc": 0.13372683732245605,
+          "scale": 1.9716896796175452
+        },
+        "models": {
+          "unconditional": {
+            "d_model": 64,
+            "num_layers": 1,
+            "patch_sizes": [
+              8
+            ],
+            "max_seq_len": 16,
+            "components": [
+              "student_t",
+              "normal_fixed",
+              "log_normal"
+            ],
+            "normal_fixed_scale": 0.001,
+            "scaling": true,
+            "fixed_scaling": [
+              0.13372683732245605,
+              1.9716896796175452
+            ],
+            "ignore_context": true
+          },
+          "conditional": {
+            "d_model": 64,
+            "num_layers": 1,
+            "patch_sizes": [
+              8
+            ],
+            "max_seq_len": 16,
+            "components": [
+              "student_t",
+              "normal_fixed",
+              "log_normal"
+            ],
+            "normal_fixed_scale": 0.001,
+            "scaling": true,
+            "fixed_scaling": [
+              0.13372683732245605,
+              1.9716896796175452
+            ],
+            "ignore_context": false
+          }
+        },
+        "selection": {
+          "unconditional": {
+            "branch": "unconditional",
+            "checkpoint": "unconditional\\ckpt_1.pt",
+            "step": 8,
+            "variant": "ema",
+            "validation_nats_per_window": 47.166993498802185
+          },
+          "conditional": {
+            "branch": "unconditional",
+            "checkpoint": "unconditional\\ckpt_1.pt",
+            "step": 8,
+            "variant": "ema",
+            "validation_nats_per_window": 47.166993498802185
+          }
+        },
+        "artifacts": {
+          "unconditional": "test_unconditional.f32",
+          "conditional": "test_conditional.f32",
+          "pvi": "pvi_bits.f64"
+        },
+        "uncertainty": "paired test sampling error conditional on fitted models"
+      }
+    }
+  },
+  "ou_reference": {
+    "joint": {
+      "nats_per_window": 14.360240426265047,
+      "max_quadrature_change": 1.256793313686444e-05
+    },
+    "pointwise": {
+      "nats_per_window": 20.33124770995562,
+      "max_quadrature_change": 2.349893167874484e-05
+    }
+  },
+  "prequential_curve": {
+    "batch_size": 8,
+    "horizon": 16,
+    "loss_nats_per_window": [
+      46.82156562805176,
+      45.90374708175659,
+      45.619994163513184,
+      39.98323035240173,
+      44.11157035827637,
+      45.14204287528992,
+      42.7803053855896,
+      40.9488970041275,
+      42.31205701828003,
+      42.91781306266785,
+      44.01370191574097,
+      44.77502107620239,
+      40.673001766204834,
+      36.68599855899811,
+      34.09454143047333,
+      35.31500053405762,
+      48.61308574676514,
+      35.58440160751343,
+      37.999720096588135,
+      36.43490934371948,
+      39.78905248641968,
+      42.805970668792725,
+      41.34534311294556,
+      36.666656494140625,
+      34.89385628700256,
+      35.98127496242523,
+      31.162710785865784,
+      41.36199617385864,
+      39.20785617828369,
+      33.407426714897156,
+      38.31955623626709,
+      39.13334655761719
+    ],
+    "heldout_nats_per_window": 36.130663238465786
+  },
+  "verification": {
+    "recomputed_prequential": true,
+    "paired_test_gain": true,
+    "paired_standard_error": true,
+    "ou_quadrature_convergence": true
+  },
+  "python": "3.12.13 (main, Jul 23 2026, 14:44:57) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.17763-SP0",
+  "packages": {
+    "torch": "2.8.0+cpu",
+    "numpy": "2.2.6",
+    "pydantic": "2.12.3"
+  },
+  "configuration_sha256": {
+    "prequential": "a2a308fe77461ee7292b26dd645743cf60eeeb4108258fb632e7963a8542c4f7",
+    "v_information": "306de2047fa4387bfdf2d93afeaa13ee9c020eaed639d53b2cabe56921556f4d"
+  }
+}
