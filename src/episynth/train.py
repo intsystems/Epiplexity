@@ -26,8 +26,8 @@ from .estimators import available as estimators_available
 from .estimators import build as build_estimator
 from .generators import GENERATORS, Generator, Mixture
 from .model.moirai import MoiraiConfig, small
-from .splits import seeds_available
-from .training import TrainConfig, build_model
+from .splits import seeds_available, validate_splits
+from .training import RESUME_RUNTIME_FIELDS, TrainConfig, build_model
 from .windows import WindowSpec
 
 
@@ -111,10 +111,14 @@ def build_generator(data: DataConfig, length: int) -> Generator:
 
 
 def check_seed_ranges(generator: Generator, train: TrainConfig) -> None:
-    """Проверяет до запуска, что обучающие и отложенные сиды есть в источнике рядов; иначе `ValueError`."""
+    """Проверяет покрытие и непересечение обучающих и отложенных сидов."""
     for name, first, n in (("обучающие", train.first_seed, train.n_windows), ("отложенные", train.heldout_first_seed, train.heldout_windows)):
         if not seeds_available(generator, first, n):
             raise ValueError(f"{name} сиды [{first}, {first + n}) не покрыты источником рядов {generator.name}")
+    validate_splits(generator, {
+        "train": {"first_seed": train.first_seed, "n_windows": train.n_windows},
+        "heldout": {"first_seed": train.heldout_first_seed, "n_windows": train.heldout_windows},
+    })
 
 
 def apply_overrides(raw: dict, overrides: list[str]) -> dict:
@@ -147,15 +151,20 @@ def main() -> None:
     args = parser.parse_args()
     config = load_run_config(args.config, args.set)
     out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-    if config.estimator == "v_information" and (out / "run.json").exists():
+    if (out / "run.json").exists():
         previous = RunConfig.model_validate_json((out / "run.json").read_text())
-        if previous != config:
-            raise ValueError("incompatible V-information run configuration")
-    if not (out / "run.json").exists():
-        (out / "run.json").write_text(config.model_dump_json(indent=1))
+        saved, requested = previous.model_dump(mode="json"), config.model_dump(mode="json")
+        if previous.estimator == config.estimator == "prequential":
+            for field in RESUME_RUNTIME_FIELDS:
+                saved["train"].pop(field, None)
+                requested["train"].pop(field, None)
+        if saved != requested:
+            raise ValueError("incompatible run configuration; use a different output directory")
     generator = build_generator(config.data, config.spec.series_length)
     check_seed_ranges(generator, config.train)
+    out.mkdir(parents=True, exist_ok=True)
+    if not (out / "run.json").exists():
+        (out / "run.json").write_text(config.model_dump_json(indent=1))
     model = build_model(config.model, config.train.init_seed)
     result = build_estimator(config.estimator, **config.estimator_config).run(model, generator, config.spec, config.train, out)
     (out / "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))

@@ -15,6 +15,7 @@ r"""Анализ прогонов: площадь над финальным ло
 """
 
 import csv
+import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -49,8 +50,53 @@ class RunArea:
     variant: str
 
 
+def _read_losses(path: Path, expected: int | None = None, minimum: int = 1) -> np.ndarray:
+    """Read a float32 vector, checking alignment, count and finite values."""
+    if not path.is_file():
+        raise ValueError(f"missing loss artifact: {path}")
+    if path.stat().st_size % np.dtype(np.float32).itemsize:
+        raise ValueError(f"loss artifact is not aligned to float32: {path}")
+    values = np.fromfile(path, dtype=np.float32).astype(np.float64)
+    if len(values) < minimum:
+        raise ValueError(f"at least {minimum} loss values required: {path}")
+    if expected is not None and len(values) != expected:
+        raise ValueError(f"expected {expected} losses, found {len(values)}: {path}")
+    if not np.isfinite(values).all():
+        raise ValueError(f"nonfinite losses: {path}")
+    return values
+
+
+def _run_losses(run_dir: Path, variant: str) -> tuple[np.ndarray, np.ndarray]:
+    """Check Trainer completion when metadata exists; otherwise validate vectors."""
+    config_path = run_dir / "config.json"
+    n = m = None
+    if config_path.exists():
+        config = json.loads(config_path.read_text())["train"]
+        n, m, batch = config["n_windows"], config["heldout_windows"], config["batch_size"]
+        if (any(not isinstance(value, int) or isinstance(value, bool) for value in (n, m, batch))
+                or n <= 0 or m < 2 or batch <= 0 or n % batch):
+            raise ValueError(f"invalid training counts: {config_path}")
+        # Float32 logs are preallocated before training. Their size alone cannot
+        # distinguish an interrupted run from a completed one.
+        heldout_path = run_dir / "heldout.jsonl"
+        try:
+            final = json.loads(heldout_path.read_text().rstrip().rsplit("\n", 1)[-1])
+        except (FileNotFoundError, json.JSONDecodeError) as error:
+            raise ValueError(f"missing or incomplete final heldout record: {heldout_path}") from error
+        if not isinstance(final, dict) or final.get("step") != n // batch or final.get("fraction") != 1:
+            raise ValueError(f"missing or incomplete final heldout record: {heldout_path}")
+    elif any((run_dir / name).exists() for name in ("last.pt", "heldout.jsonl")):
+        raise ValueError(f"missing Trainer configuration: {config_path}")
+    return (_read_losses(run_dir / "window_loss.f32", expected=n),
+            _read_losses(run_dir / f"heldout_{variant}_1.f32", expected=m, minimum=2))
+
+
 def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
     """Площадь прогона по его каталогу.
+
+    Trainer runs require configured loss counts and a final heldout.jsonl record.
+    Historical directories with only loss files receive basic vector validation;
+    without run metadata, completeness of those files cannot be established.
 
     Args:
         run_dir: Каталог прогона с `window_loss.f32` и `heldout_<variant>_1.f32`.
@@ -59,9 +105,7 @@ def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
     Returns:
         RunArea: Площадь и составляющие.
     """
-    run_dir = Path(run_dir)
-    losses = np.fromfile(run_dir / "window_loss.f32", dtype=np.float32).astype(np.float64)
-    held = np.fromfile(run_dir / f"heldout_{variant}_1.f32", dtype=np.float32).astype(np.float64)
+    losses, held = _run_losses(Path(run_dir), variant)
     n, m = len(losses), len(held)
     l_fin = float(held.mean())
     se = float(held.std(ddof=1) / math.sqrt(m))
@@ -69,10 +113,12 @@ def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
 
 
 def area_curve(run_dir: str | Path, variant: str = "ema", points: int = 200) -> tuple[np.ndarray, np.ndarray]:
-    """Кривая площади по префиксам обучения: номера окон `(points,)` и :math:`A(n)` в тех же точках."""
-    run_dir = Path(run_dir)
-    losses = np.fromfile(run_dir / "window_loss.f32", dtype=np.float32).astype(np.float64)
-    l_fin = float(np.fromfile(run_dir / f"heldout_{variant}_1.f32", dtype=np.float32).astype(np.float64).mean())
+    """Кривая площади по префиксам обучения: номера окон `(points,)` и :math:`A(n)`.
+
+    Uses the same artifact and completion checks as :func:`run_area`.
+    """
+    losses, held = _run_losses(Path(run_dir), variant)
+    l_fin = float(held.mean())
     ns = np.unique(np.linspace(1, len(losses), points).astype(np.int64))
     cum = np.cumsum(losses)
     return ns, cum[ns - 1] - ns * l_fin

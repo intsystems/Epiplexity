@@ -81,6 +81,43 @@ def test_cli_runs_tiny_training(tmp_path, monkeypatch):
     result = json.loads((out / "estimator_result.json").read_text())
     assert {"model_part_bits", "data_part_bits", "total_bits"} <= set(result)
     assert (out / "heldout_ema_1.f32").exists()
+    # Operational overrides can resume the same experiment without changing losses.
+    losses = (out / "window_loss.f32").read_bytes()
+    monkeypatch.setattr("sys.argv", ["train", "--config", str(cfg_path), "--out", str(out),
+                                    "--set", "train.lr=5e-4", "--set", "train.eval_batch_size=2"])
+    main()
+    assert (out / "window_loss.f32").read_bytes() == losses
+
+
+@pytest.mark.parametrize("override", ["data.generator_args.irregular_prob=1.0", "train.first_seed=100"])
+def test_cli_rejects_changed_experiment_before_writing(tmp_path, monkeypatch, override):
+    """A reused directory cannot silently represent different data or seed ranges."""
+    config = RunConfig(data=DataConfig(generator="timesynth", generator_args={"irregular_prob": 0.0}),
+                       train={"n_windows": 8, "batch_size": 4})
+    config_path = tmp_path / "request.json"
+    config_path.write_text(config.model_dump_json())
+    out = tmp_path / "existing"
+    out.mkdir()
+    (out / "run.json").write_text(config.model_dump_json())
+    (out / "window_loss.f32").write_bytes(b"existing measurements")
+    before = {p.name: p.read_bytes() for p in out.iterdir()}
+    monkeypatch.setattr("sys.argv", ["train", "--config", str(config_path), "--out", str(out), "--set", override])
+    with pytest.raises(ValueError, match="incompatible run configuration"):
+        main()
+    assert {p.name: p.read_bytes() for p in out.iterdir()} == before
+
+
+def test_cli_rejects_overlapping_splits_before_creating_run(tmp_path, monkeypatch):
+    """Split validation precedes model construction and writing run metadata."""
+    config = RunConfig(data=DataConfig(generator="waveform"),
+                       train={"n_windows": 8, "batch_size": 4, "heldout_first_seed": 4, "heldout_windows": 4})
+    config_path = tmp_path / "request.json"
+    config_path.write_text(config.model_dump_json())
+    out = tmp_path / "overlap"
+    monkeypatch.setattr("sys.argv", ["train", "--config", str(config_path), "--out", str(out)])
+    with pytest.raises(ValueError, match="overlap"):
+        main()
+    assert not out.exists()
 
 
 def test_seed_range_check(tmp_path):

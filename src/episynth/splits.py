@@ -1,9 +1,33 @@
-"""Seed-range coverage and split isolation, including nested round-robin mixtures."""
+"""Source identity, seed coverage and split isolation, including nested mixtures."""
 
+import inspect
+import json
 from collections.abc import Iterator
+from pathlib import Path
 
 from .corpus import Corpus
 from .generators import Generator, Mixture
+
+
+def source_description(generator: Generator) -> dict:
+    """Record constructor settings, corpus manifests and mixture composition."""
+    description = {"class": f"{type(generator).__module__}.{type(generator).__qualname__}",
+                   "name": generator.name, "length": generator.length}
+    if isinstance(generator, Mixture):
+        description["components"] = [source_description(g) for g in generator.components]
+    elif isinstance(generator, Corpus):
+        description["corpora"] = [
+            {"path": str(Path(p).resolve()), "manifest": m.model_dump(mode="json")}
+            for p, m in zip(generator._paths, generator.manifests, strict=True)
+        ]
+    else:
+        description["parameters"] = {
+            name: getattr(generator, name, parameter.default)
+            for name, parameter in inspect.signature(type(generator)).parameters.items()
+            if parameter.kind not in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD)
+        }
+    # Constructor parameters of built-in generators are JSON values.
+    return json.loads(json.dumps(description, allow_nan=False))
 
 
 def leaf_ranges(generator: Generator, first: int, n: int) -> Iterator[tuple[Generator, int, int]]:

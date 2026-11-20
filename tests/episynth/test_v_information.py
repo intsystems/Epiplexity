@@ -341,6 +341,38 @@ def test_resume_after_interruption_before_validation(tmp_path, setup, monkeypatc
     assert estimator.run(model, generator, spec, config, clean) == result
 
 
+@pytest.mark.parametrize("damage", ["truncated", "nonfinite"])
+def test_resume_repairs_damaged_validation_losses(tmp_path, setup, monkeypatch, damage):
+    """An interrupted intermediate evaluation must not permanently block selection."""
+    from episynth.training import Trainer
+
+    model, generator, spec, config = setup
+    estimator = VInformationEstimator(test_first_seed=200, test_windows=7)
+    original_evaluate = Trainer.evaluate
+
+    def interrupted_evaluate(self, batch, use_ema, precision=None, save_to=None):
+        record = original_evaluate(self, batch, use_ema, precision, save_to)
+        if self.out_dir.name == "conditional" and self.step == config.n_steps // 2 and use_ema:
+            if damage == "truncated":
+                save_to.write_bytes(save_to.read_bytes()[:-4])
+            else:
+                values = np.fromfile(save_to, dtype=np.float32)
+                values[0] = np.nan
+                values.tofile(save_to)
+            raise RuntimeError("interrupted validation write")
+        return record
+
+    monkeypatch.setattr(Trainer, "evaluate", interrupted_evaluate)
+    with pytest.raises(RuntimeError, match="interrupted validation write"):
+        estimator.run(model, generator, spec, config, tmp_path)
+    monkeypatch.setattr(Trainer, "evaluate", original_evaluate)
+    result = estimator.run(model, generator, spec, config, tmp_path)
+    clean = tmp_path / "clean"
+    assert estimator.run(model, generator, spec, config, clean) == result
+    artifact = "conditional/heldout_ema_0.5.f32"
+    assert (tmp_path / artifact).read_bytes() == (clean / artifact).read_bytes()
+
+
 def test_resume_rejects_changed_initial_weights_normalization_and_budget(tmp_path, setup):
     model, generator, spec, config = setup
     estimator = VInformationEstimator(test_first_seed=200, test_windows=7)

@@ -1,14 +1,22 @@
 """Оценка: метрики по окнам, сведение, наив, прогнозчик Moirai, загрузка GIFT-Eval при наличии снимка."""
 
+import argparse
+import csv
+import hashlib
+import json
 import os
+import sys
 
 import numpy as np
+import pyarrow as pa
 import pytest
+import torch
 
+from episynth.evaluation import run as evaluation_run
 from episynth.evaluation.forecasters import MoiraiForecaster, SeasonalNaive
 from episynth.evaluation.gift_eval import GiftDataset, config_name, seasonality
 from episynth.evaluation.metrics import aggregate, crps_from_samples, seasonal_error, window_stats
-from episynth.model.moirai import MoiraiConfig
+from episynth.model.moirai import MoiraiConfig, MoiraiModule
 from episynth.training import build_model
 
 DATA = os.environ.get("GIFT_EVAL_DIR")
@@ -68,6 +76,159 @@ def test_moirai_forecaster_both_protocols():
         assert fc.samples.shape == (7, 3, 10) and np.isfinite(fc.samples).all()
         assert fc.nll.shape == (3, 10) and np.isfinite(fc.nll[0]).all()
         assert fc.context_length.tolist()[:2] == [ctx if protocol == "ours" else 100, 5]
+
+
+@pytest.fixture
+def native_checkpoint(tmp_path, monkeypatch):
+    """Маленькая native-модель с нестандартными настройками и сохраняемым буфером."""
+    class BufferedMoirai(MoiraiModule):
+        def __init__(self, config):
+            super().__init__(config)
+            self.register_buffer("saved_buffer", torch.tensor(-1.0))
+
+    monkeypatch.setattr(evaluation_run, "MoiraiModule", BufferedMoirai)
+    model = BufferedMoirai(MoiraiConfig(
+        d_model=64, num_layers=1, patch_sizes=(16,), components=("student_t", "normal_fixed"),
+        normal_fixed_scale=0.25, scaling=False, ignore_context=True,
+    ))
+    model.saved_buffer.fill_(7.0)
+    ema = [p.detach().clone() + 0.01 for p in model.parameters()]
+    checkpoint = tmp_path / "native.pt"
+    torch.save({"model_config": model.config.model_dump(), "model": model.state_dict(), "ema": ema}, checkpoint)
+    return checkpoint, model, ema
+
+
+def _model_args(checkpoint, **changes):
+    return argparse.Namespace(**{
+        "checkpoint": str(checkpoint), "config_json": None, "protocol": "ours", "patch_size": 16,
+        "components": ["student_t", "normal_fixed", "log_normal"], "weights": "ema", **changes,
+    })
+
+
+@pytest.mark.parametrize("weights", ["raw", "ema"])
+def test_native_checkpoint_restores_config_parameters_and_buffers(native_checkpoint, weights):
+    checkpoint, original, ema = native_checkpoint
+    restored = evaluation_run._load_model(_model_args(checkpoint, weights=weights))
+    assert restored.config == original.config
+    assert restored.saved_buffer.item() == 7.0
+    expected = list(original.parameters()) if weights == "raw" else ema
+    assert all(torch.equal(p, e) for p, e in zip(restored.parameters(), expected, strict=True))
+
+
+def test_native_checkpoint_accepts_matching_explicit_config(native_checkpoint, tmp_path):
+    checkpoint, original, _ = native_checkpoint
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({"model": original.config.model_dump(mode="json")}))
+    restored = evaluation_run._load_model(_model_args(checkpoint, config_json=str(config)))
+    assert restored.config == original.config
+
+
+def test_safetensors_retains_explicit_configuration_loading(native_checkpoint, tmp_path):
+    from safetensors.torch import save_file
+
+    _, original, _ = native_checkpoint
+    checkpoint = tmp_path / "model.safetensors"
+    save_file(original.state_dict(), str(checkpoint))
+    config = tmp_path / "model.json"
+    config.write_text(original.config.model_dump_json())
+    restored = evaluation_run._load_model(_model_args(checkpoint, config_json=str(config)))
+    assert restored.config == original.config
+    assert all(torch.equal(v, restored.state_dict()[k]) for k, v in original.state_dict().items())
+
+
+@pytest.fixture
+def evaluation_case(tmp_path, monkeypatch, native_checkpoint):
+    checkpoint, _, _ = native_checkpoint
+    data, out = tmp_path / "data", tmp_path / "evaluation"
+    for name, freq in (("m4_yearly", "A-DEC"), ("m4_quarterly", "Q-DEC")):
+        directory = data / name
+        directory.mkdir(parents=True)
+        table = pa.table({"item_id": ["series"], "freq": [freq], "target": [np.sin(np.arange(64) / 3).tolist()]})
+        with pa.OSFile(str(directory / "data-00000.arrow"), "wb") as sink, pa.ipc.new_stream(sink, table.schema) as writer:
+            writer.write_table(table)
+
+    def invoke(*extra):
+        monkeypatch.setattr(sys, "argv", [
+            "evaluate", "--data", str(data), "--out", str(out), "--model", "moirai",
+            "--checkpoint", str(checkpoint), "--patch-size", "16", "--context-max", "32",
+            "--horizon-max", "16", "--n-samples", "3", "--batch-size", "2", "--configs", "m4_yearly", *extra,
+        ])
+        evaluation_run.main()
+
+    return invoke, out, data, checkpoint
+
+
+def _output_snapshot(out):
+    return {str(p.relative_to(out)): p.read_bytes() if p.is_file() else None for p in out.rglob("*")}
+
+
+def test_evaluation_manifest_allows_resume_and_additional_configs(evaluation_case, native_checkpoint, monkeypatch):
+    invoke, out, data, checkpoint = evaluation_case
+    original_evaluate = evaluation_run.evaluate_config
+    evaluated = []
+
+    def record_evaluation(dataset, forecaster):
+        evaluated.append(dataset.config)
+        return original_evaluate(dataset, forecaster)
+
+    monkeypatch.setattr(evaluation_run, "evaluate_config", record_evaluation)
+    invoke()
+    manifest = json.loads((out / "evaluation.json").read_text())
+    assert manifest["data"] == str(data.resolve())
+    assert manifest["checkpoint_sha256"] == hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+    assert manifest["model_config"] == native_checkpoint[1].config.model_dump(mode="json")
+    first_windows = (out / "windows" / "m4_yearly__A__short.csv").read_bytes()
+    invoke("--configs", "m4_yearly", "m4_quarterly")
+    assert evaluated == ["m4_yearly/A/short", "m4_quarterly/Q/short"]
+    assert (out / "windows" / "m4_yearly__A__short.csv").read_bytes() == first_windows
+    with open(out / "summary.csv") as f:
+        assert [r["config"] for r in csv.DictReader(f)] == evaluated
+
+
+@pytest.mark.parametrize("change", ["weights", "protocol", "n_samples", "data", "checkpoint"])
+def test_evaluation_rejects_stale_results_before_mutating_output(evaluation_case, change):
+    invoke, out, data, checkpoint = evaluation_case
+    invoke()
+    before = _output_snapshot(out)
+    extra = {
+        "weights": ("--weights", "raw"), "protocol": ("--protocol", "notebook"),
+        "n_samples": ("--n-samples", "5"), "data": ("--data", str(data / "other_snapshot")), "checkpoint": (),
+    }[change]
+    if change == "checkpoint":
+        state = torch.load(checkpoint, weights_only=False)
+        state["model"]["saved_buffer"].add_(1)
+        torch.save(state, checkpoint)
+    with pytest.raises(ValueError, match="new --out directory"):
+        invoke(*extra)
+    assert _output_snapshot(out) == before
+
+
+def test_native_config_mismatch_preserves_existing_evaluation(evaluation_case, native_checkpoint, tmp_path):
+    invoke, out, _, _ = evaluation_case
+    invoke()
+    before = _output_snapshot(out)
+    config = tmp_path / "conflicting.json"
+    config.write_text(native_checkpoint[1].config.model_copy(update={"normal_fixed_scale": 0.5}).model_dump_json())
+    with pytest.raises(ValueError, match="does not match the checkpoint model_config"):
+        invoke("--config-json", str(config))
+    assert _output_snapshot(out) == before
+
+
+@pytest.mark.parametrize("manifest", [None, "{}", "{broken"])
+def test_existing_summary_requires_matching_manifest(tmp_path, monkeypatch, manifest):
+    out = tmp_path / "evaluation"
+    out.mkdir()
+    (out / "summary.csv").write_text("config,model\nm4_yearly/A/short,seasonal_naive\n")
+    if manifest is not None:
+        (out / "evaluation.json").write_text(manifest)
+    before = _output_snapshot(out)
+    monkeypatch.setattr(sys, "argv", [
+        "evaluate", "--data", str(tmp_path / "data"), "--out", str(out),
+        "--model", "seasonal_naive", "--configs", "m4_yearly",
+    ])
+    with pytest.raises(ValueError, match="new --out directory"):
+        evaluation_run.main()
+    assert _output_snapshot(out) == before
 
 
 @pytest.mark.skipif(DATA is None, reason="GIFT_EVAL_DIR не задан")

@@ -79,7 +79,7 @@ quantization and codec; this interface returns measurements and run artifacts.
 
 **Entry points and effects.** ``run`` trains or resumes the model and writes
 checkpoints, configuration, and losses. ``from_run_dir`` only reads the
-per-window training and endpoint loss files and computes a dictionary:
+saved artifacts and computes a dictionary:
 
 .. code-block:: python
 
@@ -92,6 +92,11 @@ The directory must contain ``window_loss.f32`` and ``heldout_ema_1.f32`` (or
 ``heldout_raw_1.f32`` for ``variant="raw"``). A ``steps.csv`` export alone
 does not satisfy this entry point. The research article's ``analyze_runs.py``
 reconstructs area from batch means as a separate analysis path.
+Loss files must be nonempty, finite float32 arrays, with at least two held-out
+windows. For Trainer outputs, the reader also checks the configured counts and
+the final ``heldout.jsonl`` record. Historical directories containing only the
+two loss files remain readable, but their expected counts and run completion
+cannot be verified without metadata.
 ``analysis.run_area`` also reports floor-only standard error when individual
 held-out losses are available. Tests: ``test_estimators.py`` and
 ``test_analysis.py``.

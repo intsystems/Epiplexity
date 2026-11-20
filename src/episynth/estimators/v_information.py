@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import inspect
 import json
 import math
 import shutil
@@ -20,10 +19,9 @@ from typing import Any, Literal, TypedDict
 import numpy as np
 import torch
 
-from ..corpus import Corpus
-from ..generators import Generator, Mixture
+from ..generators import Generator
 from ..model.moirai import MoiraiConfig, MoiraiModule
-from ..splits import validate_splits
+from ..splits import source_description, validate_splits
 from ..training import TrainConfig, Trainer, window_nll
 from ..windows import WindowSpec, WindowStream
 from .registry import register
@@ -58,27 +56,6 @@ def _read_losses(path: Path, n: int) -> np.ndarray:
     if not np.isfinite(values).all():
         raise ValueError(f"nonfinite losses: {path}")
     return values
-
-
-def _source_description(generator: Generator) -> dict:
-    """Record constructor settings, corpus manifests and mixture composition."""
-    description = {"class": f"{type(generator).__module__}.{type(generator).__qualname__}",
-                   "name": generator.name, "length": generator.length}
-    if isinstance(generator, Mixture):
-        description["components"] = [_source_description(g) for g in generator.components]
-    elif isinstance(generator, Corpus):
-        description["corpora"] = [
-            {"path": str(Path(p).resolve()), "manifest": m.model_dump(mode="json")}
-            for p, m in zip(generator._paths, generator.manifests, strict=True)
-        ]
-    else:
-        description["parameters"] = {
-            name: getattr(generator, name, parameter.default)
-            for name, parameter in inspect.signature(type(generator)).parameters.items()
-            if parameter.kind not in (parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD)
-        }
-    # Constructor parameters of built-in generators are JSON values.
-    return json.loads(json.dumps(description, allow_nan=False))
 
 
 def _weights_digest(model: MoiraiModule) -> str:
@@ -202,7 +179,7 @@ class VInformationEstimator:
         if "negative_binomial" in model.config.components:
             raise ValueError("V-information requires continuous density components")
         out = Path(out_dir)
-        request = {"source": _source_description(generator), "spec": spec.model_dump(mode="json"),
+        request = {"source": source_description(generator), "spec": spec.model_dump(mode="json"),
                    "train": config.model_dump(mode="json"), "model": model.config.model_dump(mode="json"),
                    "variant": self.variant, "splits": splits, "initial_weights_sha256": _weights_digest(model)}
         manifest_path = out / _MANIFEST
@@ -247,13 +224,15 @@ class VInformationEstimator:
                 if not checkpoint.is_file():
                     raise ValueError(f"missing validation checkpoint: {checkpoint}")
                 losses_path = out / branch / f"heldout_{suffix}_{fraction:g}.f32"
-                # A process may stop after saving a checkpoint but before validation.
-                if not losses_path.exists():
+                # A process may stop before validation or leave a damaged artifact.
+                try:
+                    losses = _read_losses(losses_path, config.heldout_windows)
+                except ValueError:
                     candidate_model = _load_model(checkpoint, self.variant)
                     _score(candidate_model, generator, spec, config, config.heldout_first_seed,
                            config.heldout_windows, losses_path)
                     del candidate_model
-                losses = _read_losses(losses_path, config.heldout_windows)
+                    losses = _read_losses(losses_path, config.heldout_windows)
                 candidates.append({"branch": branch, "checkpoint": str(checkpoint.relative_to(out)),
                                    "step": step, "variant": self.variant,
                                    "validation_nats_per_window": float(losses.mean())})

@@ -1,8 +1,10 @@
 """Слой анализа: площадь с ошибкой, кривая площади, сводки качества, корреляции."""
 
 import csv
+import json
 
 import numpy as np
+import pytest
 
 from episynth.analysis import area_curve, correlation_table, quality_table, run_area, spearman_ci
 
@@ -22,6 +24,80 @@ def test_run_area_and_curve(tmp_path):
     assert abs(a.area_se - 4 * np.std(held, ddof=1) / 2) < 1e-6 and a.n_heldout == 4
     ns, curve = area_curve(tmp_path, points=4)
     assert ns.tolist() == [1, 2, 3, 4] and abs(curve[-1] - a.area) < 1e-6 and abs(curve[0] - 3.0) < 1e-6
+
+
+@pytest.mark.parametrize("reader", [run_area, area_curve])
+@pytest.mark.parametrize("artifact", ["window_loss.f32", "heldout_ema_1.f32"])
+@pytest.mark.parametrize("damage", ["missing", "empty", "partial_float", "nonfinite"])
+def test_area_readers_reject_invalid_vectors(tmp_path, reader, artifact, damage):
+    _write_run(tmp_path, [5, 4, 3, 2], [2, 2, 1, 3])
+    path = tmp_path / artifact
+    if damage == "missing":
+        path.unlink()
+    elif damage == "empty":
+        path.write_bytes(b"")
+    elif damage == "partial_float":
+        path.write_bytes(path.read_bytes() + b"\x00")
+    else:
+        np.asarray([2, 2, np.nan, np.inf], dtype=np.float32).tofile(path)
+    with pytest.raises(ValueError):
+        reader(tmp_path)
+
+
+@pytest.mark.parametrize("reader", [run_area, area_curve])
+def test_area_readers_require_two_heldout_windows(tmp_path, reader):
+    _write_run(tmp_path, [5, 4], [2])
+    with pytest.raises(ValueError, match="at least 2"):
+        reader(tmp_path)
+
+
+def _write_trainer_metadata(tmp_path):
+    (tmp_path / "config.json").write_text(json.dumps({
+        "train": {"n_windows": 4, "heldout_windows": 4, "batch_size": 2},
+    }))
+    (tmp_path / "heldout.jsonl").write_text(json.dumps({"step": 2, "fraction": 1.0}) + "\n")
+
+
+def test_area_readers_accept_completed_trainer_run(tmp_path):
+    _write_run(tmp_path, [5, 4, 3, 2], [2, 2, 1, 3])
+    _write_trainer_metadata(tmp_path)
+    assert run_area(tmp_path).area == 6
+    assert area_curve(tmp_path)[1][-1] == 6
+
+
+@pytest.mark.parametrize("reader", [run_area, area_curve])
+@pytest.mark.parametrize("artifact", ["window_loss.f32", "heldout_ema_1.f32"])
+@pytest.mark.parametrize("n_losses", [3, 5])
+def test_area_readers_require_configured_loss_counts(tmp_path, reader, artifact, n_losses):
+    _write_run(tmp_path, [5, 4, 3, 2], [2, 2, 1, 3])
+    _write_trainer_metadata(tmp_path)
+    np.ones(n_losses, dtype=np.float32).tofile(tmp_path / artifact)
+    with pytest.raises(ValueError, match="expected 4 losses"):
+        reader(tmp_path)
+
+
+@pytest.mark.parametrize("reader", [run_area, area_curve])
+@pytest.mark.parametrize("record", [None, "", '{"step":', '{"step": 1, "fraction": 1}',
+                                     '{"step": 2, "fraction": 0.5}'])
+def test_preallocated_logs_require_final_completion_record(tmp_path, reader, record):
+    _write_run(tmp_path, [5, 4, 0, 0], [2, 2, 1, 3])
+    _write_trainer_metadata(tmp_path)
+    path = tmp_path / "heldout.jsonl"
+    if record is None:
+        path.unlink()
+    else:
+        path.write_text(record)
+    with pytest.raises(ValueError, match="final heldout record"):
+        reader(tmp_path)
+
+
+@pytest.mark.parametrize("reader", [run_area, area_curve])
+@pytest.mark.parametrize("marker", ["last.pt", "heldout.jsonl"])
+def test_trainer_artifacts_require_configuration(tmp_path, reader, marker):
+    _write_run(tmp_path, [5, 4, 3, 2], [2, 2, 1, 3])
+    (tmp_path / marker).touch()
+    with pytest.raises(ValueError, match="missing Trainer configuration"):
+        reader(tmp_path)
 
 
 def _write_summary(path, rows):
