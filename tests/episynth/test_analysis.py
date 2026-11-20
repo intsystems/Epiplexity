@@ -124,3 +124,34 @@ def test_quality_table_and_correlations(tmp_path):
     assert abs(rho + 1.0) < 1e-12
     table = correlation_table({"p": dict(zip("abcde", [1, 2, 3, 4, 5], strict=True))}, dict(zip("abcde", [2, 1, 4, 3, 5], strict=True)), n_boot=100)
     assert table["p"]["n"] == 5 and 0 < table["p"]["rho"] < 1 and table["p"]["lo"] <= table["p"]["rho"] <= table["p"]["hi"]
+
+
+@pytest.mark.parametrize("x,y", [([], []), ([1], [2]), ([1, 1, 1], [1, 2, 3]),
+                                  ([1, 2, 3], [2, 2, 2]), ([1, np.nan], [2, 3]),
+                                  ([1, 2], [2, np.inf])])
+def test_undefined_spearman_returns_nan_without_crashing(x, y):
+    assert np.isnan(spearman_ci(np.asarray(x), np.asarray(y), n_boot=10)).all()
+
+
+def test_empty_bootstrap_keeps_defined_point_estimate():
+    rho, lo, hi = spearman_ci(np.array([0, 1]), np.array([0, 1]), n_boot=1, seed=0)
+    assert rho == pytest.approx(1)
+    assert np.isnan(lo) and np.isnan(hi)
+
+
+def test_constant_predictor_does_not_abort_correlation_table():
+    table = correlation_table({"constant": {"a": 1, "b": 1}, "varying": {"a": 1, "b": 2}},
+                              {"a": 3, "b": 4}, n_boot=20)
+    assert np.isnan(table["constant"]["rho"])
+    assert table["varying"]["rho"] == pytest.approx(1)
+
+
+@pytest.mark.parametrize("kwargs", [{"n_boot": 0}, {"n_boot": 1.5}, {"level": 0}, {"level": 1}])
+def test_spearman_rejects_invalid_bootstrap_settings(kwargs):
+    with pytest.raises(ValueError):
+        spearman_ci(np.arange(3), np.arange(3), **kwargs)
+
+
+def test_spearman_rejects_misaligned_inputs():
+    with pytest.raises(ValueError, match="equal length"):
+        spearman_ci(np.arange(3), np.arange(4))

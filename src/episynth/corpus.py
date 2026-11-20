@@ -22,6 +22,8 @@ import multiprocessing as mp
 import os
 import time
 from datetime import datetime, timezone
+from inspect import signature
+from numbers import Integral
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +44,7 @@ class CorpusManifest(BaseModel):
         length: Длина ряда.
         first_seed: Сид первой строки.
         n: Число рядов.
-        generator_args: Аргументы конструктора генератора кроме длины.
+        generator_args: Аргументы конструктора генератора кроме длины, включая значения по умолчанию.
         nonfinite_rows: Число рядов с неконечными значениями.
         workers: Число процессов генерации.
         elapsed_s: Время генерации в секундах.
@@ -58,6 +60,13 @@ class CorpusManifest(BaseModel):
     workers: int = 1
     elapsed_s: float = 0.0
     created: str = ""
+
+
+def _canonical_generator_args(generator: str, length: int, args: dict) -> dict:
+    """Аргументы конструктора с раскрытыми значениями по умолчанию, без длины ряда."""
+    bound = signature(GENERATORS[generator]).bind(length=length, **args)
+    bound.apply_defaults()
+    return {key: value for key, value in bound.arguments.items() if key != "length"}
 
 
 def available_cpus() -> int:
@@ -122,10 +131,18 @@ def generate_corpus(
         raise FileExistsError(f"корпус уже записан: {out}")
     if generator not in GENERATORS:
         raise KeyError(f"неизвестный генератор: {generator}")
-    generator_args = dict(generator_args or {})
+    workers = available_cpus() if workers is None else workers
+    for name, value in (("n", n), ("length", length), ("chunk", chunk), ("workers", workers)):
+        if isinstance(value, bool) or not isinstance(value, Integral) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+    if isinstance(first_seed, bool) or not isinstance(first_seed, Integral) or first_seed < 0:
+        raise ValueError("first_seed must be a nonnegative integer")
+    n, length, chunk, workers, first_seed = map(int, (n, length, chunk, workers, first_seed))
+    if first_seed + n > 2**31:
+        raise ValueError("corpus seeds must be in [0, 2**31)")
+    generator_args = _canonical_generator_args(generator, length, dict(generator_args or {}))
     GENERATORS[generator](length=length, **generator_args)  # ошибка конструктора в процессе-работнике повесила бы пул
     out.mkdir(parents=True, exist_ok=True)
-    workers = workers or available_cpus()
     series_path = out / "series.npy"
     np.lib.format.open_memmap(series_path, mode="w+", dtype=np.float32, shape=(n, length)).flush()
     for var in _THREAD_VARS:
@@ -143,6 +160,8 @@ def generate_corpus(
                 elapsed = time.time() - t0
                 print(f"{generator}: {done}/{n} рядов, {done / elapsed:.0f} рядов/с, осталось ~{elapsed * (n - done) / done:.0f} с", flush=True)
                 next_report += 0.1
+    if done != n:
+        raise RuntimeError(f"incomplete corpus generation: wrote {done} of {n} rows")
     manifest = CorpusManifest(
         generator=generator,
         length=length,
@@ -176,6 +195,9 @@ class Corpus(Generator):
         first = self.manifests[0]
         if any((m.generator, m.length) != (first.generator, first.length) for m in self.manifests):
             raise ValueError("каталоги корпуса от разных генераторов или с разной длиной ряда")
+        args = _canonical_generator_args(first.generator, first.length, first.generator_args)
+        if any(_canonical_generator_args(m.generator, m.length, m.generator_args) != args for m in self.manifests[1:]):
+            raise ValueError("каталоги корпуса с разными generator_args")
         ranges = sorted((m.first_seed, m.first_seed + m.n) for m in self.manifests)
         if any(a[1] > b[0] for a, b in zip(ranges, ranges[1:], strict=False)):
             raise ValueError("диапазоны сидов каталогов пересекаются")

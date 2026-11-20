@@ -122,3 +122,7 @@ The generated API example is ``doc/_build/api/estimators.html``. See
 The Pages source must be configured as **GitHub Actions**. The expected URL is
 https://intsystems.github.io/Epiplexity/; a successful deployment is required to
 update the online site. Pull requests build documentation without publishing.
+If the site returns 404 and Actions shows a separate **pages build and deployment**
+run using Jekyll, change **Settings → Pages → Source** from branch publishing to
+**GitHub Actions**, then run ``docs`` manually. Publishing the repository root does
+not build the Sphinx site.

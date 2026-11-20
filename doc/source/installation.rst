@@ -77,3 +77,13 @@ Deployment uses Pages artifacts, without a
 ``https://intsystems.github.io/Epiplexity/``. After a deployment, check the URL
 reported by the deployment job and open its API page. A passing local build
 alone does not establish that the online site was published.
+
+If the site returns 404
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Check **Settings → Pages → Source** first. **Deploy from a branch** starts a
+separate Jekyll workflow named **pages build and deployment**; publishing the
+repository root this way does not build ``doc/source`` with Sphinx and can replace
+a previously working site. Select **GitHub Actions**, then manually run ``docs``
+on ``main``. Wait for both its ``build`` and ``deploy`` jobs to succeed, and check
+the home page and ``api/estimators.html`` at the URL reported by the deploy job.

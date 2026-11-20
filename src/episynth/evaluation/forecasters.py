@@ -118,7 +118,21 @@ class MoiraiForecaster(Forecaster):
         batch_size: int = 256,
         device: str = "cpu",
     ) -> None:
-        assert protocol in {"ours", "notebook"}
+        if protocol not in {"ours", "notebook"}:
+            raise ValueError("protocol must be 'ours' or 'notebook'")
+        for name, value in (("patch_size", patch_size), ("context_max", context_max),
+                            ("n_samples", n_samples), ("batch_size", batch_size)):
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+        if patch_size not in module.config.patch_sizes:
+            raise ValueError("patch_size is not supported by the model")
+        if protocol == "ours":
+            if not isinstance(horizon_max, int) or isinstance(horizon_max, bool) or horizon_max <= 0:
+                raise ValueError("horizon_max must be a positive integer")
+            if context_max % patch_size or horizon_max % patch_size:
+                raise ValueError("context_max and horizon_max must be divisible by patch_size")
+            if (context_max + horizon_max) // patch_size > module.config.max_seq_len:
+                raise ValueError("context and forecast exceed the model's max_seq_len")
         self.module = module.to(device).eval()
         self.patch_size = patch_size
         self.protocol = protocol
@@ -133,6 +147,13 @@ class MoiraiForecaster(Forecaster):
         labels: list[np.ndarray] | None = None,
     ) -> Forecast:
         """Сэмплы `(n, B, h)` и, при `labels`, минус лог-плотность `(B, h)`."""
+        if not isinstance(horizon, int) or isinstance(horizon, bool) or horizon <= 0:
+            raise ValueError("horizon must be a positive integer")
+        if self.protocol == "ours" and horizon > self.horizon_max:
+            raise ValueError("horizon exceeds horizon_max for protocol 'ours'")
+        n_pred = self.horizon_max // self.patch_size if self.protocol == "ours" else math.ceil(horizon / self.patch_size)
+        if math.ceil(self.context_max / self.patch_size) + n_pred > self.module.config.max_seq_len:
+            raise ValueError("context and forecast exceed the model's max_seq_len")
         samples, nlls, lengths = [], [], []
         for start in range(0, len(histories), self.batch_size):
             hs = histories[start : start + self.batch_size]

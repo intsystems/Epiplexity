@@ -177,9 +177,18 @@ def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0
         level: Уровень интервала.
 
     Returns:
-        tuple[float, float, float]: Корреляция и границы интервала.
+        tuple[float, float, float]: Корреляция и границы интервала. Неопределённые
+        значения (недостаточные, постоянные или неконечные входы) возвращаются как NaN.
+        Если ни одна бутстреп-выборка не определяет корреляцию, границы равны NaN.
     """
     x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape:
+        raise ValueError("Spearman inputs must be one-dimensional arrays of equal length")
+    if not isinstance(n_boot, (int, np.integer)) or n_boot <= 0 or not 0 < level < 1:
+        raise ValueError("n_boot must be positive and level must lie in (0, 1)")
+    if (len(x) < 2 or not np.isfinite(x).all() or not np.isfinite(y).all()
+            or len(np.unique(x)) < 2 or len(np.unique(y)) < 2):
+        return float("nan"), float("nan"), float("nan")
     rho = float(spearmanr(x, y).statistic)
     rng = np.random.default_rng(seed)
     n = len(x)
@@ -189,6 +198,8 @@ def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0
         if len(np.unique(x[idx])) < 2 or len(np.unique(y[idx])) < 2:
             continue
         boots.append(spearmanr(x[idx], y[idx]).statistic)
+    if not boots:
+        return rho, float("nan"), float("nan")
     lo, hi = np.nanpercentile(boots, [100 * (1 - level) / 2, 100 * (1 + level) / 2])
     return rho, float(lo), float(hi)
 

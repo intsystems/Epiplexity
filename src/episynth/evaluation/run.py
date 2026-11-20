@@ -24,7 +24,9 @@ from ..model import MoiraiModule, load_uni2ts_checkpoint
 from ..model.moirai import MoiraiConfig, small
 from .forecasters import Forecaster, MoiraiForecaster, SeasonalNaive
 from .gift_eval import SHORT_CONFIGS, GiftDataset
-from .metrics import aggregate, window_stats
+from .metrics import AGGREGATE_FIELDS, aggregate, window_stats
+
+_SUMMARY_FIELDS = ("config", "model", "seconds", *AGGREGATE_FIELDS)
 
 
 def evaluate_config(dataset: GiftDataset, forecaster: Forecaster, chunk: int = 2048) -> tuple[list[dict], dict]:
@@ -140,7 +142,10 @@ def main() -> None:
     done = set()
     if summary_path.exists():
         with open(summary_path) as f:
-            done = {r["config"] for r in csv.DictReader(f)}
+            reader = csv.DictReader(f)
+            if reader.fieldnames != list(_SUMMARY_FIELDS):
+                raise ValueError("Existing summary.csv has incompatible fields; use a new --out directory")
+            done = {r["config"] for r in reader}
     for name in args.configs:
         dataset = GiftDataset(args.data, name, args.term)
         if dataset.config in done:
@@ -154,11 +159,13 @@ def main() -> None:
         rec = {"config": dataset.config, "model": args.model, "seconds": round(time.perf_counter() - t0, 1), **agg}
         new = not summary_path.exists()
         with open(summary_path, "a", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=list(rec.keys()))
+            w = csv.DictWriter(f, fieldnames=_SUMMARY_FIELDS)
             if new:
                 w.writeheader()
             w.writerow(rec)
-        print(f"{dataset.config:40s} MASE {agg['MASE[0.5]']:.4f} CRPS {agg['mean_weighted_sum_quantile_loss']:.4f} {rec['seconds']}s", flush=True)
+        mase = agg.get("MASE[0.5]", float("nan"))
+        crps = agg.get("mean_weighted_sum_quantile_loss", float("nan"))
+        print(f"{dataset.config:40s} MASE {mase:.4f} CRPS {crps:.4f} {rec['seconds']}s", flush=True)
 
 
 if __name__ == "__main__":

@@ -103,9 +103,12 @@ class TrainConfig(BaseModel):
 
 def window_nll(mixture: Mixture, batch: WindowBatch, patch_size: int) -> torch.Tensor:
     """Лосс каждого окна `(B,)` в натах: сумма минус лог-плотности по наблюдаемым точкам горизонта."""
-    nll = -mixture.log_prob(batch.target)[..., :patch_size]
-    mask = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask[..., :patch_size]
-    return nll.masked_fill(~mask, 0).sum(dim=(1, 2))
+    mask = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask
+    # Mask before log_prob as well: NaN intermediates can poison gradients even
+    # when the resulting loss is masked out. Observed forecast labels are kept.
+    target = batch.target.masked_fill(~mask, 0)
+    nll = -mixture.log_prob(target)[..., :patch_size]
+    return nll.masked_fill(~mask[..., :patch_size], 0).sum(dim=(1, 2))
 
 
 def param_groups(model: nn.Module, weight_decay: float) -> list[dict]:

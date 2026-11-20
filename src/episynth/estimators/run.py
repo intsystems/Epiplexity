@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config-json", help="Path to a run's config.json; overrides the defaults.")
     parser.add_argument("--n-windows", type=int, help="Training budget in windows (required without --config-json).")
     parser.add_argument("--batch-size", type=int, help="Windows per step (required without --config-json).")
-    parser.add_argument("--device", default="cuda", help="Device, e.g. cuda or cpu.")
+    parser.add_argument("--device", help="Device, e.g. cuda or cpu; overrides the saved config when supplied.")
     parser.add_argument("--init-seed", type=int, help="Weight initialization seed; overrides config train.init_seed.")
     parser.add_argument("--estimator-config", default="{}", help="JSON object of estimator constructor arguments.")
     args = parser.parse_args(argv)
@@ -64,9 +64,11 @@ def main(argv: list[str] | None = None) -> None:
         if args.n_windows is None or args.batch_size is None:
             parser.error("--n-windows and --batch-size are required unless --config-json is given.")
         spec = WindowSpec()
-        config = TrainConfig(n_windows=args.n_windows, batch_size=args.batch_size, device=args.device, init_seed=args.init_seed if args.init_seed is not None else 0)
+        config = TrainConfig(n_windows=args.n_windows, batch_size=args.batch_size, init_seed=args.init_seed if args.init_seed is not None else 0)
         model_cfg = MoiraiConfig(patch_sizes=(spec.patch_size,), components=("student_t", "normal_fixed", "log_normal"))
 
+    if args.device is not None:
+        config = config.model_copy(update={"device": args.device})
     if args.init_seed is not None:
         config = config.model_copy(update={"init_seed": args.init_seed})
     generator = GENERATORS[args.generator](length=spec.series_length)

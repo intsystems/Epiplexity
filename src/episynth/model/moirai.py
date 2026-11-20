@@ -542,7 +542,8 @@ class MoiraiModule(nn.Module):
         """Предсказательная смесь для всех токенов батча.
 
         Args:
-            target: Значения патчей `(B, S, P_max)`; у прогнозных и ненаблюдаемых позиций любые.
+            target: Значения патчей `(B, S, P_max)`; у прогнозных и ненаблюдаемых позиций любые,
+                включая NaN. Скрытые значения не передаются в модель, исходный тензор не меняется.
             observed_mask: Булева маска наблюдаемых значений `(B, S, P_max)`.
             sample_id: Номер ряда токена `(B, S)`, 0 — заполнение вне внимания и нормировки.
             time_id: Индекс времени токена `(B, S)`, меньше `max_seq_len`.
@@ -562,12 +563,20 @@ class MoiraiModule(nn.Module):
             sample_id = prediction_mask.to(sample_id.dtype)
             time_id = (prediction_mask.long().cumsum(-1) - 1).clamp_min(0)
             variate_id = torch.zeros_like(variate_id)
+        context_mask = observed_mask & ~prediction_mask.unsqueeze(-1) & (sample_id != 0).unsqueeze(-1)
+        # Missing values must not enter either scaling (NaN * 0 is NaN) or
+        # partially observed patch projections. Keep the caller's labels intact.
+        target = target.masked_fill(~context_mask, 0)
         if self.config.fixed_scaling is not None:
             fixed_loc, fixed_scale = self.config.fixed_scaling
+            # Missing inputs have normalized value zero, matching an external
+            # fixed transform followed by identity scaling. Adaptive scaling
+            # keeps the historical raw-zero convention for pretrained parity.
+            target = target.masked_fill(~context_mask, fixed_loc)
             loc = torch.full((*target.shape[:2], 1), fixed_loc, device=target.device)
             scale = torch.full_like(loc, fixed_scale)
         elif self.scaler is not None:
-            loc, scale = self.scaler(target, observed_mask & ~prediction_mask.unsqueeze(-1), sample_id, variate_id)
+            loc, scale = self.scaler(target, context_mask, sample_id, variate_id)
         else:
             loc = torch.zeros(*target.shape[:2], 1, device=target.device)
             scale = torch.ones_like(loc)

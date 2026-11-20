@@ -15,7 +15,13 @@ import torch
 from episynth.evaluation import run as evaluation_run
 from episynth.evaluation.forecasters import MoiraiForecaster, SeasonalNaive
 from episynth.evaluation.gift_eval import GiftDataset, config_name, seasonality
-from episynth.evaluation.metrics import aggregate, crps_from_samples, seasonal_error, window_stats
+from episynth.evaluation.metrics import (
+    AGGREGATE_FIELDS,
+    aggregate,
+    crps_from_samples,
+    seasonal_error,
+    window_stats,
+)
 from episynth.model.moirai import MoiraiConfig, MoiraiModule
 from episynth.training import build_model
 
@@ -58,6 +64,80 @@ def test_window_stats_and_aggregate_handle_nan_and_zero_seasonal_error():
     assert 0 <= agg["coverage_0.9"] <= 1
 
 
+def _write_arrow_series(root, name, target, freq="A-DEC"):
+    directory = root / name
+    directory.mkdir(parents=True)
+    table = pa.table({"item_id": ["series"], "freq": [freq], "target": [target.tolist()]})
+    with pa.OSFile(str(directory / "data-00000.arrow"), "wb") as sink, pa.ipc.new_stream(sink, table.schema) as writer:
+        writer.write_table(table)
+
+
+@pytest.mark.parametrize("case", ["zeros", "constant", "missing_labels", "zero_labels"])
+def test_degenerate_arrow_metrics_keep_schema_and_undefined_values(tmp_path, case):
+    target = np.arange(64, dtype=np.float32)
+    if case == "zeros":
+        target.fill(0)
+    elif case == "constant":
+        target.fill(3)
+    else:
+        target[-6:] = np.nan if case == "missing_labels" else 0
+    _write_arrow_series(tmp_path, "m4_yearly", target)
+    dataset = GiftDataset(tmp_path, "m4_yearly")
+    with np.errstate(divide="raise", invalid="raise"):
+        rows, result = evaluation_run.evaluate_config(dataset, SeasonalNaive(dataset.season))
+    assert tuple(result) == AGGREGATE_FIELDS
+    assert len(rows) == result["n_windows"] == 1
+    assert result["n_points"] == (0 if case == "missing_labels" else 6)
+    assert result["n_excluded"] == (1 if case in {"zeros", "constant"} else 0)
+    assert np.isnan(result["nll_per_point"])
+    if case == "missing_labels":
+        assert all(np.isnan(result[field]) for field in AGGREGATE_FIELDS[3:])
+    elif case == "zero_labels":
+        assert result["MASE[0.5]"] == result["MAE[0.5]"] == 57
+        assert result["sMAPE[0.5]"] == 2
+        for field in ("ND[0.5]", "NRMSE[mean]", "mean_weighted_sum_quantile_loss"):
+            assert np.isnan(result[field])
+    else:
+        assert result["MAE[0.5]"] == result["MSE[0.5]"] == result["RMSE[mean]"] == 0
+        for field in ("MASE[0.5]", "MSIS", "scaled_crps", "rmsse", "coverage_0.9", "scaled_width_0.9"):
+            assert np.isnan(result[field])
+        if case == "zeros":
+            assert np.isnan(result["sMAPE[0.5]"])
+            assert np.isnan(result["mean_weighted_sum_quantile_loss"])
+        else:
+            assert result["sMAPE[0.5]"] == result["mean_weighted_sum_quantile_loss"] == 0
+
+
+def test_aggregate_without_windows_returns_complete_schema():
+    result = aggregate([])
+    assert tuple(result) == AGGREGATE_FIELDS
+    assert all(result[field] == 0 for field in AGGREGATE_FIELDS[:3])
+    assert all(np.isnan(result[field]) for field in AGGREGATE_FIELDS[3:])
+
+
+def test_cli_constant_then_ordinary_arrow_data_keep_csv_columns(tmp_path, monkeypatch, capsys):
+    data, out = tmp_path / "data", tmp_path / "evaluation"
+    _write_arrow_series(data, "m4_yearly", np.full(64, 3, dtype=np.float32))
+    _write_arrow_series(data, "m4_quarterly", np.arange(64, dtype=np.float32), freq="Q-DEC")
+    monkeypatch.setattr(sys, "argv", [
+        "evaluate", "--data", str(data), "--out", str(out), "--model", "seasonal_naive",
+        "--configs", "m4_yearly", "m4_quarterly",
+    ])
+    evaluation_run.main()
+    assert "MASE nan" in capsys.readouterr().out
+    with open(out / "summary.csv") as handle:
+        table = list(csv.DictReader(handle))
+    assert len(table) == 2
+    for row in table:
+        assert tuple(row) == ("config", "model", "seconds", *AGGREGATE_FIELDS)
+        assert all(value is not None for value in row.values())
+    assert np.isnan(float(table[0]["MASE[0.5]"]))
+    dataset = GiftDataset(data, "m4_quarterly")
+    _, expected = evaluation_run.evaluate_config(dataset, SeasonalNaive(dataset.season))
+    for field in AGGREGATE_FIELDS:
+        np.testing.assert_equal(float(table[1][field]), expected[field])
+
+
 def test_seasonal_naive_forecast():
     """Повтор последнего сезона, короткая история даёт последнее значение, NaN заполняются вперёд."""
     fc = SeasonalNaive(2).predict([np.array([1.0, 2.0, 3.0, 4.0]), np.array([5.0]), np.array([1.0, np.nan, 3.0, np.nan])], 3)
@@ -76,6 +156,42 @@ def test_moirai_forecaster_both_protocols():
         assert fc.samples.shape == (7, 3, 10) and np.isfinite(fc.samples).all()
         assert fc.nll.shape == (3, 10) and np.isfinite(fc.nll[0]).all()
         assert fc.context_length.tolist()[:2] == [ctx if protocol == "ours" else 100, 5]
+
+
+@pytest.fixture
+def small_forecast_model():
+    return build_model(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4,), max_seq_len=8,
+                                   components=("student_t", "normal_fixed")), 0)
+
+
+@pytest.mark.parametrize("change", [
+    {"protocol": "unknown"}, {"patch_size": 0}, {"patch_size": 8},
+    {"context_max": 0}, {"context_max": 15}, {"context_max": 28},
+    {"horizon_max": 0}, {"horizon_max": 7}, {"n_samples": 0}, {"batch_size": 0},
+])
+def test_moirai_forecaster_rejects_invalid_dimensions_before_device_work(small_forecast_model, monkeypatch, change):
+    monkeypatch.setattr(small_forecast_model, "to", lambda *a, **k: pytest.fail("invalid configuration must fail before device work"))
+    config = {"patch_size": 4, "context_max": 16, "horizon_max": 8, "n_samples": 2, "batch_size": 2, **change}
+    with pytest.raises(ValueError):
+        MoiraiForecaster(small_forecast_model, **config)
+
+
+@pytest.mark.parametrize("protocol,horizon,message", [
+    ("ours", 9, "horizon_max"), ("ours", 0, "positive integer"),
+    ("notebook", 17, "max_seq_len"),
+])
+def test_moirai_forecaster_rejects_invalid_horizon_before_prediction(small_forecast_model, monkeypatch, protocol, horizon, message):
+    forecaster = MoiraiForecaster(small_forecast_model, 4, protocol, context_max=16, horizon_max=8, n_samples=2)
+    monkeypatch.setattr(forecaster, "_predict_batch", lambda *a, **k: pytest.fail("invalid horizon must fail before prediction"))
+    with pytest.raises(ValueError, match=message):
+        forecaster.predict([np.arange(20, dtype=np.float32)], horizon)
+
+
+def test_notebook_horizon_remains_dynamic(small_forecast_model):
+    forecaster = MoiraiForecaster(small_forecast_model, 4, "notebook", context_max=15, horizon_max=8, n_samples=2)
+    forecast = forecaster.predict([np.arange(20, dtype=np.float32)], 10, [np.zeros(10, dtype=np.float32)])
+    assert forecast.samples.shape == (2, 1, 10)
+    assert forecast.nll.shape == (1, 10)
 
 
 @pytest.fixture
@@ -183,6 +299,23 @@ def test_evaluation_manifest_allows_resume_and_additional_configs(evaluation_cas
     assert (out / "windows" / "m4_yearly__A__short.csv").read_bytes() == first_windows
     with open(out / "summary.csv") as f:
         assert [r["config"] for r in csv.DictReader(f)] == evaluated
+
+
+def test_evaluation_rejects_incompatible_summary_columns(evaluation_case):
+    invoke, out, _, _ = evaluation_case
+    invoke()
+    path = out / "summary.csv"
+    with path.open() as handle:
+        rows = list(csv.DictReader(handle))
+    fields = [field for field in rows[0] if field != "MASE[0.5]"]
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+    before = _output_snapshot(out)
+    with pytest.raises(ValueError, match="incompatible fields"):
+        invoke("--configs", "m4_yearly", "m4_quarterly")
+    assert _output_snapshot(out) == before
 
 
 @pytest.mark.parametrize("change", ["weights", "protocol", "n_samples", "data", "checkpoint"])

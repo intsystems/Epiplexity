@@ -41,6 +41,34 @@ analysis tables, figures and scripts. See
 `the experiment README <https://github.com/intsystems/Epiplexity/blob/main/experiments/episynth/README.md>`_
 for exact artifacts and the release holding large per-window losses.
 
+ARIMA coefficient sampling
+--------------------------
+
+The default ``coefficient_mode="legacy"`` preserves the ARIMA streams used by the
+saved experiments, including the original polynomial-order error: all candidate
+coefficient vectors are rejected, so the generator always uses its small uniform
+fallback. The corrected mode tests the roots of the intended lag polynomial and
+therefore changes the data distribution. Enable it explicitly for a new experiment:
+
+.. code-block:: bash
+
+   python -m episynth.train --config <config.json> --out runs/arima_corrected \
+       --set data.generator_args.coefficient_mode='"corrected"'
+
+This setting applies to online generation. For a saved corpus, pass
+``generator_args={"coefficient_mode": "corrected"}`` to ``generate_corpus``.
+Corpus manifests and run metadata record the mode; corpus parts with different
+modes cannot be combined. Existing saved results are not relabeled as corrected.
+
+Undefined evaluation metrics
+----------------------------
+
+Evaluation keeps the same summary columns for all datasets. A metric is ``NaN``
+when its denominator is zero or no eligible observations remain, including scaled
+metrics for constant histories and metrics for entirely missing labels. Counts
+remain available to explain the result. Constant or insufficient inputs likewise
+produce ``NaN`` Spearman correlations instead of stopping an analysis table.
+
 Reproducibility and scope
 -------------------------
 

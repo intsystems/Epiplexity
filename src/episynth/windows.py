@@ -14,6 +14,7 @@ r"""Окна задачи прогноза из рядов генератора:
 """
 
 import collections
+import math
 import multiprocessing as mp
 import os
 import queue
@@ -78,10 +79,24 @@ class WindowSpec(BaseModel):
 
     @model_validator(mode="after")
     def _check(self) -> "WindowSpec":
-        assert self.context_max % self.patch_size == 0 and self.horizon % self.patch_size == 0
-        assert min(self.context_lengths) >= 1 and max(self.context_lengths) <= self.context_max
-        assert self.series_length >= max(self.context_lengths) + self.horizon
-        assert self.context_probs is None or len(self.context_probs) == len(self.context_lengths)
+        if min(self.series_length, self.context_max, self.horizon, self.patch_size) <= 0:
+            raise ValueError("series_length, context_max, horizon and patch_size must be positive")
+        if self.context_max % self.patch_size != 0 or self.horizon % self.patch_size != 0:
+            raise ValueError("context_max and horizon must be divisible by patch_size")
+        if not self.context_lengths or min(self.context_lengths) < 1 or max(self.context_lengths) > self.context_max:
+            raise ValueError("context_lengths must be nonempty and lie in [1, context_max]")
+        if self.series_length < max(self.context_lengths) + self.horizon:
+            raise ValueError("series_length must fit every context and the horizon")
+        if self.context_probs is not None:
+            if len(self.context_probs) != len(self.context_lengths):
+                raise ValueError("context_probs must have one entry per context length")
+            if any(not math.isfinite(p) or p < 0 for p in self.context_probs):
+                raise ValueError("context_probs must be finite and nonnegative")
+            total = sum(self.context_probs)
+            if not math.isfinite(total) or total <= 0:
+                raise ValueError("context_probs must have a positive finite sum")
+        if not math.isfinite(self.dequantize_width) or self.dequantize_width < 0:
+            raise ValueError("dequantize_width must be finite and nonnegative")
         return self
 
     @property
@@ -296,21 +311,31 @@ class WindowStream:
             pool.join()
 
     def _iter_thread(self) -> Iterator[WindowBatch]:
-        """Батчи из одного фонового потока."""
+        """Батчи из одного фонового потока; закрытие ждёт до секунды, не прерывая текущую генерацию."""
         q: queue.Queue = queue.Queue(maxsize=self.prefetch)
         stop = threading.Event()
+
+        def put(item) -> bool:
+            while not stop.is_set():
+                try:
+                    q.put(item, timeout=0.05)
+                    return True
+                except queue.Full:
+                    pass
+            return False
 
         def worker() -> None:
             """Кладёт батчи в очередь по порядку, в конце `None`, при ошибке само исключение."""
             k = self.first_batch
             try:
                 while not stop.is_set() and (self.n_batches is None or k < self.n_batches):
-                    q.put(window_batch(self.generator, self.seeds_of(k), self.spec))
+                    if not put(window_batch(self.generator, self.seeds_of(k), self.spec)):
+                        return
                     k += 1
             except BaseException as exc:  # noqa: BLE001
-                q.put(exc)
+                put(exc)
                 return
-            q.put(None)
+            put(None)
 
         thread = threading.Thread(target=worker, daemon=True)
         thread.start()
@@ -324,6 +349,7 @@ class WindowStream:
                 yield item
         finally:
             stop.set()
+            thread.join(timeout=1.0)
 
 
 def collect_windows(generator: Generator, spec: WindowSpec, seeds: np.ndarray, workers: int = 0, batch_size: int = 4096) -> WindowBatch:

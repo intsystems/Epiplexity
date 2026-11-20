@@ -17,6 +17,13 @@ import numpy as np
 QUANTILES: tuple[float, ...] = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 INTERVALS: tuple[float, ...] = (0.5, 0.8, 0.9)
 _MSIS_ALPHA = 0.05
+AGGREGATE_FIELDS: tuple[str, ...] = (
+    "n_windows", "n_points", "n_excluded", "MASE[0.5]", "MSIS", "MAE[0.5]",
+    "sMAPE[0.5]", "ND[0.5]", "MSE[0.5]", "MSE[mean]", "RMSE[mean]", "NRMSE[mean]",
+    "mean_weighted_sum_quantile_loss", "scaled_crps", "rmsse",
+    *(field for c in INTERVALS for field in (f"coverage_{c}", f"scaled_width_{c}")),
+    "nll_per_point",
+)
 
 
 def seasonal_error(history: np.ndarray, season: int) -> tuple[float, float]:
@@ -99,6 +106,11 @@ def window_stats(
     return out
 
 
+def _divide(numerator: float, denominator: float) -> float:
+    """Undefined metrics retain their column and are reported as NaN."""
+    return float(numerator / denominator) if denominator > 0 else float("nan")
+
+
 def aggregate(rows: list[dict[str, float]]) -> dict[str, float]:
     """Метрики датасета по записям окон: определения GIFT-Eval и масштабированные наши.
 
@@ -109,6 +121,9 @@ def aggregate(rows: list[dict[str, float]]) -> dict[str, float]:
     Наши поля считаются по окнам с положительной сезонной ошибкой (`n_excluded` — сколько окон
     выпало): `scaled_crps`, `rmsse`, `coverage_<c>`, `scaled_width_<c>`, `nll_per_point`; MASE
     совпадает с `MASE[0.5]`.
+
+    All fields are present even when no observations remain. Metrics with a zero
+    denominator or no eligible observations are NaN.
 
     Args:
         rows: Записи `window_stats` всех окон датасета.
@@ -122,23 +137,20 @@ def aggregate(rows: list[dict[str, float]]) -> dict[str, float]:
     keep = [r for r in rows if r["seasonal_error"] > 0]
     m = sum(r["n_valid"] for r in keep)
     out: dict[str, float] = {"n_windows": float(len(rows)), "n_points": n, "n_excluded": float(len(rows) - len(keep))}
-    if m > 0:
-        out["MASE[0.5]"] = sum(r["sum_abs_err_median"] / r["seasonal_error"] for r in keep) / m
-        out["MSIS"] = sum(r["sum_interval_score"] / r["seasonal_error"] for r in keep) / m
-    out["MAE[0.5]"] = abs_err.sum() / n
-    out["sMAPE[0.5]"] = sum(r["sum_smape"] for r in rows) / sum(r["n_smape"] for r in rows)
-    out["ND[0.5]"] = abs_err.sum() / sum_abs_y
-    out["MSE[0.5]"] = sum(r["sum_sq_err_median"] for r in rows) / n
-    out["MSE[mean]"] = sum(r["sum_sq_err_mean"] for r in rows) / n
+    out["MASE[0.5]"] = _divide(sum(r["sum_abs_err_median"] / r["seasonal_error"] for r in keep), m)
+    out["MSIS"] = _divide(sum(r["sum_interval_score"] / r["seasonal_error"] for r in keep), m)
+    out["MAE[0.5]"] = _divide(abs_err.sum(), n)
+    out["sMAPE[0.5]"] = _divide(sum(r["sum_smape"] for r in rows), sum(r["n_smape"] for r in rows))
+    out["ND[0.5]"] = _divide(abs_err.sum(), sum_abs_y)
+    out["MSE[0.5]"] = _divide(sum(r["sum_sq_err_median"] for r in rows), n)
+    out["MSE[mean]"] = _divide(sum(r["sum_sq_err_mean"] for r in rows), n)
     out["RMSE[mean]"] = math.sqrt(out["MSE[mean]"])
-    out["NRMSE[mean]"] = out["RMSE[mean]"] / (sum_abs_y / n)
-    out["mean_weighted_sum_quantile_loss"] = float(np.mean([sum(r[f"ql_{q}"] for r in rows) / sum_abs_y for q in QUANTILES]))
-    if m == 0:
-        return out
-    out["scaled_crps"] = sum(r["sum_crps"] / r["seasonal_error"] for r in keep) / m
-    out["rmsse"] = math.sqrt(sum(r["sum_sq_err_median"] / r["seasonal_error_sq"] for r in keep) / m)
+    out["NRMSE[mean]"] = _divide(out["RMSE[mean]"], _divide(sum_abs_y, n))
+    out["mean_weighted_sum_quantile_loss"] = float(np.mean([_divide(sum(r[f"ql_{q}"] for r in rows), sum_abs_y) for q in QUANTILES]))
+    out["scaled_crps"] = _divide(sum(r["sum_crps"] / r["seasonal_error"] for r in keep), m)
+    out["rmsse"] = math.sqrt(_divide(sum(_divide(r["sum_sq_err_median"], r["seasonal_error_sq"]) for r in keep), m))
     for c in INTERVALS:
-        out[f"coverage_{c}"] = sum(r[f"cover_{c}"] for r in keep) / m
-        out[f"scaled_width_{c}"] = sum(r[f"width_{c}"] / r["seasonal_error"] for r in keep) / m
-    out["nll_per_point"] = sum(r["sum_nll"] for r in keep) / m
+        out[f"coverage_{c}"] = _divide(sum(r[f"cover_{c}"] for r in keep), m)
+        out[f"scaled_width_{c}"] = _divide(sum(r[f"width_{c}"] / r["seasonal_error"] for r in keep), m)
+    out["nll_per_point"] = _divide(sum(r["sum_nll"] for r in keep), m)
     return out

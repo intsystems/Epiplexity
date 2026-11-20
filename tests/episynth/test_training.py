@@ -236,6 +236,38 @@ def test_masked_unsupported_values_do_not_contaminate_nll():
     assert all(p.grad is None or torch.isfinite(p.grad).all() for p in model.parameters())
 
 
+@pytest.mark.parametrize("extra_width", [0, 4])
+def test_unobserved_nan_values_preserve_scored_losses_and_finite_gradients(extra_width):
+    spec = WindowSpec(series_length=32, context_max=12, horizon=4, patch_size=4,
+                      context_lengths=(5,), dequantize_width=0)
+    batch = make_windows(np.arange(1, 33, dtype=np.float32)[None], [0], spec)
+    batch.target = torch.nn.functional.pad(batch.target, (0, extra_width))
+    batch.observed_mask = torch.nn.functional.pad(batch.observed_mask, (0, extra_width), value=False)
+    original = batch.target.clone()
+    model = build_model(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4, 8),
+                                    components=("student_t", "normal_fixed")), 0)
+    mixture = model(**batch.model_inputs(), patch_size=4)
+    scored = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask[..., :4]
+    expected = (-mixture.log_prob(batch.target)[..., :4]).masked_fill(~scored, 0).sum((1, 2))
+    expected.sum().backward()
+    expected_gradients = [None if p.grad is None else p.grad.clone() for p in model.parameters()]
+    model.zero_grad(set_to_none=True)
+
+    batch.target[~batch.observed_mask] = float("nan")
+    mixture = model(**batch.model_inputs(), patch_size=4)
+    actual = window_nll(mixture, batch, 4)
+    torch.testing.assert_close(actual, expected.detach(), rtol=0, atol=0)
+    actual.sum().backward()
+    for parameter, gradient in zip(model.parameters(), expected_gradients, strict=True):
+        if gradient is None:
+            assert parameter.grad is None
+        else:
+            assert torch.isfinite(parameter.grad).all()
+            torch.testing.assert_close(parameter.grad, gradient, rtol=0, atol=0)
+    torch.testing.assert_close(batch.target[batch.observed_mask], original[batch.observed_mask], rtol=0, atol=0)
+    assert torch.isnan(batch.target[~batch.observed_mask]).all()
+
+
 def test_resume_discards_step_rows_after_checkpoint(tmp_path):
     class InterruptedTraining(Trainer):
         def compute_loss(self, batch):

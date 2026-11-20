@@ -1,5 +1,6 @@
 """Перенос Moirai: число параметров, загрузка чекпойнта, формулы компонент смеси, прямой проход."""
 
+import math
 import os
 
 import numpy as np
@@ -8,7 +9,7 @@ import torch
 
 from episynth.generators import GENERATORS
 from episynth.model import MoiraiModule, load_uni2ts_checkpoint
-from episynth.model.moirai import Mixture, small
+from episynth.model.moirai import Mixture, MoiraiConfig, small
 from episynth.windows import WindowSpec, make_windows
 
 CKPT = os.environ.get("MOIRAI_SMALL_DIR")
@@ -72,6 +73,60 @@ def test_forward_shapes_and_finite_nll():
     assert lp.shape == (4, spec.n_tokens, 16) and torch.isfinite(lp[batch.sample_id.bool()]).all()
     samples = mix.sample(3)
     assert samples.shape == (3, 4, spec.n_tokens, 16)
+
+
+@pytest.mark.parametrize("payload", [99.0, float("nan"), float("inf")])
+@pytest.mark.parametrize("scaling,fixed_scaling", [(True, None), (False, None), (True, (2.0, 3.0))])
+def test_missing_and_forecast_input_payloads_do_not_change_predictions(payload, scaling, fixed_scaling):
+    """A partial context patch ignores unavailable values and preserves the caller's labels."""
+    spec = WindowSpec(series_length=32, context_max=12, horizon=4, patch_size=4,
+                      context_lengths=(5,), dequantize_width=0)
+    values = np.arange(1, 65, dtype=np.float32).reshape(2, 32)
+    batch = make_windows(values, [0, 1], spec)
+    observed_per_patch = batch.observed_mask.sum(-1)
+    assert ((observed_per_patch > 0) & (observed_per_patch < spec.patch_size)).any()
+    model = MoiraiModule(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4,),
+                                     components=("student_t", "normal_fixed"),
+                                     scaling=scaling, fixed_scaling=fixed_scaling)).eval()
+    original = batch.target.clone()
+    inputs = batch.model_inputs()
+    unavailable = ~batch.observed_mask | batch.prediction_mask.unsqueeze(-1)
+    inputs["target"] = batch.target.masked_fill(unavailable, payload)
+    supplied = inputs["target"].clone()
+    with torch.no_grad():
+        reference = model(**batch.model_inputs(), patch_size=4)
+        actual = model(**inputs, patch_size=4)
+    torch.testing.assert_close(actual.logits, reference.logits, rtol=0, atol=0)
+    torch.testing.assert_close(actual.loc, reference.loc, rtol=0, atol=0)
+    torch.testing.assert_close(actual.scale, reference.scale, rtol=0, atol=0)
+    for actual_params, expected_params in zip(actual.params, reference.params, strict=True):
+        for name in expected_params:
+            torch.testing.assert_close(actual_params[name], expected_params[name], rtol=0, atol=0)
+    scored = batch.observed_mask & batch.prediction_mask.unsqueeze(-1)
+    actual_log_prob = actual.log_prob(batch.target)[scored]
+    assert torch.isfinite(actual_log_prob).all()
+    torch.testing.assert_close(actual_log_prob, reference.log_prob(batch.target)[scored], rtol=0, atol=0)
+    torch.testing.assert_close(inputs["target"], supplied, rtol=0, atol=0, equal_nan=True)
+    torch.testing.assert_close(batch.target, original, rtol=0, atol=0)
+
+
+def test_fixed_scaling_matches_external_transform_with_partial_context_patches():
+    """Missing entries stay canonical in normalized units, including inside active patches."""
+    spec = WindowSpec(series_length=32, context_max=12, horizon=4, patch_size=4,
+                      context_lengths=(5,), dequantize_width=0)
+    batch = make_windows(np.arange(1, 65, dtype=np.float32).reshape(2, 32), [0, 1], spec)
+    fixed = MoiraiModule(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4,),
+                                     components=("student_t", "normal_fixed"), fixed_scaling=(2.0, 3.0))).eval()
+    identity = MoiraiModule(fixed.config.model_copy(update={"fixed_scaling": None, "scaling": False})).eval()
+    identity.load_state_dict(fixed.state_dict())
+    transformed = batch.model_inputs()
+    transformed["target"] = (batch.target - 2) / 3
+    with torch.no_grad():
+        actual = fixed(**batch.model_inputs(), patch_size=4)
+        expected = identity(**transformed, patch_size=4)
+    torch.testing.assert_close(actual.logits, expected.logits, rtol=0, atol=0)
+    torch.testing.assert_close(actual.log_prob(batch.target),
+                               expected.log_prob(transformed["target"]) - math.log(3), atol=1e-5, rtol=1e-5)
 
 
 @pytest.mark.skipif(CKPT is None, reason="MOIRAI_SMALL_DIR не задан")
