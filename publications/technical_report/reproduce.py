@@ -5,10 +5,31 @@ import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+
+CHECK_GROUPS = {
+    "DataWindows": ("test_generators", "test_corpus", "test_windows"),
+    "ModelTraining": ("test_model", "test_training", "test_train_cli"),
+    "PrequentialOU": ("test_estimators", "test_ou_bayes"),
+    "VInformation": ("test_v_information",),
+    "Evaluation": ("test_analysis", "test_evaluation"),
+}
+
+
+def write_check_summary(result):
+    lines = ["% Generated from test_results.json by reproduce.py."]
+    for group, modules in CHECK_GROUPS.items():
+        counts = Counter(case["status"] for case in result["cases"]
+                         if case["module"].rsplit(".", 1)[-1] in modules)
+        failed = counts["failure"] + counts["error"]
+        cells = f"{counts['passed']} & {counts['skipped']} & {failed}"
+        lines.append(rf"\newcommand{{\Checks{group}}}{{{cells}}}")
+    (HERE / "data" / "check_summary.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 def run_checks():
     """Execute the author's existing tests, preserving results and skip reasons."""
@@ -47,12 +68,7 @@ def run_checks():
     result = {"provenance": "Fresh report rerun of existing tests, not an archived author run", "cases": cases}
     result["counts"] = {s: sum(c["status"] == s for c in cases) for s in ("passed", "skipped", "failure", "error")}
     (HERE / "data" / "test_results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-    (HERE / "data" / "check_summary.tex").write_text(
-        "\\newcommand{\\ChecksPassed}{" + str(result["counts"]["passed"]) + "}\n"
-        + "\\newcommand{\\ChecksSkipped}{" + str(result["counts"]["skipped"]) + "}\n"
-        + "\\newcommand{\\ChecksFailed}{" + str(result["counts"]["failure"] + result["counts"]["error"]) + "}\n",
-        encoding="utf-8",
-    )
+    write_check_summary(result)
     if proc.returncode:
         raise RuntimeError("Existing test suite failed; see data/pytest_output.txt")
 

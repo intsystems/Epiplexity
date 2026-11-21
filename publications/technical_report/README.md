@@ -1,28 +1,14 @@
-# Technical report
+# episynth technical report
 
-[Read the report](main.pdf): *episynth: A Library for Studying Information in
-Synthetic Time Series* (5 pages including references). Edit [main.tex](main.tex). References are in
-[references.bib](references.bib).
+[Read the report](main.pdf) · [LaTeX source](main.tex) · [Research article](../article/README.md)
 
-The report introduces our library, explains its components and execution, and
-walks through small CPU examples. The [research article](../article/README.md)
-contains the coding analysis and the completed large-scale transfer experiments.
+The eight-page report documents the forecast-window and training contracts,
+the implemented measurement methods, and the artifacts needed to check a
+run. It includes CPU and archived Waveform examples, the two-budget GIFT-Eval
+comparison, a validation table linked to the tests, and runnable generator
+and estimator examples in Section 8.
 
-## Current methods
-
-| Method | Output | Implementation |
-| --- | --- | --- |
-| Prequential | Total predictive cost and signed excess area, bits | Implemented |
-| Predictive V-information | Paired predictive gain and standard error, bits/window | Implemented |
-| OU Bayesian reference | Joint and pointwise predictive NLL, nats/window | Reference functions in `checks.ou_bayes` |
-| Requential | Planned cumulative KL and coding-bound measurements | Registered stub |
-
-See the [measurement guide](../../doc/source/measurements.rst) for input files,
-units, entry points, and result fields. Method descriptions in this report
-reflect the current code. The registry lists both runnable estimators and the
-requential stub.
-
-## Build
+## Build the PDF
 
 With pdfLaTeX and BibTeX installed, run from this directory:
 
@@ -30,14 +16,14 @@ With pdfLaTeX and BibTeX installed, run from this directory:
 python build_report.py
 ```
 
-The included figures and check counts suffice for compilation. The build checks
-the five-page budget, unresolved references, and overflowing boxes. Evidence is
-saved in `data/build_verification.json`.
+The build reads the committed figures and test counts. It checks the
+eight-page budget, cross-references, and text overflow, and records source
+and PDF hashes in [data/build_verification.json](data/build_verification.json).
+The report shares the transfer figure with the research article.
 
-## Run the examples and checks
+## Reproduce the measurements and validation
 
-Use Python 3.10 or newer. From the repository root, install the package and
-publication dependencies in your environment:
+Use Python 3.10 or newer. From the repository root:
 
 ```console
 python -m pip install -e ".[dev]"
@@ -45,28 +31,37 @@ python -m pip install -r publications/technical_report/requirements.txt
 python publications/technical_report/reproduce.py
 ```
 
-`run_examples.py` executes the prequential configuration in
-`examples/prequential.json` and the V-information configuration in
-`experiments/demos/v_information.json`. It verifies the outputs against the
-saved losses and checks the OU reference at two quadrature resolutions.
-Training artifacts stay in `build/report_demo/`. Subsequent runs use the
-library's resume behavior. The existing library test suite is then run and its
-counts refreshed. `make_plots.py` produces the component diagram, execution
-diagram, and measured example learning curve.
+The [example runner](run_examples.py) uses the [prequential configuration](examples/prequential.json)
+and [V-information configuration](../../experiments/demos/v_information.json).
+It verifies the prequential decomposition and paired test loss difference
+from saved vectors. It also checks the OU reference at two quadrature
+resolutions. The CPU run directories are under `build/report_demo`, and reruns
+use the trainer's resume behavior.
 
-`python publications/technical_report/reproduce.py --skip-checks` reruns the
-examples and figures while retaining the saved test-suite results.
+The reproduction script runs the [library tests](../../tests/episynth/) and
+regenerates the three report figures. Add `--skip-checks` to retain the
+recorded test outcomes while refreshing the examples and figures. To run the
+two external integration checks, supply `GIFT_EVAL_DIR` or `MOIRAI_SMALL_DIR`
+as appropriate and invoke `pytest tests/episynth` directly.
 
-| Evidence | Contents |
+| Artifact | Evidence |
 | --- | --- |
-| `data/example_results.json` | Example measurements, verification outcomes, configuration hashes, and environment |
-| `data/test_results.json`, `data/pytest_output.txt` | Existing test-suite outcomes and skip reasons |
-| `data/check_summary.tex` | Generated test counts included in the report |
-| `figures/architecture.pdf` | Component diagram |
-| `figures/execution.pdf` | Prequential execution sequence |
-| `figures/demo_loss.pdf` | Measured CPU waveform learning curve |
+| [data/example_results.json](data/example_results.json) | Numerical example results, configuration hashes, and environment |
+| [data/test_results.json](data/test_results.json), [data/pytest_output.txt](data/pytest_output.txt) | Per-test outcomes and skip reasons |
+| [data/check_summary.tex](data/check_summary.tex) | Component counts used in the validation table |
+| [figures/architecture.pdf](figures/architecture.pdf) | CPU and archived Waveform series with their selected forecast windows |
+| [figures/execution.pdf](figures/execution.pdf) | Pre-update training losses and final checkpoint evaluation |
+| [figures/demo_loss.pdf](figures/demo_loss.pdf) | Learning curves and cumulative excess loss for the CPU and archived runs |
+| [Shared transfer figure](../article/figures/transfer_results.pdf) | Geometric-mean CRPS ratios for eleven generators at both budgets |
 
-Experiment-analysis scripts and their outputs now live in
-[`publications/article/`](../article/README.md). The public
-`PrequentialEstimator.from_run_dir` reads per-window binary losses. The article
-analysis can additionally reconstruct linear areas from archived batch-mean CSVs.
+The archived Waveform panels use the committed configuration, batch means,
+and held-out EMA score in the [run directory](../../experiments/episynth/series2_2026-10-19/runs/s2_waveform/).
+The [run archive](../../experiments/episynth/README.md) describes the
+separately distributed loss vectors and checkpoints. The
+[article analysis](../article/analyze_runs.py) reconstructs linear areas
+from the committed batch means.
+
+The [measurement guide](../../doc/source/measurements.rst) documents the
+entry points, result fields, and units. The
+[extension guide](../../doc/source/extending.rst) describes how to load an
+external estimator in the same process as the training CLI.

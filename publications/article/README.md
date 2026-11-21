@@ -1,17 +1,17 @@
 # Research article
 
 [Read the article](main.pdf): *Epiplexity and Transfer in Synthetic Time-Series Pretraining*
-(8 pages including the protocol appendix and references).
+(11 pages including references and appendices).
 The manuscript is [main.tex](main.tex), with references in [references.bib](references.bib).
 
-The article explains prequential and requential measurements, their use with
-non-NLL training, and the interpretation of learning-curve areas under proper
-scores. Section 3 gives practical recipes for each coding measurement
-under non-NLL training and guidelines for generator, student, and evaluation
-sample sizes. The precision rules explain how to choose held-out and teacher-audit
-sample counts from pilot variances. It analyzes eleven synthetic generators at two training budgets using
-the archived Moirai and GIFT-Eval experiments. The main empirical finding is a
-weak association between excess area and transfer across the full comparison.
+Section 2 connects synthetic forecasting, description length, and prior
+evidence on transfer. Section 3 defines the zero-shot generator-selection
+objective and its ranking hypothesis. Section 4 develops the prequential
+estimate and describes requential coding, predictive V-information, and the
+OU Bayes reference. Sections 5 and 6 define and report CRPS and MASE ratios
+for eleven generators at both training budgets. The full comparison shows a
+weak association between excess loss and transfer. Appendix B derives the
+dependence of learning-curve areas on the scoring rule.
 
 The [technical report](../technical_report/README.md) describes our `episynth`
 library, architecture, interfaces, and executable examples. The
@@ -30,16 +30,18 @@ python build_report.py
 ```
 
 Compilation requires pdfLaTeX and BibTeX. Committed tables and figures also
-allow `build_report.py` to run on its own. It checks the eight-page budget,
-unresolved references, and overflowing boxes, and records PDF/source hashes.
+allow `build_report.py` to run on its own. It checks the eleven-page budget,
+unresolved references, and overflowing boxes, and records PDF and source hashes.
 
 `reproduce.py` runs the following scripts in order:
 
 - `analyze_runs.py` reads committed configurations, batch-mean training curves,
-  held-out scores, and GIFT-Eval summaries under `experiments/episynth/`.
+  held-out scores, and GIFT-Eval summaries under `experiments/episynth/` and
+  writes the pretraining and transfer table.
 - `prepare_tables.py` generates the correlation table and verifies the Bernoulli
   CRPS/KL ranking reversal from expected scores.
-- `make_plots.py` generates the full-set comparison and supplementary figures.
+- `make_plots.py` generates the comparison figures, seeded generator samples,
+  and GIFT-Eval gallery. The GIFT-Eval figure uses the stored histories below.
 
 The original training was conducted by Danila Chernousov and archived at commit
 `7d2b001d972169efdb19e3c8e256a182ba4c09f8`. Reproduction here recomputes its analysis.
@@ -58,8 +60,12 @@ artifact locations documented in [the experiment README](../../experiments/episy
 | `data/migration_verification.json` | Equality of the five migrated statistical tables with the previous analysis |
 | `data/results_table.tex`, `data/correlation_table.tex` | Generated manuscript tables |
 | `data/counterexample.json`, `data/counterexample.tex` | Direct calculation of the score-ranking reversal |
-| `figures/transfer_results.pdf` | Main comparison: all eleven sources and the Waveform repeat |
-| `figures/transfer_nll.pdf` | Same comparison using downstream NLL |
+| `figures/generator_examples.pdf` | Eleven seeded 192-point series in generator-table order, one vector trace per page |
+| `figures/generator_gallery.pdf` | Five additional 192-point draws from each of the eleven generators |
+| `data/gift_eval_examples.json` | Observations, task IDs, history offsets, and provenance for the 15 GIFT-Eval samples |
+| `figures/gift_eval_gallery.pdf` | 192-point history excerpts from 15 evaluated GIFT-Eval configurations |
+| `figures/transfer_results.pdf` | Labeled CRPS comparison for all eleven sources and the Waveform repeat |
+| `figures/transfer_nll.pdf` | Labeled downstream NLL comparison, with a shared label for the near-overlapping Waveform runs at 40M |
 | `figures/training_results.pdf` | Training curves by generator and budget |
 | `figures/prefix_results.pdf` | Point correlations across training prefixes |
 
@@ -69,6 +75,10 @@ Area uses every saved batch mean and an independent held-out endpoint.
 Bootstrap intervals resample generator families. The additional Waveform seed
 is shown separately from primary correlations. Exploratory subsets are
 identified in the table and text.
+
+The benchmark gallery takes the final 192 positions of the first test-window
+history in each selected configuration of the [Salesforce GIFT-Eval Parquet release](https://huggingface.co/datasets/Salesforce/GiftEvalParquet/tree/faad405a631f3082bd3d4e4d47fa8ff976357205).
+The stored excerpts preserve missing observations and enable offline plotting.
 
 The coding discussion follows the cited constructions. The article reports
 completed prequential experiments. A requential comparison and measurements

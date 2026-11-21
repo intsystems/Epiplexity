@@ -1,7 +1,10 @@
-...............s........................................s............... [ 62%]
-...........................................                              [100%]
+........................................................................ [ 23%]
+...........................................................s............ [ 46%]
+....................................................s................... [ 69%]
+........................................................................ [ 92%]
+......................                                                   [100%]
 - generated xml file: D:\GitHubD\Epiplexity\build\publication_split_checks\junit.xml -
 =========================== short test summary info ===========================
-SKIPPED [1] tests\episynth\test_evaluation.py:73: GIFT_EVAL_DIR is unset
-SKIPPED [1] tests\episynth\test_model.py:77: MOIRAI_SMALL_DIR is unset
-113 passed, 2 skipped in 28.45s
+SKIPPED [1] tests\episynth\test_evaluation.py:367: GIFT_EVAL_DIR is unset
+SKIPPED [1] tests\episynth\test_model.py:132: MOIRAI_SMALL_DIR is unset
+308 passed, 2 skipped in 36.16s

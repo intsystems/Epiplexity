@@ -8,7 +8,331 @@
       "details": ""
     },
     {
+      "name": "test_area_readers_reject_invalid_vectors[missing-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[missing-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[missing-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[missing-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[empty-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[empty-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[empty-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[empty-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[partial_float-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[partial_float-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[partial_float-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[partial_float-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[nonfinite-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[nonfinite-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[nonfinite-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_reject_invalid_vectors[nonfinite-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_two_heldout_windows[run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_two_heldout_windows[area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_accept_completed_trainer_run",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[3-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[3-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[3-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[3-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[5-window_loss.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[5-window_loss.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[5-heldout_ema_1.f32-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_area_readers_require_configured_loss_counts[5-heldout_ema_1.f32-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[None-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[None-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\":-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\":-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\": 1, \"fraction\": 1}-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\": 1, \"fraction\": 1}-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\": 2, \"fraction\": 0.5}-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_preallocated_logs_require_final_completion_record[{\"step\": 2, \"fraction\": 0.5}-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_trainer_artifacts_require_configuration[last.pt-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_trainer_artifacts_require_configuration[last.pt-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_trainer_artifacts_require_configuration[heldout.jsonl-run_area]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_trainer_artifacts_require_configuration[heldout.jsonl-area_curve]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_quality_table_and_correlations",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x0-y0]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x1-y1]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x2-y2]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x3-y3]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x4-y4]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_undefined_spearman_returns_nan_without_crashing[x5-y5]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_empty_bootstrap_keeps_defined_point_estimate",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_constant_predictor_does_not_abort_correlation_table",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_spearman_rejects_invalid_bootstrap_settings[kwargs0]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_spearman_rejects_invalid_bootstrap_settings[kwargs1]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_spearman_rejects_invalid_bootstrap_settings[kwargs2]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_spearman_rejects_invalid_bootstrap_settings[kwargs3]",
+      "module": "tests.episynth.test_analysis",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_spearman_rejects_misaligned_inputs",
       "module": "tests.episynth.test_analysis",
       "status": "passed",
       "details": ""
@@ -21,6 +345,156 @@
     },
     {
       "name": "test_corpus_parts_and_errors",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_parts_require_matching_generator_arguments[timesynth-args0-True]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_parts_require_matching_generator_arguments[timesynth-args1-False]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_parts_require_matching_generator_arguments[kernelsynth-args2-True]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_parts_require_matching_generator_arguments[kernelsynth-args3-False]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes0]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes1]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes2]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes3]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes4]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes5]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes6]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes7]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes8]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes9]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes10]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes11]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes12]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes13]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes14]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes15]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes16]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes17]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_generation_arguments_create_no_files[changes18]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_incomplete_generation_never_writes_completion_manifest[False]",
+      "module": "tests.episynth.test_corpus",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_incomplete_generation_never_writes_completion_manifest[True]",
       "module": "tests.episynth.test_corpus",
       "status": "passed",
       "details": ""
@@ -62,6 +536,18 @@
       "details": ""
     },
     {
+      "name": "test_estimator_cli_applies_only_explicit_device_override[None]",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_estimator_cli_applies_only_explicit_device_override[cpu]",
+      "module": "tests.episynth.test_estimators",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_seasonality_and_config_names",
       "module": "tests.episynth.test_evaluation",
       "status": "passed",
@@ -80,6 +566,42 @@
       "details": ""
     },
     {
+      "name": "test_degenerate_arrow_metrics_keep_schema_and_undefined_values[zeros]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_degenerate_arrow_metrics_keep_schema_and_undefined_values[constant]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_degenerate_arrow_metrics_keep_schema_and_undefined_values[missing_labels]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_degenerate_arrow_metrics_keep_schema_and_undefined_values[zero_labels]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_aggregate_without_windows_returns_complete_schema",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_cli_constant_then_ordinary_arrow_data_keep_csv_columns",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_seasonal_naive_forecast",
       "module": "tests.episynth.test_evaluation",
       "status": "passed",
@@ -92,10 +614,184 @@
       "details": ""
     },
     {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change0]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change1]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change2]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change3]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change4]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change5]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change6]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change7]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change8]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_dimensions_before_device_work[change9]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_horizon_before_prediction[ours-9-horizon_max]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_horizon_before_prediction[ours-0-positive integer]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_moirai_forecaster_rejects_invalid_horizon_before_prediction[notebook-17-max_seq_len]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_notebook_horizon_remains_dynamic",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_native_checkpoint_restores_config_parameters_and_buffers[raw]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_native_checkpoint_restores_config_parameters_and_buffers[ema]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_native_checkpoint_accepts_matching_explicit_config",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_safetensors_retains_explicit_configuration_loading",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_manifest_allows_resume_and_additional_configs",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_incompatible_summary_columns",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_stale_results_before_mutating_output[weights]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_stale_results_before_mutating_output[protocol]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_stale_results_before_mutating_output[n_samples]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_stale_results_before_mutating_output[data]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_evaluation_rejects_stale_results_before_mutating_output[checkpoint]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_native_config_mismatch_preserves_existing_evaluation",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_existing_summary_requires_matching_manifest[None]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_existing_summary_requires_matching_manifest[{}]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_existing_summary_requires_matching_manifest[{broken]",
+      "module": "tests.episynth.test_evaluation",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_gift_dataset_windows",
       "module": "tests.episynth.test_evaluation",
       "status": "skipped",
-      "details": "GIFT_EVAL_DIR \u043d\u0435 \u0437\u0430\u0434\u0430\u043d"
+      "details": "GIFT_EVAL_DIR is unset"
     },
     {
       "name": "test_shape_dtype_finite[kernelsynth]",
@@ -320,6 +1016,90 @@
       "details": ""
     },
     {
+      "name": "test_arima_legacy_preserves_seeded_output_bits",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[1-_sample_ar]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[1-_sample_ma]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[2-_sample_ar]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[2-_sample_ma]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[3-_sample_ar]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_legacy_uses_small_fallback_distribution[3-_sample_ma]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[1-_sample_ar--1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[1-_sample_ma-1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[2-_sample_ar--1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[2-_sample_ma-1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[3-_sample_ar--1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_coefficients_have_valid_lag_roots[3-_sample_ma-1]",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_arima_corrected_mode_is_finite_deterministic_and_batch_independent",
+      "module": "tests.episynth.test_generators",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_param_count_matches_published_small",
       "module": "tests.episynth.test_model",
       "status": "passed",
@@ -338,10 +1118,70 @@
       "details": ""
     },
     {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-None-99.0]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-None-nan]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-None-inf]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[False-None-99.0]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[False-None-nan]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[False-None-inf]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-fixed_scaling2-99.0]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-fixed_scaling2-nan]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_missing_and_forecast_input_payloads_do_not_change_predictions[True-fixed_scaling2-inf]",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_fixed_scaling_matches_external_transform_with_partial_context_patches",
+      "module": "tests.episynth.test_model",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_pretrained_checkpoint_loads_and_fits_sine_better_than_noise",
       "module": "tests.episynth.test_model",
       "status": "skipped",
-      "details": "MOIRAI_SMALL_DIR \u043d\u0435 \u0437\u0430\u0434\u0430\u043d"
+      "details": "MOIRAI_SMALL_DIR is unset"
     },
     {
       "name": "test_ou_generator_is_stationary_ar1",
@@ -392,6 +1232,24 @@
       "details": ""
     },
     {
+      "name": "test_cli_rejects_changed_experiment_before_writing[data.generator_args.irregular_prob=1.0]",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_cli_rejects_changed_experiment_before_writing[train.first_seed=100]",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_cli_rejects_overlapping_splits_before_creating_run",
+      "module": "tests.episynth.test_train_cli",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_seed_range_check",
       "module": "tests.episynth.test_train_cli",
       "status": "passed",
@@ -399,6 +1257,150 @@
     },
     {
       "name": "test_smoke_run_writes_logs_and_resumes",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_trainer_rejects_overlapping_splits_before_creating_output",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_rejects_changed_identity_without_modifying_artifacts[train]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_rejects_changed_identity_without_modifying_artifacts[spec]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_rejects_changed_identity_without_modifying_artifacts[model]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_rejects_changed_identity_without_modifying_artifacts[source]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_checkpoint_identity_is_checked_before_weights_are_loaded",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_allows_runtime_overrides_and_always_has_final_evaluation",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_repairs_evaluation_interrupted_after_final_checkpoint",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[missing_log]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[missing_record]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[truncated_record]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[partial_tail]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[nonfinite_record]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[missing_losses]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[partial_losses]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_completed_resume_repairs_final_artifacts_once[nonfinite_losses]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_unidentified_training_artifacts_are_not_overwritten",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_nonfinite_evaluation_does_not_replace_saved_losses",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_failed_ema_evaluation_restores_weights_and_original_mode[False]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_failed_ema_evaluation_restores_weights_and_original_mode[True]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_masked_unsupported_values_do_not_contaminate_nll",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_unobserved_nan_values_preserve_scored_losses_and_finite_gradients[0]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_unobserved_nan_values_preserve_scored_losses_and_finite_gradients[4]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_discards_step_rows_after_checkpoint",
       "module": "tests.episynth.test_training",
       "status": "passed",
       "details": ""
@@ -620,6 +1622,18 @@
       "details": ""
     },
     {
+      "name": "test_resume_repairs_damaged_validation_losses[truncated]",
+      "module": "tests.episynth.test_v_information",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_repairs_damaged_validation_losses[nonfinite]",
+      "module": "tests.episynth.test_v_information",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_resume_rejects_changed_initial_weights_normalization_and_budget",
       "module": "tests.episynth.test_v_information",
       "status": "passed",
@@ -674,6 +1688,162 @@
       "details": ""
     },
     {
+      "name": "test_window_spec_rejects_invalid_values[changes0]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes1]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes2]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes3]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes4]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes5]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes6]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes7]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes8]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes9]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes10]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes11]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes12]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes13]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes14]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes15]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes16]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes17]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes18]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes19]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_window_spec_rejects_invalid_values[changes20]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_context_probabilities_allow_zero_entries_and_unnormalized_weights",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_closing_stream_with_full_queue_stops_producer",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_stream_joins_producer_on_exhaustion_or_generation_error[False]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_stream_joins_producer_on_exhaustion_or_generation_error[True]",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_close_does_not_wait_indefinitely_for_in_progress_generation",
+      "module": "tests.episynth.test_windows",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_pool_stream_matches_thread_stream",
       "module": "tests.episynth.test_windows",
       "status": "passed",
@@ -693,7 +1863,7 @@
     }
   ],
   "counts": {
-    "passed": 113,
+    "passed": 308,
     "skipped": 2,
     "failure": 0,
     "error": 0

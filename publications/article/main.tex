@@ -2,540 +2,767 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[margin=23mm]{geometry}
-\usepackage{amsmath,amssymb,amsthm,booktabs,tabularx,graphicx,microtype}
-\usepackage{enumitem}
-\setlist[enumerate]{nosep,leftmargin=1.5em,topsep=3pt}
+\usepackage[hmargin=23mm,vmargin=21mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,booktabs,tabularx,graphicx,microtype,float}
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage[font=small,labelfont=bf]{caption}
-\usepackage{xcolor}
-\usepackage[colorlinks=true,allcolors=blue!45!black]{hyperref}
-\setlength{\parskip}{3pt}
-\setlength{\textfloatsep}{12pt}
-\setlength{\bibsep}{2pt}
+\usepackage[font=small,labelfont=bf,skip=6pt]{caption}
+\usepackage{xcolor,titlesec}
+\definecolor{articleblue}{HTML}{233E59}
+\usepackage[colorlinks=true,allcolors=articleblue]{hyperref}
+\titleformat{\section}{\Large\bfseries\color{articleblue}}{\thesection}{0.65em}{}
+\titleformat{\subsection}{\large\bfseries\color{articleblue}}{\thesubsection}{0.65em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{0.65em}{}
+\titlespacing*{\section}{0pt}{15pt}{6pt}
+\titlespacing*{\subsection}{0pt}{11pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{9pt}{3pt}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\textfloatsep}{11pt}
+\setlength{\intextsep}{9pt}
+\setlength{\bibsep}{1pt}
+\widowpenalty=10000
+\clubpenalty=10000
 \renewcommand{\topfraction}{0.9}
-\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\bottomfraction}{0.85}
 \renewcommand{\textfraction}{0.08}
-\renewcommand{\floatpagefraction}{0.8}
+\renewcommand{\floatpagefraction}{0.82}
 \setcounter{topnumber}{3}
 \setcounter{totalnumber}{4}
 \renewcommand{\bibfont}{\small}
-\newtheorem{proposition}{Proposition}
-\title{Epiplexity and Transfer in\\Synthetic Time-Series Pretraining}
-\author{Danila Chernousov \quad Mark Ikonnikov\\Daniil Kazachkov \quad Alexey Kravatskiy\\[3pt]
-\small Moscow Institute of Physics and Technology}
-\date{13 November 2026}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{hypothesis}{Hypothesis}
 \hypersetup{pdftitle={Epiplexity and Transfer in Synthetic Time-Series Pretraining},
 pdfauthor={Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy}}
+
 \begin{document}
-\maketitle
+\begin{center}
+{\LARGE\bfseries Epiplexity and Transfer in\\Synthetic Time-Series Pretraining\par}
+\vspace{8pt}
+Danila Chernousov \quad Mark Ikonnikov\\
+Daniil Kazachkov \quad Alexey Kravatskiy\\[3pt]
+{\small Moscow Institute of Physics and Technology\\
+13 November 2026\par}
+\end{center}
 \begin{abstract}
-Can the information acquired during synthetic pretraining help identify useful
-data sources for forecasting? We study excess prequential loss, a learning-curve
-estimate motivated by epiplexity, across eleven synthetic generators. Models
-trained under a common setup are evaluated on real forecasting tasks. The
-estimate has a weak association with transfer across the full comparison,
-and its value is sensitive to the predictor used as the learning-curve
-endpoint. We also explain how prequential and requential coding apply when
-training uses losses other than negative log-likelihood. A proper-score
-decomposition and a counterexample show why the native training-loss area
-requires its own interpretation. Together, the analysis and experiments
-clarify the choices needed to measure learned structure and assess its
-usefulness for data selection.
+Synthetic time-series generators provide a choice of pretraining distributions
+for zero-shot forecasting. We test whether that choice can be guided by
+\emph{excess prequential loss}, the cumulative difference between a model's
+pre-update losses and its final held-out loss rate on generated data. We
+compare eleven generators using one Moirai architecture at two training budgets
+and evaluate the final predictors on GIFT-Eval. Forecast quality varies
+widely across generators, but the full-set rank associations with the
+prequential area are weak at both budgets. Changes to the final predictor can
+markedly alter the area, and an additional Waveform initialization changes
+downstream accuracy with little change in area. We explain what a signed area
+measures under log-loss and other proper scoring rules, and give a
+counterexample in which two proper scores reverse the ranking.
 \end{abstract}
 
 \section{Introduction}
-A synthetic generator can supply an unlimited number of time series, but its
-value for pretraining depends on what those series teach a forecasting model.
-Periodic signals, stochastic processes, and chaotic dynamics contain different
-predictive patterns. A practical question is whether a measurement collected
-during training can help choose among them before evaluating every trained
-model on real data.
+The choice of generator determines which forecasting problems the model
+encounters during synthetic pretraining. A seasonal generator rewards
+using recurring patterns in the context. A generator with changes in level
+or volatility can reward responsiveness to recent observations. We ask
+whether measurements collected during pretraining can guide generator
+selection before the predictors are evaluated on target datasets.
 
-Epiplexity describes structure accessible under a computational
-budget~\cite{finzi2026}. It motivates the hypothesis that a source from which
-a model acquires more structure will support better transfer. We examine
-this hypothesis through excess prequential loss: the accumulated prediction
-loss above a held-out final-model loss. The measurement is inexpensive to
-collect during probabilistic training.
+The final loss on generated data describes how well a trained model predicts
+new windows from the same generator. A learning curve also records how much
+the predictions improved during training. The area between the pre-update
+losses and the final loss rate summarizes the latter quantity. Finzi
+et al.~\cite{finzi2026} interpret this area as a practical proxy for
+epiplexity, the amount of structure accessible to a computationally bounded
+predictor. A large area can arise when a learner makes sustained progress on
+the generator. Transfer requires that the acquired structure also be relevant
+to the target forecasting tasks.
 
-We analyze completed experiments with eleven generators, one Moirai
-architecture, and two training budgets. Across the full set, the measured
-area has a weak association with downstream forecasting quality. The
-analysis identifies endpoint choice and extreme forecast errors as useful
-diagnostics. Our implementation and small application examples are described
-in the companion \texttt{episynth} technical report.
+We test that ranking in completed runs that vary the generator at a common
+architecture and window budget. The potential saving is in downstream
+evaluation, where the generator ranking can guide which predictors to score
+first. We examine the effect of the final loss used to compute the area and
+derive how a change of scoring rule can change the ordering. The companion
+\href{https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report}
+{\texttt{episynth} technical report} documents the implementation and examples.
 
-We also address a practical measurement question raised by forecasting models
-trained with quantile or generative losses. Coding uses probabilities, while
-optimization can use another objective. We explain this distinction for both
-prequential and requential coding, derive the endpoint correction for a proper
-score, and show how two common forecast scores can reverse a ranking. These observations
-connect the existing coding constructions to experimental choices.
+\section{Background and related work}\label{sec:background}
 
-\section{Background and related work}
-\paragraph{Description length and learned structure.}
-The minimum description length principle evaluates a model through the cost
-of describing it and the remaining cost of describing data given that model.
-Prequential coding implements a sequential version: predict a batch, encode
-it, then update the predictor. Blier and Ollivier~\cite{blier2018} apply such
-codes to neural networks. Finzi et al.~\cite{finzi2026} define epiplexity using
-the model-description part of a compute-bounded code and study practical
-learning-curve estimates. Qiu et al.~\cite{qiu2026} introduce requential
-coding, which reconstructs a student through teacher-generated training samples.
+\subsection{Synthetic pretraining and zero-shot forecasting}
+In zero-shot forecasting, a pretrained model predicts the continuation of a
+target series from its observed context with its parameters fixed. ForecastPFN
+illustrates how a model trained on a synthetic prior can learn to approximate
+predictive inference on new series~\cite{dooley2023}. Chronos supplements
+observed training series with KernelSynth, which draws trajectories from
+Gaussian processes built from combinations of kernels~\cite{ansari2024}.
+The prior over trajectories determines which regularities appear during
+pretraining and which prediction problems the model must solve.
 
-\paragraph{Data selection and forecasting.}
-Su et al.~\cite{su2026} use estimated epiplexity gains to guide data selection
-and generation for transfer. Synthetic forecasting provides a controlled
-setting for testing the same motivation. KernelSynth was introduced with
-Chronos~\cite{ansari2024}. Nagpal et al.~\cite{nagpal2026} show that synthetic
-generator rankings depend on the forecasting architecture and study mixtures
-of generators. We use their generator families with a Moirai
-observer~\cite{woo2024} and GIFT-Eval~\cite{aksu2024}. Our question concerns
-the relationship between a training-time measurement and subsequent transfer
-under this fixed setup.
+Nagpal et al.~\cite{nagpal2026} find that generator rankings differ between
+Chronos-T5-Mini and Moirai-Small. Their equal-weight mixture matches or
+exceeds the best individual generator in those comparisons. We adopt their
+eleven generator families and hold the architecture fixed to study how
+\emph{learning from a generator} relates to \emph{transferring from it}.
 
-\paragraph{Forecast losses.}
-Proper scoring rules reward a forecast distribution that matches the data
-distribution~\cite{gneiting2007}. They connect expected loss to a generalized
-entropy and divergence. One example is the continuous ranked probability
-score (CRPS), which compares a forecast's cumulative distribution to the
-observed outcome. Quantile forecasting models, including
-Chronos-2 and TiRex~\cite{ansari2025chronos2,auer2025}, motivate measuring
-models trained beyond log-loss. Diffusion objectives also admit variational
-interpretations for specified noise weightings~\cite{kingma2023}.
-Section~\ref{sec:other} uses these connections to separate the optimization
-objective from the quantity accumulated for coding.
+\newpage
+\subsection{Description length and learned structure}
+The minimum description length principle evaluates a model by the combined
+cost of specifying it and describing observations under it~\cite{rissanen1978}.
+Dawid's prequential approach evaluates the predictions issued before each new
+observation is used~\cite{dawid1984}. In prequential coding, those predictions
+determine how many bits are needed to convey the observations. Repeating
+prediction and update gives a code for a training sequence and a procedure
+for reconstructing the trained predictor. Blier and Ollivier~\cite{blier2018}
+apply this construction to neural networks.
 
-\section{Coding measurements}
-Let $C$ be the observed past and $Y$ the forecast horizon. A generator defines
-a distribution $P(C,Y)$. A predictor $q_i(Y\mid C)$ is evaluated before its
-update on the batch containing example $i$. Unless marked as bits, logarithms
-are natural and losses are in nats per window. For continuous observations,
-log densities give idealized scores. Coding actual observations also requires
-a common precision convention and probability masses for the resulting cells.
-
-Formal epiplexity concerns an optimal two-part code under a time budget.
-Fix a target dataset of $D$ windows, with contexts $\mathbf C$ and targets
-$\mathbf Y$. With shared context and a fixed observation representation, write
+Finzi et al.~\cite{finzi2026} place a time bound on the description. For
+a dataset with forecast contexts $\mathbf C$ and discretely represented
+targets $\mathbf Y$, let $\mathcal P_T$ be the predictive programs admissible
+under time bound $T$. The contexts are available to the encoder and decoder.
+Given program length $|\pi|$ in bits and predictive mass $q_\pi$, the optimal
+program and its conditional epiplexity are
 \begin{equation}
- q_T^\star\in\arg\min_{q\in\mathcal P_T}
- \bigl\{|q|+\mathbb E[-\log_2 q(\mathbf Y\mid\mathbf C)]\bigr\},
- \qquad S_T(\mathbf Y\mid\mathbf C)=|q_T^\star|,
+ \pi_T^\star\in\arg\min_{\pi\in\mathcal P_T}
+ \left\{|\pi|+\mathbb E[-\log_2 q_\pi(\mathbf Y\mid\mathbf C)]\right\},
+ \qquad S_T(\mathbf Y\mid\mathbf C)=|\pi_T^\star|.
+ \label{eq:epiplexity}
 \end{equation}
-where programs in $\mathcal P_T$ evaluate probabilities and sample within
-the time bound, and $|q|$ is their description length~\cite{finzi2026}.
-For independent windows, the residual cost is $D$ times the predictive risk
-in bits. $D$ specifies the dataset whose information is studied. Our
-experiments fix an observer and training recipe and measure its trajectory.
+The expectation is over datasets from the source. The first term describes
+the predictive program and the second describes the remaining variation in
+the targets. This motivates subtracting an estimate of the final prediction
+cost from the prequential cost. Our experiments measure the resulting area
+for a given neural predictor and training budget. They fix a count of training
+windows, while Eq.~\eqref{eq:epiplexity} defines an optimum over programs under
+an execution-time bound.
 
-\subsection{Prequential loss and its endpoint}
-Encoder and decoder start with the same predictor and update rule. Each batch
-is encoded under the current predictive distribution. After decoding it,
-both sides perform the same update. This gives the idealized data cost
+\subsection{Evidence linking information measures to transfer}
+In the chess experiments of Finzi et al.~\cite{finzi2026}, altering sequence
+order changes estimated epiplexity and improves transfer to position
+evaluation after fine-tuning. Su et al.~\cite{su2026} use estimated gains
+as a training signal to adapt domain weights or optimize a generator.
+Their results motivate a related test of a fixed set of generators whose
+final predictors can be evaluated without fine-tuning.
+
+The association across generator programs in PRECOCIAL coexists with
+ordering reversals within individual searches~\cite{gu2026precocial}.
+This distinction matters when selecting among closely related candidates.
+Shu and Lampos~\cite{shu2026maps} study transfer between weather locations.
+Their ridge-regression estimate has a weak association with transfer when
+computed on source observations alone. Including target observations changes
+the data available to the estimator and yields a stronger association.
+The two settings are summarized in Table~\ref{tab:related-evidence}.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Evidence on information measures and downstream performance.
+Each association is reported on the evaluation used in its own study.}
+\label{tab:related-evidence}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{29mm}
+>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Study & Measurement and evaluation & Reported association\\
+\midrule
+Gu et al.~\cite{gu2026precocial}
+& Area measured with a 0.69M-parameter model across 26 programs. Search uses downstream validation. The outcome is WikiText-103 perplexity after fine-tuning.
+& Spearman $\rho=-0.64$ ($p<0.001$) across programs. Two of three WikiText-103 searches have an ordering reversal between intermediate and final programs.\\
+\addlinespace[3pt]
+Shu and Lampos~\cite{shu2026maps}
+& Ridge-regression learning-curve proxy compared with forecast performance across weather locations.
+& Pearson $r=0.110$ using source training data and $r=0.534$ when target test observations are included.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These results motivate a test in which both the training curve and the
+final held-out loss are measured on each generator. The target criterion
+is a separate choice. Perplexity assesses token probabilities, and
+forecasting benchmarks can score either predictive distributions or point
+forecasts. Even proper scoring rules can order imperfect predictions
+differently~\cite{gneiting2007}. Consequently, the ranking test requires
+both a fixed measurement on the generator and a fixed forecast score on
+the target tasks.
+
+\clearpage
+\section{Problem Statement}\label{sec:problem}
+
+\subsection{Generators and predictors}
+\begin{definition}[Synthetic time-series generator]
+A generator $g$ specifies the law of a random input $U_g$ on a measurable
+space $\mathcal U_g$ and, for each supported series length $\ell$, a measurable
+map $g_\ell\colon\mathcal U_g\to\mathbb R^\ell$. A series drawn from $g$ at
+length $\ell$ is $g_\ell(U_g)$.
+\end{definition}
+
+A common sampling rule selects a contiguous window of the generated series.
+Its first segment $C$ is the observed context. The immediately following
+$h$ observations are the forecast target $Y=(Y_1,\ldots,Y_h)$. The generator
+and sampling rule induce a law $P_g$ for $(C,Y)$. For a finite set of
+generators $\mathcal G$, fix the model architecture, training procedure,
+and convention for choosing the final weights. At budget $N$, let
+$q_{g,N}(\cdot\mid C)$ denote the conditional forecast distribution
+obtained by training on $N$ windows from $P_g$.
+
+\subsection{Zero-shot generator selection}
+Let $\mathcal T$ be a fixed collection of target forecasting tasks and let
+$R_{\mathcal T}(q)$ be their aggregate forecast error for predictor $q$.
+Evaluation supplies the observed context from each task to the model with
+its pretrained parameters fixed. A generator $g_N^\star$ is optimal at
+budget $N$ if
 \begin{equation}
- L_{\rm pre}=\sum_{i=1}^N-\log q_i(Y_i\mid C_i).
+ g_N^\star\in\arg\min_{g\in\mathcal G}R_{\mathcal T}(q_{g,N}).
+ \label{eq:generator-selection}
 \end{equation}
-The learning-curve estimate subtracts the predictive cost of the final model
-on fresh data. If $\widehat R_f$ is its held-out mean loss, the signed area is
+Solving this problem by direct comparison requires forecasting on
+$\mathcal T$ for every candidate. We study whether a statistic computed on
+generated data can prioritize candidates before this evaluation.
+
+\subsection{Ranking hypothesis}
+Our ranking assigns higher priority to generators with greater excess
+prequential loss $A_N(g)$. Equation~\eqref{eq:area} defines this quantity
+using pre-update losses and a held-out estimate of the final predictor's
+loss on the same generator. Let $\rho_N$ denote Spearman's rank correlation
+over $g\in\mathcal G$ between $A_N(g)$ and $R_{\mathcal T}(q_{g,N})$.
+The proposed ranking favors large $A_N$ and small target error.
+
+\begin{hypothesis}[Ranking by excess prequential loss]\label{hyp:prequential-ranking}
+For each training budget $N$ considered, $\rho_N<0$.
+\end{hypothesis}
+
+\section{Measuring learned structure and predictability}\label{sec:measurements}
+The empirical ranking uses one prequential area per generator at each
+budget. The area depends on the predictive distribution used for scoring
+and on the loss of the final predictor. Requential coding describes a
+trained student by its updates. Predictive $\mathcal V$-information
+measures the benefit of observing context. The Ornstein--Uhlenbeck (OU)
+reference gives the optimal forecast under a known generator law.
+
+\subsection{Prequential coding and excess loss}\label{sec:prequential}
+
+\subsubsection{Pre-update prediction and the final reference}
+In prequential coding, the encoder and decoder share the initialization,
+update rule, and contexts. Let $q_i$ be the predictor immediately before
+the update on the batch containing $(C_i,Y_i)$. The encoder describes targets
+using this predictor. After decoding the batch, both sides perform the same
+update. For quantized observations, the ideal cost uses the probabilities of
+the quantization bins. The experiments score continuous densities, giving
+the pre-update negative log-likelihood (NLL) $\ell_i=-\log q_i(Y_i\mid C_i)$
+in nats. The logarithm is natural throughout unless the units are bits.
+
+Let $q_f$ denote a chosen final predictor and $\widehat R_f$ its mean NLL on
+independent held-out windows from $P_g$. The total prequential loss and the
+signed excess above the final loss rate are
 \begin{equation}
- A_N=L_{\rm pre}-N\widehat R_f.
+ L_{\rm pre}=\sum_{i=1}^{N}\ell_i,\qquad
+ A_N(g)=L_{\rm pre}-N\widehat R_f.
  \label{eq:area}
 \end{equation}
-It summarizes excess loss during the selected training procedure. Its use as
-a model-description estimate follows the approximation discussed by Finzi
-et al.~\cite{finzi2026}. The total prequential cost has an explicit sequential
-coding construction, while the subtraction estimates its structural part.
+The first term is the cumulative NLL along the training trajectory. The
+second estimates the cumulative NLL at the final predictor's loss rate
+over the same number of windows. Following Finzi
+et al.~\cite{finzi2026}, we interpret the signed difference as a finite-run
+proxy for the model-description term. We report $A_N$ in nats. Dividing
+by $\log 2$ gives the estimate in bits.
 
-Endpoint choice enters linearly. Changing the estimated final risk by
-$\delta$ changes $A_N$ by $-N\delta$. Our primary endpoint uses an exponential
-moving average (EMA) of model weights. Relative to a raw-weight endpoint,
-this adds $N(\widehat R_{\rm raw}-\widehat R_{\rm EMA})$. We therefore report
-both choices when assessing sensitivity.
-
-\subsection{Requential coding}
-Requential coding trains a student on samples from a teacher. Relative entropy
-coding communicates these samples using the student's distribution and shared
-randomness. The decoder regenerates each sample and repeats the student update,
-reconstructing the trained student~\cite{qiu2026}.
-
-Let $Q_k$ and $P_k$ be the teacher and student distributions for a whole
-message at step $k$, conditional on the shared history and context. KL
-divergence measures the extra expected log-loss from using the student
-distribution to predict teacher samples. With
-$D_k=\mathrm{KL}_2(Q_k\|P_k)$ in bits, the construction gives
+\subsubsection{Endpoint sensitivity and uncertainty}
+Holding the recorded losses fixed gives a direct comparison of endpoints.
+If $\widehat R_{\rm raw}$ and $\widehat R_{\rm EMA}$ are the final held-out
+mean NLLs for raw weights and exponential moving average (EMA) weights,
+respectively, then
 \begin{equation}
- \mathbb E L_{\rm req}\le C_{\rm setup}+
- \sum_k\mathbb E\bigl[D_k+2\log_2(1+D_k)+\kappa\bigr],
+ A_N^{\rm EMA}-A_N^{\rm raw}
+ =N\bigl(\widehat R_{\rm raw}-\widehat R_{\rm EMA}\bigr).
+\label{eq:endpoint-effect}
+\end{equation}
+Consequently, even a small per-window improvement at the endpoint can
+produce a large change in area at a long training budget.
+
+For a fixed final predictor scored on $M$ independent held-out windows,
+the contribution of endpoint sampling to the standard error of $A_N$ is
+estimated by $Ns_f/\sqrt M$, where $s_f$ is the sample standard deviation of
+the final NLL per window. With a normal approximation, a desired 95\%
+half-width $\Delta_A$ requires roughly $M\gtrsim(1.96Ns_f/\Delta_A)^2$.
+Variation in the training trajectory requires separate training repeats.
+When a generator supplies multiple windows from a series, keep those
+windows in the same split.
+
+\subsubsection{Training loss and coding distribution}
+The training objective determines how weights are updated. The probability
+model used for coding determines the loss recorded at each step. For
+quantile-trained forecasters such as Chronos-2 and TiRex, computing a joint
+NLL requires a predictive distribution consistent with the reported
+quantiles, including choices for interpolation, tails, and dependence
+across future observations~\cite{ansari2025chronos2,auer2025}. For diffusion
+forecasters, it requires a likelihood for the observations or an explicit
+coding model using latent variables~\cite{kingma2023}.
+
+An area computed directly from another proper score measures improvement
+under that score. The continuous ranked probability score (CRPS) measures
+the discrepancy between the forecast cumulative distribution function
+(CDF) and the step function at the realized observation~\cite{gneiting2007}.
+Appendix~\ref{sec:score-areas}
+derives the effect of subtracting a fitted endpoint and constructs a
+ranking reversal between CRPS and log-loss. The same endpoint can
+therefore yield different rankings for different scoring rules.
+
+\subsection{Requential coding}\label{sec:requential}
+Prequential coding gives a way to reconstruct the fitted predictor by
+decoding its training data. Requential coding reconstructs a student by
+using targets drawn from a teacher~\cite{qiu2026}. Given shared contexts
+and training history at step $k$, let $Q_k$ and $P_k$ be the teacher's and
+student's distributions for a batch of targets. The encoder selects an
+element of a proposal sequence drawn from $P_k$ using shared randomness.
+The selection rule makes the accepted batch follow $Q_k$. The encoder
+transmits its index and the decoder regenerates the batch and replays
+the student update.
+
+Let $D_k=\mathrm{KL}_2(Q_k\Vert P_k)$ be the Kullback--Leibler (KL)
+divergence of the full batch in bits. For finite divergences the expected
+code length in the construction of Qiu et al.~\cite{qiu2026} satisfies
+\begin{equation}
+ \mathbb E L_{\rm req}\le C_{\rm setup}
+ +\sum_k \mathbb E\bigl[D_k+2\log_2(1+D_k)+\kappa\bigr],
  \qquad \kappa<5.21.
  \label{eq:req}
 \end{equation}
-The expectations include the training trajectory. The cumulative KL is the
-leading term, and the remaining terms account for coding overhead. Contexts
-and initialization must be shared or included in the setup cost.
+The setup term covers any initialization, contexts, and update settings
+that must be communicated. The remaining terms are the KL cost and the
+overhead of encoding the selected indices as binary messages.
 
-A scientific estimate can sample directly from the teacher. Exact
-encoder--decoder replay additionally requires a sampling codec and
-reproducible updates. Our archived results contain prequential measurements.
+For a numerical estimate of the KL term, draw
+$\widetilde{\mathbf Y}_k\sim Q_k$ and evaluate
+$\widehat D_k=\log_2[Q_k(\widetilde{\mathbf Y}_k)/P_k(\widetilde{\mathbf Y}_k)]$
+using the batch densities or probability masses before updating the student
+on the draw. The conditional mean of $\widehat D_k$ given the current teacher
+and student is $D_k$. Summing the estimates gives an estimate of the
+expected cumulative KL. For a fixed teacher and student, the Monte Carlo
+standard error from $m$ independent batch draws is estimated by
+$s_r/\sqrt m$, where $s_r$ is the sample standard deviation of the log ratios.
+Training repeats address variation in the full trajectories.
+A comparison against $A_N$ would report the two training budgets and match
+the predictive quality of the student and the original predictor.
 
-\subsection{Training with other losses}\label{sec:other}
-The update-rule formulation permits either construction to use a native
-non-NLL objective $J$~\cite{qiu2026}. First specify a normalized forecast
-distribution, its evaluation convention, observation precision, and shared
-contexts. A density head supplies log probabilities directly. A quantile
-head needs ordered quantiles, interpolation, tails, and a joint factorization.
-A diffusion or flow model needs likelihood evaluation or a specified
-latent-variable code. Record any approximation used in evaluating probabilities.
-
-\paragraph{Prequential recipe.}
-\begin{enumerate}
-\item Generate a fresh batch $(C,Y)$. Before updating, evaluate and save each
-window's NLL $-\log q_i(Y\mid C)$ under the coding distribution.
-\item Update the model using $J$ on that batch. Keep the native training loss
-and coding NLL as separate logs, with the initialization and update settings.
-\item After $N$ windows, score the preselected final raw or EMA predictor on
-$M$ independent windows from the same generator. Report $L_{\rm pre}$,
-$\widehat R_f$, and $A_N=L_{\rm pre}-N\widehat R_f$. Divide by $\ln 2$ for bits.
-\end{enumerate}
-
-\paragraph{Requential recipe.}
-\begin{enumerate}
-\item Train a teacher on generator data using $J$, then freeze a checkpoint
-or declare a checkpoint schedule. Initialize a separate student. Specify
-teacher and student distributions with finite teacher-to-student KL.
-\item At each step, draw targets $\widetilde Y_j$ from the teacher for shared
-contexts $C_j$. Before updating the student, save the log ratios. For a
-message of $B_k$ conditionally independent windows, use
+\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}\label{sec:v-information}
+Learning the unconditional distribution of the target can contribute to
+the prequential area.
+Predictive $\mathcal V$-information measures the best attainable reduction
+in log-loss from observing $C$ within a predictive family $\mathcal V$.
+For $(C,Y)\sim P_g$, write $f[c]$ for the distribution returned by
+$f\in\mathcal V$ for context $c$ and $f[\varnothing]$ for its context-free
+distribution. Xu et al.~\cite{xu2020} define
 \begin{equation}
- \widehat D_k=\sum_{j=1}^{B_k}
- \log_2\frac{q_k^{\rm teacher}(\widetilde Y_j\mid C_j)}
- {q_k^{\rm student}(\widetilde Y_j\mid C_j)}.
- \label{eq:req-mc}
+ \begin{gathered}
+ H_{\mathcal V}(Y)=\inf_{f\in\mathcal V}\mathbb E[-\log_2 f[\varnothing](Y)],
+ \qquad H_{\mathcal V}(Y\mid C)=\inf_{f\in\mathcal V}\mathbb E[-\log_2 f[C](Y)],\\
+ I_{\mathcal V}(C\to Y)=H_{\mathcal V}(Y)-H_{\mathcal V}(Y\mid C).
+ \end{gathered}
 \end{equation}
-This estimates whole-message KL. Train the student on those sampled targets
-using its chosen objective $J$ and a reproducible update rule.
-\item Report $\sum_k\widehat D_k$, its sampling uncertainty, message sizes,
-the overhead in Eq.~\eqref{eq:req}, and the student's held-out quality.
-The measurement describes this student trajectory. A certified code bound
-requires controlling the error in the KL estimates.
-\end{enumerate}
+The optional-ignorance condition allows a constant forecast using any
+distribution in the range of a family member. In particular, a
+context-free predictor remains available when context is observed.
+This ensures nonnegative population $\mathcal V$-information when both
+risks are finite.
 
-The native loss also has a useful interpretation. For a loss-oriented proper
-score $s$, define its risk $R_s(P,q)=\mathbb E_{Y\sim P}s(q,Y)$,
-entropy $H_s(P)=R_s(P,P)$, and divergence
-$D_s(P,q)=R_s(P,q)-H_s(P)$. For conditional forecasting, these expressions
-include an expectation over $C$. The following identity makes the baseline
-choice explicit.
+Our finite-budget implementation trains two predictors with matched
+initialization, training windows, and normalization estimated from
+training targets. One receives context and the other uses a context-free
+input. Validation selects the best context-free checkpoint and also makes
+it eligible for the context-conditioned role. For the selected predictors
+$q_C$ and $q_\varnothing$ on $M$ untouched test windows, the paired estimate is
+\[
+ \widehat I_{\mathcal V}=\frac{1}{M}\sum_{j=1}^M
+ \log_2\frac{q_C(Y_j\mid C_j)}{q_{\varnothing}(Y_j)}.
+\]
+It is measured in bits per window. The paired standard error describes
+test-sampling variability conditional on the fitted predictors. This
+comparison can be used to ask whether generators with large prequential
+areas also give learners a large benefit from observing history.
 
-\begin{proposition}[Area relative to a final predictor]
-For a fixed distribution $P$, predictors $q_1,\ldots,q_N$, and a final
-predictor $q_f$, suppose the score risks are finite. Then
+\subsection{OU Bayes reference}\label{sec:ou-bayes}
+A known generator law lets us quantify the effect of restricting the
+forecast distribution. For the Ornstein--Uhlenbeck (OU) example, each
+series draws $\phi=\sin U$ with $U$ uniform on
+$[\arcsin(0.01),\arcsin(0.995)]$. Given $\phi$, the discretely sampled
+stationary process has $X_1\sim\mathcal N(0,1)$ and evolves as
+\[
+ X_t=\phi X_{t-1}+\sqrt{1-\phi^2}\,\varepsilon_t,\qquad
+ \varepsilon_t\overset{\rm iid}{\sim}\mathcal N(0,1),
+\]
+with the innovations independent of the initial state.
+Let $\pi(d\phi)$ be the prior over $\phi$ and
+$m_\pi(x)=\int p_\phi(x)\,\pi(d\phi)$ the marginal likelihood of a segment.
+For observed context $C$, let $\pi(d\phi\mid C)$ be the posterior and
+$C_{\rm last}$ the last context value. The joint reference and the product
+of the correct conditional marginals are
 \begin{equation}
- \sum_{i=1}^N\{R_s(P,q_i)-R_s(P,q_f)\}
- =\sum_{i=1}^N D_s(P,q_i)-ND_s(P,q_f).
- \label{eq:proper}
+ \begin{aligned}
+ p_{\rm joint}(Y\mid C)&=\frac{m_\pi(C,Y)}{m_\pi(C)},\\
+ p_{\rm point}(Y\mid C)&=\prod_{t=1}^h
+ \int\mathcal N(Y_t;\phi^t C_{\rm last},1-\phi^{2t})\,\pi(d\phi\mid C).
+ \end{aligned}
+ \label{eq:ou-reference}
 \end{equation}
-\end{proposition}
-\begin{proof}
-Substitute $R_s(P,q)=H_s(P)+D_s(P,q)$ in each term. The entropy terms cancel.
-\end{proof}
-For random training trajectories the identity holds after taking expectation.
-Fresh training examples and an independent held-out endpoint estimate connect
-it to the expected measured area. Referencing the Bayes risk $H_s(P)$ instead
-gives accumulated divergence directly. Log-loss yields KL. CRPS yields
-$\int(F_P-F_q)^2\,dy$~\cite{gneiting2007}.
+The pointwise reference minimizes expected NLL among products of
+conditional marginals. The expected difference between its NLL and the
+joint NLL is the KL divergence from the joint law to that product,
+averaged over $C$. This separates the loss due to dependence across future
+observations from the loss of misestimating individual marginals. The
+technical report documents the numerical quadrature check for these
+predictions.
 
-These divergences can order predictors differently. Take
-$P=\mathrm{Bernoulli}(0.1)$ and the two predictions in
-Table~\ref{tab:counterexample}. For Bernoulli probabilities $p,q$, the
-divergences are $(p-q)^2$ and
-$p\log(p/q)+(1-p)\log((1-p)/(1-q))$, respectively.
-CRPS favors the prediction near zero, whereas
-KL strongly penalizes its low probability for the outcome one. Repeating
-either predictor for the same number of steps and finishing at $q_f=P$
-gives reversed area rankings. Thus a common ranking requires additional
-assumptions on the distributions or learning trajectories.
+\section{Experimental setup}\label{sec:experiment}
+For each run we pair the prequential area with the zero-shot forecast error
+of the resulting predictor. The area uses training and held-out windows
+from the generator. The forecast error uses observed series in the target
+benchmark.
+
+\subsection{Generators, windows, and model}
+We analyze the archived \texttt{episynth} runs~\cite{chernousovresults},
+which use one generator per run from the families in
+Table~\ref{tab:generators}. The generators cover recurring patterns, changes
+in level and volatility, and nonlinear dynamics. Appendix~\ref{sec:generator-samples}
+provides additional generated series and benchmark histories.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Ranking reversal for a fixed Bernoulli truth with success probability
-0.1. Lower divergence is better. Values are computed directly.}
-\label{tab:counterexample}
-\input{data/counterexample.tex}
+\caption{Generators used for pretraining. Each trace is a generated
+192-point series displayed on its own vertical scale.}
+\label{tab:generators}
+\newcommand{\generatortrace}[1]{\raisebox{-0.35\height}{%
+  \includegraphics[page=#1,width=40mm]{figures/generator_examples.pdf}}}
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}Xl@{}}
+\toprule
+Generator & Series construction & Example series \\
+\midrule
+KernelSynth & Gaussian process with composed kernels and an optional trend. & \generatortrace{1} \\
+ETS & Exponential smoothing with error, trend, and seasonality. & \generatortrace{2} \\
+Waveform & Sums of sawtooth, square, or triangular waves. & \generatortrace{3} \\
+SDE & Ornstein--Uhlenbeck process with Markov-switching regimes. & \generatortrace{4} \\
+StepFunction & Flat segments joined by jumps, ramps, or sigmoids. & \generatortrace{5} \\
+TSI & Sums or products of trend, seasonality, and noise. & \generatortrace{6} \\
+ARIMA & Autoregression and moving averages with optional differencing. & \generatortrace{7} \\
+fBm & Fractional Brownian motion or its increments. & \generatortrace{8} \\
+GARCH & Returns with clustered volatility, or their cumulative sums. & \generatortrace{9} \\
+Chaotic & Lorenz or Mackey--Glass trajectories. & \generatortrace{10} \\
+TimeSynth & Noisy sums or products of periodic or autoregressive signals. & \generatortrace{11} \\
+\bottomrule
+\end{tabularx}
 \end{table}
 
-For diffusion, a complete negative evidence lower bound (ELBO) on the same
-observations can be written as
-$B_i=R_{\log}(P,q_i)+G_i$, where $G_i\ge0$ is the expected variational gap.
-With the same endpoint subtraction,
+Each generated series has 1,024 observations. A training window contains
+a context whose length is sampled from a distribution spanning 13 to 512
+observations. Its forecast target consists of the next 64 observations.
+We train a Moirai implementation~\cite{woo2024} from scratch. Each
+conditional marginal density is a mixture of Student-$t$, Gaussian, and
+log-normal densities in normalized coordinates. The Gaussian component
+has a fixed standard deviation. The joint conditional density is the
+product of these marginals across forecast steps. Normalization uses only
+the observed context.
+
+Within each budget, the primary runs share the architecture, window
+count, optimizer settings, and initialization seed. The two budgets
+share training seed ranges. Waveform has an additional initialization at
+the larger budget, which gives a within-generator comparison under the
+same settings. Appendix~\ref{sec:protocol} gives the run configurations
+and the provenance of the saved results.
+
+\subsection{Estimating the prequential area}
+The exported curve contains the mean NLL per forecast observation, $u_k$,
+before optimizer step $k$. For $K$ batches of $B$ windows and $h$
+forecast observations per window, $N=BK$ and
+\[
+ L_{\rm pre}=Bh\sum_{k=1}^{K}u_k.
+\]
+Thus batch means suffice for the sum in Eq.~\eqref{eq:area}. The primary
+endpoint is the final EMA predictor evaluated at training precision on
+independently generated windows from the same generator. We recompute the
+area with the final raw weights as a sensitivity analysis. Both variants
+use the same pre-update record and the same downstream score.
+
+\subsection{Downstream forecast error}\label{sec:downstream-evaluation}
+The final EMA predictors are evaluated without fine-tuning on the same
+$J=55$ short-term GIFT-Eval configurations~\cite{aksu2024}. We use CRPS
+for forecast distributions and mean absolute scaled error (MASE) for
+their sample medians.
+
+For a forecast CDF $F$ and observation $y$,
+the CRPS~\cite{gneiting2007} is
+\[
+ \mathrm{CRPS}(F,y)=\int_{\mathbb R}[F(z)-\mathbf{1}\{y\le z\}]^2\,dz
+ =\mathbb E|X-y|-\tfrac12\mathbb E|X-X'|,
+ \qquad X,X'\overset{\mathrm{iid}}{\sim}F.
+\]
+For test window $w$ and forecast step $t$, let $x^{(k)}_{gwt}$ be the
+value in draw $k$ from $q_{g,N}$. With $n_{\rm s}$ draws, let
+\[
+ \widehat F_{gwt}(z)=\frac{1}{n_{\rm s}}\sum_{k=1}^{n_{\rm s}}
+ \mathbf{1}\{x^{(k)}_{gwt}\le z\},\qquad
+ \widehat y_{gwt}=\operatorname{median}_{1\le k\le n_{\rm s}} x^{(k)}_{gwt}.
+\]
+
+To account for variation in scale across series, both scores use a
+seasonal error computed on the preceding history $z_{w,1:T_w}$.
+Let $a_w$ be the mean of $|z_{w,t}-z_{w,t-m_w}|$ over finite history
+differences, with lag $m_w=p_w$ if the seasonal period $p_w<T_w$ and
+$m_w=1$ otherwise. For configuration $j$, let $\mathcal O_j$ contain the
+pairs $(w,t)$ with finite observations $y_{wt}$ and $0<a_w<\infty$.
+The seasonally scaled CRPS and MASE~\cite{hyndman2006} are
+\[
+ \bigl(M^{\rm CRPS}_{g,j},M^{\rm MASE}_{g,j}\bigr)
+ =\frac{1}{|\mathcal O_j|}\sum_{(w,t)\in\mathcal O_j}
+ \frac{\bigl(\mathrm{CRPS}(\widehat F_{gwt},y_{wt}),\,
+             |\widehat y_{gwt}-y_{wt}|\bigr)}{a_w}.
+\]
+
+Each configuration is normalized against the seasonal na\"ive forecast.
+Let $\widetilde z_w$ be its history after forward-filling missing values
+and replacing leading missing values with the first observation. Its
+predictive distribution at step $t$ is the point mass at
+\[
+ \widehat y^{\rm SN}_{wt}
+ =\widetilde z_{w,T_w-b_w+1+((t-1)\bmod b_w)},\qquad
+ b_w=\begin{cases}p_w,&T_w\ge p_w,\\1,&T_w<p_w.\end{cases}
+\]
+The reference scores $M^s_{{\rm SN},j}$ use the same targets and scale
+factors. For $s\in\{\mathrm{CRPS},\mathrm{MASE}\}$, each configuration
+has equal weight in the geometric mean
 \begin{equation}
- A_{\rm ELBO}=A_{\log}+\sum_iG_i-NG_f.
+ R_s(g;N)=\exp\left\{\frac1J\sum_{j=1}^J
+ \log\frac{M^s_{g,j}}{M^s_{{\rm SN},j}}\right\}.
+ \label{eq:downstream-ratio}
 \end{equation}
-The gap's evolution therefore matters to the area. Kingma and
-Gao~\cite{kingma2023} relate specified noise weightings to ELBO objectives.
-Using such an objective for measurement requires stating its latent variables,
-weighting, and data representation. The raw training loss, a likelihood
-estimate, and a variational code bound each define a measurable quantity.
+A ratio below one indicates lower error than the reference. We use
+$R_{\rm CRPS}(g;N)$ for $R_{\mathcal T}(q_{g,N})$ in the generator-selection
+objective and examine MASE, median configuration ratios, and mean
+downstream NLL as additional views of forecast quality.
 
-\subsection{Choosing synthetic sample sizes}\label{sec:sample-size}
-Training length determines how much structure the chosen learner can acquire.
-We therefore recommend reporting a curve over training budgets. Keep the
-target size $D$ and compute bound $T$ fixed when comparing formal two-part
-codes. For the trajectory measurements here, state the training size $N$,
-architecture, batch size, and recipe for every comparison.
+\subsection{Rank association and its sensitivity}
+At each budget we estimate $\rho_N$ from the primary run for each
+generator. The 95\% percentile intervals use 10,000 paired bootstrap
+resamples of generator families. Each resample retains the pair of
+the generator's area and its aggregate forecast score. This procedure
+conditions on the fitted runs and on the benchmark configurations.
+We assess initialization sensitivity separately using the Waveform
+repeat. For comparison, we also rank by the raw-endpoint area and by
+the final EMA loss itself.
 
-\paragraph{Training windows.}
-Generate fresh windows on demand with disjoint training, validation, and
-final-evaluation seed ranges. Count independent generated series as the
-sampling units. If several windows come from one series, keep the series
-within one split and account for their dependence in uncertainty estimates.
-Choose $N$ from the available training compute and measured cost per update.
-Use a common grid such as $N,2N,4N$ across sources, fixing the batch size and
-declaring the learning-rate schedule. At each budget, inspect validation
-quality and the stability of source rankings across independent training
-seeds. Increase the common budget while the changes matter for the intended
-comparison. For our Moirai setup, the existing 2M-window runs provide a
-starting scale, with 40M as a larger-budget sensitivity check.
+\section{Results}\label{sec:results}
 
-\paragraph{Evaluation windows.}
-Size the final evaluation set from a pilot estimate of per-window NLL
-standard deviation $s_f$. For a fixed trained model and $M$ independent
-evaluation windows, the endpoint contribution to the area standard error is
-\begin{equation}
- \mathrm{SE}_{\rm endpoint}(A_N)\simeq\frac{Ns_f}{\sqrt M},
- \qquad
- M\gtrsim\left(\frac{1.96Ns_f}{\Delta_A}\right)^2.
- \label{eq:sample-size}
-\end{equation}
-Here $\Delta_A$ is a desired approximate 95\% half-width in nats. This follows
-from $A_N=L_{\rm pre}-N\widehat R_f$ and the standard error of a mean, assuming
-finite variance and an adequate normal approximation. A practical starting
-pilot is $10^4$ independent evaluation windows. Use its variance to set a
-fresh final sample size before scoring. Our archived runs used $10^5$
-held-out windows per checkpoint. For fixed $\Delta_A$ and variance, doubling
-$N$ requires four times as many evaluation windows. Training-seed variation
-and likelihood-approximation error require separate assessment.
-
-\paragraph{Teacher and student budgets.}
-For requential measurement, record generator windows used to fit the teacher
-and teacher-generated targets used to fit the student separately. The
-generator also supplies contexts for student training. Start from a fixed
-teacher checkpoint and a student-budget grid. Select the first checkpoint
-whose validation NLL is within a prespecified tolerance of the teacher's,
-then score it on fresh evaluation data. Report each student's budget and
-quality gap, including cases that exhaust the budget before reaching the
-tolerance. Further training can keep adding KL, so choose the endpoint by
-budget and predictive quality.
-
-Extra teacher draws allow an independent audit of a saved teacher/student
-pair. If $s_r$ is the pilot standard deviation of the whole-message log
-ratio in bits, choose $m\gtrsim(1.96s_r/\delta_D)^2$ independent teacher
-messages for an approximate 95\% KL half-width $\delta_D$, under the same
-variance assumptions. Keep these audit draws separate from student updates
-and record their count. This controls precision for the audited pair.
-Use independent training repeats to assess variation in the cumulative
-measurement.
-
-\section{Experimental setup}
-We use the completed runs archived with \texttt{episynth}~\cite{chernousovresults}.
-The eleven generators cover Gaussian-process kernels (KernelSynth), exponential
-smoothing (ETS), periodic waveforms, switching stochastic differential equations
-(SDE), steps, trend--seasonality--irregularity compositions (TSI), ARIMA,
-fractional Brownian motion (fBm), GARCH volatility, chaotic dynamics, and
-TimeSynth signals. Each source is studied separately.
-
-The observer is a Moirai port trained from scratch, with six transformer layers,
-width 384, patch size 32, and 10,746,600 parameters. Its density head mixes
-Student-$t$, fixed-scale Gaussian, and log-normal components. It predicts the
-horizon as a product of pointwise densities conditional on context. Context
-lengths are sampled from a saved distribution spanning 13 to 512 points.
-The target horizon is 64 points. Scaling uses context only, and a small
-uniform dequantization smooths observations.
-
-There are approximately 2 million and 40 million windows per primary run.
-Both budgets use the same architecture and initialization seed, with one
-additional Waveform initialization at the larger budget. The two budgets
-share training seed ranges. Within each series, the training-window budget
-and optimizer settings are matched. Appendix~\ref{sec:protocol} gives the
-exact settings and artifact locations.
-
-Each batch's mean NLL per target point, $u_k$, is recorded before its update.
-For batch size $B$, horizon $h$, and $N=BK$ windows, the measured area is
-$A_N=Bh\sum_{k=1}^K u_k-N\widehat R_f$. The endpoint is scored on fresh windows
-from the same generator. We use every exported batch mean and retain the
-signed result in million nats.
-
-Final EMA models are evaluated without fine-tuning on 55 short-term GIFT-Eval
-configurations. The main metric is the continuous ranked probability score
-(CRPS), which evaluates the predictive distribution. We normalize each
-configuration by its seasonal-naive baseline and take an equally weighted
-geometric mean:
-\begin{equation}
- R_g=\exp\left\{\frac1{55}\sum_{j=1}^{55}
- \log\frac{\mathrm{CRPS}_{g,j}}{\mathrm{CRPS}_{\rm naive,j}}\right\}.
-\end{equation}
-Smaller values indicate better forecasts, and values below one beat the
-baseline. We also examine mean absolute scaled error (MASE), median ratios,
-configuration ranks, and mean downstream NLL. The CRPS calculation uses the
-saved sample-based score. The separate quantile-loss field is retained as
-an additional metric in the data tables.
-
-Spearman correlation compares generator rankings. Its 95\% percentile
-intervals use 10,000 paired bootstrap resamples of the eleven families.
-These intervals describe variation across sources. Training-seed uncertainty
-is assessed only by the additional Waveform run. Related benchmark
-configurations are kept together within each generator's aggregate score.
-
-\section{Results}
-\subsection{Transfer across synthetic sources}
-Under the common training setup, KernelSynth and ETS give the strongest
-aggregate transfer at both budgets (Table~\ref{tab:results}). Increasing the
-budget improves CRPS for most generators. The improvement is particularly
-large for StepFunction, while Waveform and Chaotic remain sensitive cases.
-These differences show why source choice matters even with a fixed observer.
+\subsection{Transfer across generators}
+KernelSynth and ETS rank first and second by both CRPS and MASE at
+both budgets (Table~\ref{tab:results}). Increasing the budget improves
+StepFunction's CRPS substantially, while its MASE remains above the
+seasonal reference. Waveform's CRPS deteriorates even as its median
+forecast improves by MASE. The effect of more pretraining can therefore
+differ between the forecast distribution and its median.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Excess area $A$ in million nats and forecast-error ratios to seasonal
-naive. Lower CRPS and MASE ratios are better. Primary runs use seed 0.}
+\caption{Excess prequential loss $A_N$ in million nats and aggregate forecast
+error ratios relative to the seasonal na\"ive forecast. Lower error ratios
+indicate better transfer. Bold marks the best primary score for each
+metric and budget. Primary runs share initialization seed 0.}
 \label{tab:results}
 \input{data/results_table.tex}
 \end{table}
 
-\subsection{Association with the learning-curve area}
-Across all eleven generators, the association between area and transfer is
-weak at both budgets (Figure~\ref{fig:transfer}, Table~\ref{tab:correlations}).
-A negative correlation would support the proposed use of larger area to
-identify lower forecasting error. The observed full-set estimates are near
-zero, with wide intervals. Final held-out loss also has a weak association.
-The current comparison gives little support for choosing a source using
-either measurement alone.
+\subsection{Prequential estimation of epiplexity}
+The full-set association gives little support to
+Hypothesis~\ref{hyp:prequential-ranking}. The ranks of excess prequential
+loss and CRPS are weakly associated at both budgets, and both bootstrap
+intervals span zero (Figure~\ref{fig:transfer} and
+Table~\ref{tab:correlations}). At the larger budget, the similar areas
+of KernelSynth and Waveform accompany very different forecast scores.
+The final held-out loss likewise has a weak association with CRPS.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/transfer_results.pdf}
-\caption{Excess area and downstream CRPS for all eleven generators.
-Labels identify cases discussed in the text. The open point is the additional
-Waveform initialization. Dashed lines mark seasonal-naive performance.}
+\caption{Prequential estimate and downstream CRPS for each generator.
+The horizontal axis shows excess prequential loss in million nats on a
+logarithmic scale. A CRPS ratio of one denotes seasonal na\"ive performance. The open marker
+shows the additional Waveform initialization.}
 \label{fig:transfer}
 \end{figure}
 
-Removing Chaotic and Waveform yields a stronger negative association,
-especially at the larger budget. This subset was chosen after examining the
-results. Other exclusions and area variants were explored in the archived
-analysis, so the subset finding motivates a follow-up on new sources.
-Downstream NLL shows a weaker relationship on the same subset.
+The association becomes more negative when Chaotic and Waveform are
+excluded, particularly at the larger budget. The exclusions were chosen
+after inspecting the results, and the stronger association describes
+that subset. On the same subset at the larger budget, the association
+with downstream NLL is weaker than with CRPS. The choice of downstream
+score matters to this comparison as well as the choice of generators.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Spearman association with downstream CRPS. Intervals resample
-generator families. The nine-source subset excludes Chaotic and Waveform
-and was selected after inspecting the results.}
+\caption{Spearman correlations with downstream CRPS. The intervals
+resample generator families within each comparison. The exploratory
+subset excludes Chaotic and Waveform.}
 \label{tab:correlations}
 \input{data/correlation_table.tex}
 \end{table}
 
-\subsection{Endpoint and forecast sensitivity}
-The EMA endpoint changes the area by the accumulated benefit of averaging
-the final weights. ARIMA illustrates the size of this effect: its area at
-the larger budget changes by roughly a factor of ten between the raw and
-EMA endpoints. Across sources, using the raw endpoint still gives a weak
-association with transfer. This supports reporting endpoint sensitivity as
-part of the measurement.
+\subsection{Sensitivity to endpoints and forecast aggregation}
+For ARIMA at the larger budget, the area changes by roughly an order of
+magnitude between the raw and EMA endpoints. The training losses are
+identical in the two calculations. The difference comes from applying
+a different final loss rate to every training window
+(Eq.~\eqref{eq:endpoint-effect}). Replacing
+EMA with raw endpoints leaves the full-set association weak
+(Table~\ref{tab:correlations}).
 
-Waveform's second initialization has almost the same area as the first,
-but substantially better aggregate CRPS. Their median configuration scores
-are much closer. The saved summaries locate an extreme error on the
-\texttt{bitbrains\_rnd} configuration, showing how a small number of forecast
-failures can affect an aggregate. Individual forecast samples would be needed
-to identify their cause. Replacing the primary Waveform run with the repeat
-leaves the full-set area correlation near zero.
+The Waveform repeat changes the geometric-mean CRPS ratio substantially
+while leaving the area nearly constant. The median configuration ratios
+are much closer. The five-minute \texttt{bitbrains\_rnd} configuration
+has the largest CRPS ratio in both runs. Differences on that configuration
+account for nearly half of the change in the logarithm of the aggregate
+ratio. This sensitivity follows from the per-configuration
+aggregation in Eq.~\eqref{eq:downstream-ratio}. Substituting the repeat
+for the primary Waveform run leaves the full-set area correlation near
+zero.
+\href{https://github.com/intsystems/Epiplexity/blob/main/publications/article/data/task_ratios.csv}
+{Per-configuration scores.}
 
-\subsection{Early measurements and a compression baseline}
-Seven held-out checkpoints allow area to be recomputed at short prefixes,
-using each checkpoint's own endpoint. Their correlations with final transfer
-vary with budget and training stage. Checkpoint loss and loss reduction show
-similar sensitivity. The accompanying prefix figure and CSV tables preserve
-these exploratory comparisons.
+\section{Discussion}\label{sec:discussion}
 
-A gzip baseline compresses series from ten generators at a common numeric
-representation. Its association with CRPS is negative at both budgets, with
-intervals spanning zero. This inexpensive baseline remains relevant for a
-larger study of source selection. The present uncertainty supports evaluating
-candidate signals on additional generators and initialization repeats.
+\subsection{Learning on the generator and transfer to target series}
+The area depends on when the loss decreases. Among runs with the same
+starting and final losses, one that stays at higher loss for longer has
+a larger area. Thus the value reflects optimization dynamics as well
+as the predictive structure of the generator. Transfer also depends on
+which regularities are shared with the target series. Varying that overlap
+in a controlled experiment would let us test its contribution to the
+weak rank association. The Waveform repeat illustrates another source
+of variation in the target score, the influence of individual
+benchmark configurations.
 
-\section{Discussion}
-The completed experiments establish a specific empirical result: excess
-prequential loss has a weak full-set relationship with transfer under this
-Moirai training setup. The best synthetic sources remain useful practical
-findings within that setup. Generalization to other architectures, source
-mixtures, or training recipes requires new comparisons.
+The fixed architecture and benchmark limit the scope of the comparison.
+The bootstrap intervals describe variation across the evaluated generators.
+The additional Waveform run provides a separate check on initialization.
+Replication across initializations and generator families would test the
+stability of the ranking.
 
-The coding analysis helps define those comparisons. Non-NLL training can be
-paired with prequential probability evaluation, provided the predictive
-distribution is specified. Requential coding offers a separate route through
-student reconstruction and requires an additional training trajectory.
-For quantile models, the distribution reconstructed from quantiles becomes
-part of the measurement protocol. For diffusion models, likelihood or
-variational coding choices determine the reported quantity.
+\subsection{Distinguishing measurement effects}
+The endpoint comparison isolates the contribution of the reference
+loss to the area. A requential comparison at matched held-out predictive
+quality would ask whether the observed ranking depends on using this
+learning-curve proxy for model description. Predictive
+$\mathcal V$-information would test whether high-area generators also
+offer a greater reduction in loss from using context. In a controlled
+OU experiment, the pointwise Bayes reference gives a loss benchmark
+matched to Moirai's horizon factorization. These comparisons address
+different possible sources of variation in the prequential estimate.
 
-A focused next experiment would compare the prequential area with cumulative
-requential KL for a small set of teachers at matched predictive quality.
-An OU prior supplies a known Bayesian reference for checking the likelihood
-calculation. Repeated initializations would then help separate estimator
-sensitivity from variation in learned forecasts. These measurements would
-test whether the current relationship depends on the area approximation.
+The training objective also matters to comparisons across architectures.
+A proper-score area measures gains in the sense of its own risk.
+The reversal in Appendix~\ref{sec:score-areas} shows why converting one
+area to another requires assumptions about the predictive distributions
+or training trajectories. For a comparison of coding estimates, the
+predictive distributions used for scoring must be specified explicitly.
 
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+\clearpage
 \appendix
-\section{Protocol and reproducibility}\label{sec:protocol}
-The archived runs were conducted by Danila Chernousov and uploaded at commit
-\texttt{7d2b001}. This article recomputes their analysis from committed
-configurations, training curves, held-out scores, and benchmark summaries.
-There are 22 primary runs and one initialization repeat.
+\section{Run settings and archived evidence}\label{sec:protocol}
+The experiments were conducted by Danila Chernousov and archived at
+commit \texttt{7d2b001}~\cite{chernousovresults}. The analysis uses
+committed configurations, pre-update batch means, held-out scores, and
+benchmark summaries. There are 22 primary runs and one initialization
+repeat.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Settings shared within each budget comparison.}
+\caption{Training and endpoint evaluation settings by budget.}
 \begin{tabular}{@{}lrr@{}}
 \toprule
 Setting & Smaller budget & Larger budget\\
 \midrule
 Training windows & 1,999,872 & 39,999,488\\
 Optimizer steps & 1,953 & 39,062\\
-Batch size & 1,024 & 1,024\\
-Held-out windows per checkpoint & 100,000 & 100,000\\
+Windows per batch & 1,024 & 1,024\\
+Held-out windows for endpoint evaluation & 100,000 & 100,000\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Training uses AdamW with learning rate $10^{-3}$, 200 warmup steps, weight
-decay 0.1, $\beta=(0.9,0.98)$, $\epsilon=10^{-6}$, and gradient clipping at 1.
-The EMA time constant is 2\% of the total step budget. Training uses bfloat16.
-Raw and EMA checkpoints are evaluated at 1, 2, 5, 10, 20, 50, and 100\% of
-the budget. The primary area uses the matching bfloat16 endpoint. The
-Gaussian mixture component has fixed scale $10^{-3}$. Dequantization width
-is $10^{-3}\sqrt{\widehat{\mathrm{Var}}(C)+10^{-5}}$.
+The Moirai model has six transformer layers, width 384, patch size 32,
+and 10,746,600 parameters. Training uses AdamW with learning rate
+$10^{-3}$, 200 warmup steps, weight decay 0.1, $\beta=(0.9,0.98)$,
+$\epsilon=10^{-6}$, and gradient clipping at 1. The EMA time constant is
+2\% of the total step budget. Training and the primary endpoint use
+bfloat16. The Gaussian component has standard deviation $10^{-3}$ in
+normalized coordinates. The width of uniform dequantization noise is
+$10^{-3}\sqrt{\widehat{\mathrm{Var}}(C)+10^{-5}}$.
 
-The shorter series uses precomputed corpora. The longer series generates
-windows online except for KernelSynth. Hardware and generation costs vary,
-so the comparison matches windows and architecture. Downstream NLL is the
-arithmetic mean of original-unit NLL per point across configurations and
-retains the evaluator's exclusion of windows with zero seasonal error.
+The smaller-budget runs use precomputed corpora. The larger-budget runs
+generate windows online except for KernelSynth. Downstream NLL is the
+arithmetic mean across configurations of the NLL per forecast observation
+in original series units, using the evaluator's retained windows with
+positive seasonal error.
 
-Batch means reconstruct the signed linear area. The six-significant-digit
-exports imply a worst-case rounding error below 0.013 million nats. All
-primary areas agree with the archived per-window analysis at its displayed
-precision. Held-out standard errors require the large per-window files
-distributed separately with the experiment artifacts.
+The six-significant-digit batch means bound rounding error in the
+reconstructed area below 0.013 million nats. The primary areas agree with
+the archived per-window analysis at its displayed precision. The
+separately distributed per-window losses support the calculation of
+held-out standard errors described in Section~\ref{sec:prequential}.
+\href{https://github.com/intsystems/Epiplexity/tree/main/experiments/episynth}
+{Experiment archive.}
 
-From \texttt{publications/article/}, run \texttt{python reproduce.py} to
-recompute statistics and figures, then \texttt{python build\_report.py} to
-compile this document. The analysis reads the two dated series directories
-under \path{experiments/episynth/}. It records input hashes and verification
-results in \path{data/analysis_verification.json}. Additional tables contain
-per-configuration scores, prefix measurements, and all explored correlations.
-The accompanying \texttt{README.md} describes the artifacts and commands.
+\section{Learning-curve areas under other scoring rules}\label{sec:score-areas}
+For a joint law $P$ of $(C,Y)$ and its true conditional distribution $p$,
+let $s$ be a loss-oriented proper score. Define the risk
+$R_s(P,q)=\mathbb E_P[s(q(\cdot\mid C),Y)]$, the Bayes risk
+$H_s(P)=R_s(P,p)$, and the divergence $D_s(P,q)=R_s(P,q)-H_s(P)$.
+For given predictors $q_1,\ldots,q_N,q_f$ with finite risks, the same
+Bayes risk cancels from each loss difference, giving
+\begin{equation}
+ \sum_{i=1}^{N}\{R_s(P,q_i)-R_s(P,q_f)\}
+ =\sum_{i=1}^{N}D_s(P,q_i)-N D_s(P,q_f).
+ \label{eq:proper}
+\end{equation}
+With fresh windows scored before each update and independent endpoint
+evaluation, the sample area estimates the risk difference averaged over
+training trajectories. A Bayes endpoint makes the final divergence vanish.
+A fitted endpoint subtracts its remaining divergence.
 
-\bibliographystyle{plainnat}
-\bibliography{references}
+Log-loss yields conditional KL divergence. For scalar CRPS, the divergence
+is the integrated squared difference between the forecast and true CDFs,
+averaged over context~\cite{gneiting2007}. Table~\ref{tab:counterexample}
+shows a Bernoulli example. CRPS favors the probability closer to the true
+probability, while log-loss penalizes the smaller probability assigned to
+an event that occurs with positive probability. Holding each prediction
+fixed for the same number of steps and taking $q_f=p$ gives reversed
+learning-curve area rankings.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Ranking reversal under CRPS and log-loss. The true Bernoulli
+success probability is $0.1$, and lower divergence is better.}
+\label{tab:counterexample}
+\input{data/counterexample.tex}
+\end{table}
+
+For a latent-variable model, the expected negative evidence lower bound
+(ELBO) on the same observations is $R_{\log}(P,q_i)+G_i$ with variational
+gap $G_i\ge0$. The corresponding area is
+$A_{\rm ELBO}=A_{\log}+\sum_i G_i-NG_f$. The gap affects the area through its
+change over training. Kingma and Gao~\cite{kingma2023} identify diffusion
+loss weightings that correspond to ELBO objectives with noise augmentation.
+
+\clearpage
+\section{Generator and GIFT-Eval samples}\label{sec:generator-samples}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/generator_gallery.pdf}
+\caption{Five additional 192-point draws from each generator in
+Table~\ref{tab:generators}. Column headings give the generator seed. Each
+panel uses its own vertical scale. TSI yields a constant series at seed 13.}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=\linewidth]{figures/gift_eval_gallery.pdf}
+\caption{Observed series from fifteen short-horizon GIFT-Eval configurations
+in our study~\cite{aksu2024}. Each panel shows the last 192 positions of one
+forecast history on its own vertical scale. Gaps indicate missing observations.}
+\end{figure}
 \end{document}

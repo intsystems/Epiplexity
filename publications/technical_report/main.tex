@@ -2,256 +2,520 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-\usepackage[margin=23mm]{geometry}
-\usepackage{amsmath,amssymb,booktabs,tabularx,graphicx,microtype}
+\usepackage[hmargin=25mm,top=25mm,bottom=24mm,headheight=22pt]{geometry}
+\usepackage{amsmath,amssymb,booktabs,tabularx,graphicx,microtype,float}
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage[font=small,labelfont=bf]{caption}
-\usepackage{xcolor,listings}
-\usepackage[colorlinks=true,allcolors=blue!45!black]{hyperref}
-\lstset{basicstyle=\small\ttfamily,breaklines=true,breakatwhitespace=true,columns=fullflexible,keepspaces=true}
-\setlength{\parskip}{3pt}
-\setlength{\textfloatsep}{12pt}
+\usepackage{xcolor,listings,caption,fancyhdr,titlesec}
+\definecolor{reportnavy}{HTML}{203950}
+\definecolor{reportmuted}{HTML}{506276}
+\definecolor{reportrule}{HTML}{B6C3CF}
+\definecolor{reportcode}{HTML}{F3F6F8}
+\usepackage[colorlinks=true,linkcolor=reportnavy,citecolor=reportnavy,urlcolor=reportnavy]{hyperref}
+\hypersetup{
+  pdftitle={episynth: A Library for Studying Information in Synthetic Time Series},
+  pdfauthor={Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy}
+}
+\titleformat{\section}{\Large\bfseries\color{reportnavy}}{\thesection}{0.65em}{}
+\titleformat{\subsection}{\large\bfseries\color{reportnavy}}{\thesubsection}{0.65em}{}
+\titlespacing*{\section}{0pt}{13pt}{7pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{reportmuted}\textbf{episynth}\enspace Technical report}
+\fancyhead[R]{\small\sffamily\color{reportmuted}\nouppercase{\rightmark}}
+\fancyfoot[R]{\small\sffamily\thepage}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{#1}}
+\renewcommand{\subsectionmark}[1]{}
+\renewcommand{\headrulewidth}{0.35pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{reportrule}\leaders\hrule height \headrulewidth\hfill}}
+\setcounter{tocdepth}{1}
+\makeatletter
+\renewcommand*{\l@section}{\@dottedtocline{1}{0em}{1.5em}}
+\makeatother
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\intextsep}{9pt}
 \setlength{\bibsep}{2pt}
-\renewcommand{\topfraction}{0.9}
-\renewcommand{\textfraction}{0.08}
-\renewcommand{\floatpagefraction}{0.8}
 \renewcommand{\bibfont}{\small}
+\renewcommand{\arraystretch}{1.12}
+\captionsetup{font=small,labelfont=bf,skip=6pt}
+\lstset{
+  basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
+  breaklines=true, breakatwhitespace=true, showstringspaces=false,
+  backgroundcolor=\color{reportcode}, frame=l, rulecolor=\color{reportrule},
+  xleftmargin=5pt, framesep=5pt, aboveskip=6pt, belowskip=6pt
+}
+\newcommand{\repolink}[2]{\href{https://github.com/intsystems/Epiplexity/blob/main/#1}{#2}}
+\newcommand{\testlink}[2]{\repolink{tests/episynth/test_#1.py}{#2}}
 \input{data/check_summary.tex}
-\title{episynth: A Library for Studying Information\\in Synthetic Time Series}
-\author{Danila Chernousov \quad Mark Ikonnikov\\Daniil Kazachkov \quad Alexey Kravatskiy\\[3pt]
-\small Moscow Institute of Physics and Technology}
-\date{13 November 2026}
-\hypersetup{pdftitle={episynth: A Library for Studying Information in Synthetic Time Series},
-pdfauthor={Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy}}
+
 \begin{document}
-\maketitle
-\begin{abstract}
-We present \texttt{episynth}, a Python library for studying what forecasting
-models learn from synthetic time series. It connects reproducible data
-generation, probabilistic model training, information measurements, and
-evaluation on real forecasting tasks. Researchers can compare data sources
-under a common training setup, inspect the cost of learning to predict them,
-and measure how much the observed past improves a forecast. The library
-provides prequential and predictive information estimators, a Bayesian
-reference for a known stochastic process, and interfaces for adding new
-generators and measurements. We describe its architecture and demonstrate
-the workflow with small CPU experiments.
-\end{abstract}
+\thispagestyle{plain}
+{\sffamily\bfseries\small\color{reportmuted} Technical report\par}
+\vspace{9pt}
+{\fontsize{35}{38}\selectfont\bfseries\color{reportnavy} episynth\par}
+{\LARGE\bfseries A Library for Studying Information\\in Synthetic Time Series\par}
+\vspace{8pt}
+Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
+{\small Moscow Institute of Physics and Technology \hfill 13 November 2026\par}
+\vspace{7pt}
+{\color{reportrule}\hrule height 0.5pt}
+\vspace{7pt}
 
-\section{Purpose and scope}
-Synthetic time series offer controlled ways to study forecasting. A researcher
-can vary trends, periodicity, noise, or dynamics while holding the model and
-training budget fixed. The resulting experiments ask two related questions:
-what does a model learn from a data source, and how useful is that learning
-on real forecasting tasks?
+{\large\bfseries\color{reportnavy} Abstract\par}
+\texttt{episynth} is a Python library for comparing probabilistic forecasters
+trained on synthetic time series. A run configuration specifies the generator,
+forecast window, model, and training budget. The library records the evidence
+needed to recompute prequential excess loss and predictive
+$\mathcal V$-information, and provides a Bayesian likelihood reference for a
+known process. A CPU experiment verifies the measurement pipeline. In the
+archived comparison of eleven generators, excess prequential loss had a weak
+rank association with forecast quality on GIFT-Eval at both training budgets.
 
-\texttt{episynth} supports this workflow in one library. Its generators provide
-seeded series, its task layer turns series into forecasting windows, and its
-estimators train models and return measurements with saved evidence. A separate
-evaluation layer measures forecasting quality on GIFT-Eval~\cite{aksu2024}.
-The current model is a probabilistic Moirai transformer~\cite{woo2024}.
+\begingroup
+\small
+\setlength{\parskip}{0pt}
+\tableofcontents
+\endgroup
 
-One motivation is epiplexity: the amount of structure accessible to an observer
-with a limited computational budget~\cite{finzi2026}. In practice, the library
-measures properties of a specified model and training procedure. A learning
-curve records the cost of acquiring predictive structure. A second measurement,
-predictive $\mathcal V$-information, asks how much access to the past improves
-prediction within a chosen model family~\cite{xu2020}.
+\section{Scope}\label{sec:scope}
+Prequential excess loss estimates the loss accumulated during learning relative
+to the trained predictor's loss rate~\cite{finzi2026}. Predictive
+$\mathcal V$-information quantifies the improvement available from the
+forecast context~\cite{xu2020}. Downstream evaluation scores trained
+predictors on external forecasting tasks. The
+\href{https://github.com/intsystems/Epiplexity/tree/main/publications/article}{companion article}
+develops the statistical interpretation of the generator comparison.
 
-This report describes the software and its use. Our companion
-\href{https://github.com/intsystems/Epiplexity/tree/main/publications/article}{research article}
-develops the coding interpretation and analyzes the completed synthetic
-pretraining experiments. Source, configurations, and examples are available in
-the \href{https://github.com/intsystems/Epiplexity}{project repository}.
-
-\section{Architecture and execution}
-The main objects follow the forecasting task (Figure~\ref{fig:architecture}).
-A \texttt{Generator} maps seeds to series. \texttt{WindowSpec} specifies the
-observed context and forecast horizon. \texttt{WindowStream} then produces
-batches containing values, masks, and seed metadata. The same seed identifies
-the same window across batching and worker choices. A stored \texttt{Corpus}
-and a \texttt{Mixture} of sources follow the generator interface.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\linewidth]{figures/architecture.pdf}
-\caption{Library components and saved outputs. The estimator chooses the
-measurement procedure. Shared task, training, and evaluation components
-provide its inputs and evidence.}
-\label{fig:architecture}
-\end{figure}
-
-The registry selects a measurement through \texttt{build(name)}. An estimator
-receives the model, generator, window specification, training configuration,
-and output directory. The prequential estimator delegates training to
-\texttt{Trainer}. The V-information estimator coordinates two training runs,
-validation-based model selection, and paired test scoring.
-
-\texttt{Trainer} manages optimization, exponential moving averages (EMA) of
-weights, checkpointing, and held-out evaluation. The Moirai density head
-provides both samples and log probabilities. The continuous mixture used in
-our examples contains Student-$t$, Gaussian, and log-normal components.
-Context normalization uses observed values. Log probabilities include the
-change-of-scale correction, preserving the original units of the series.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.94\linewidth]{figures/execution.pdf}
-\caption{A prequential run scores each fresh batch before updating the model.
-Held-out scoring supplies the endpoint used to summarize the learning curve.}
-\label{fig:execution}
-\end{figure}
-
-Figure~\ref{fig:execution} shows the order that matters for prequential
-measurement. Training writes per-window losses, checkpoint losses, model
-weights, and configuration files. This allows the estimator to recompute a
-result from saved artifacts. The command-line interface validates the run
-configuration and saves the selected estimator's output in
-\texttt{estimator\_result.json}.
-
-\section{Measurement methods}
-Table~\ref{tab:methods} summarizes the current methods and their outputs.
-Each method has a result format suited to its question. Throughout this
-section, a window consists of an observed context $C$ and a future target $Y$.
-Negative log-likelihood (NLL) measures the predictive cost assigned to $Y$.
-
-\begin{table}[htbp]
+\begin{table}[H]
 \centering\small
-\caption{Measurement scope and current implementation. The registry includes
-the planned requential estimator.}
+\caption{Measurement methods and implementation status.}
 \label{tab:methods}
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{29mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{30mm}>{\raggedright\arraybackslash}p{23mm}@{}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{34mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{41mm}@{}}
 \toprule
-Method & Question & Output units & Status\\
+Method & Measurement & Interface\\
 \midrule
-Prequential & How much predictive loss accumulates while learning? & Total and excess loss, bits & Implemented\\
-Predictive information & How much does context improve prediction? & Gain, bits/window & Implemented\\
-OU reference & What loss follows from the known prior? & NLL, nats/window & Functions\\
-Requential & What does it cost to reconstruct a student through teacher samples? & KL and code bound, bits & Stub\\
+Prequential coding & Total, endpoint, and excess loss in bits & \texttt{prequential} estimator\\
+Predictive $\mathcal V$-information & Paired NLL reduction and standard error in bits per window & \texttt{v\_information} estimator\\
+OU Bayes reference & Joint and pointwise predictive NLL in nats per window & Reference functions\\
+Requential coding & Cumulative teacher--student KL and coding overhead & Registered stub\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\paragraph{Prequential measurement.}
-For $N$ windows, let $\ell_i$ be the NLL evaluated before the update on window
-$i$'s batch. Let $\bar\ell_f$ be the final model's mean NLL on held-out windows.
-The estimator returns
+\clearpage
+\section{Data and predictive model}\label{sec:data}
+\subsection{Series and forecast windows}
+For a fixed generator and length $L$, \texttt{Generator.generate} maps
+$B$ seeds to a $B\times L$ array of univariate series. The same seed
+specifies the same series independently of the batch. A \texttt{Corpus}
+retrieves precomputed series by seed, and a \texttt{Mixture} maps each seed
+to a component and a component seed. Both use the same interface as an
+online generator. \repolink{src/episynth/generators/base.py}{Generator interface.}
+
+\texttt{WindowSpec} defines the series length, the distribution over context
+lengths $c$, and the forecast horizon $h$. The horizon is the number of
+observations to predict immediately after the context.
+Given a series $x_{1:L}$,
+\texttt{make\_windows} uses the seed to draw $c$ and a valid start index
+$r\in\{1,\ldots,L-c-h+1\}$. The context and forecast target are
 \begin{equation}
- L=\frac{\sum_i\ell_i}{\ln 2},\qquad
- H=\frac{N\bar\ell_f}{\ln 2},\qquad S=L-H.
+ C=x_{r:r+c-1}, \qquad Y=x_{r+c:r+c+h-1}.
 \end{equation}
-The fields are \texttt{total\_bits}, \texttt{data\_part\_bits}, and
-\texttt{model\_part\_bits}, respectively. $S$ summarizes the excess loss
-incurred during learning and retains its sign. Its value depends on the
-training procedure and the chosen raw or EMA endpoint. Continuous densities
-give an idealized coding score. A literal data code additionally specifies
-the observation precision and an entropy coder.
+Optional uniform dequantization also uses the series seed.
+\texttt{WindowStream} preserves window identity and ordering at different
+batch sizes and worker counts. \repolink{src/episynth/windows.py}{Window construction.}
 
-\paragraph{Predictive information.}
-The estimator fits a context-free predictor and a predictor that can use
-context. It selects their checkpoints using validation data, then evaluates
-both on the same untouched test windows. For $M$ test windows it returns
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/architecture.pdf}
+\caption{Complete Waveform series regenerated from seed 0 before dequantization.
+The colored segments mark the context and forecast target of each selected
+window. The archived panel shows one draw from the saved context-length distribution.}
+\label{fig:windows}
+\end{figure}
+
+\subsection{Model inputs and predictive density}
+The library implements a univariate forecasting configuration of
+Moirai~\cite{woo2024}. For patch size $P$ and maximum context length $c_{\max}$,
+a batch occupies a tensor of shape $B\times T\times P$ with
+$T=(c_{\max}+h)/P$. Contexts shorter than $c_{\max}$ are left-padded.
+The observed-value mask excludes padding. The prediction mask identifies the
+horizon patches and replaces their input embeddings with mask embeddings.
+The target values at those positions enter the loss.
+
+In prequential runs, the context supplies the location $\mu_C$ and scale
+$\sigma_C$ for normalization. The density at each
+forecast step is a mixture of Student-$t$, Gaussian with fixed standard
+deviation, and log-normal densities in normalized coordinates. If $f_t$ is
+this mixture density, the joint conditional density in series units is
 \begin{equation}
- \widehat I_{\mathcal V}=\frac{1}{M\ln 2}
- \sum_{j=1}^{M}(\ell_{\varnothing,j}-\ell_{C,j}).
+ q(Y\mid C)=\prod_{t=1}^{h}
+ \frac{1}{\sigma_C}\, f_t\!\left(\frac{Y_t-\mu_C}{\sigma_C}\,\middle|\,C\right).
+ \label{eq:model-density}
 \end{equation}
-This estimates the improvement available from context under the supplied
-fitting budget. The result includes both predictive losses, their difference,
-and a paired standard error. Both predictors use the same fixed scaling
-estimated from training data. The context-free model ignores context values
-and metadata. Validation can select it as the conditional predictor as well.
-The test standard error describes uncertainty for the fitted predictors.
+The likelihood evaluator and sampler apply the same change of coordinates.
+\repolink{src/episynth/model/moirai.py}{Model source.}
 
-\paragraph{Bayesian reference and requential extension.}
-For the Ornstein--Uhlenbeck (OU/AR(1)) generator, quadrature over the known prior supplies
-joint and pointwise predictive NLL. The pointwise version matches the current
-Moirai forecast factorization. The functions live in
-\path{episynth.checks.ou_bayes}. Requential coding~\cite{qiu2026} would add
-student training on teacher-generated targets and accumulate KL divergence,
-which measures predictive disagreement, with coding overhead.
-Calling the current stub raises \texttt{NotImplementedError}.
-The measurement guide specifies the intended
-inputs, reproducible sampling requirements, and outputs.
+\clearpage
+\section{Training and run artifacts}\label{sec:run}
+The training CLI validates the run configuration and selects the estimator
+using \texttt{estimator}. It passes the model, generator, window specification,
+training settings, and output directory. The key \texttt{estimator\_config}
+supplies constructor arguments. \repolink{src/episynth/train.py}{Training CLI.}
 
-\section{Application examples}
-\subsection{Measure a learning curve}
-The report includes a small waveform experiment with a one-layer model.
-After installing the package, run these commands from the repository root:
+\subsection{Batch updates and checkpoint evaluation}
+Let $\mathcal B_k$ be the batch for optimizer step $k$. Before updating the
+model, \texttt{Trainer} computes the window negative log-likelihood (NLL)
+$\ell_i=-\ln q_{k-1}(Y_i\mid C_i)$ for each $i\in\mathcal B_k$. The optimizer
+uses the average over forecast points, $(Bh)^{-1}\sum_{i\in\mathcal B_k}\ell_i$.
+After the update the trainer advances the exponential moving average (EMA)
+of the weights and writes the pre-update losses in window order.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/execution.pdf}
+\caption{Losses used in the prequential estimate. Training batches are scored
+before their updates. The final EMA checkpoint is evaluated on separate
+held-out windows, and the mean is scaled to $N$ training windows.}
+\label{fig:execution}
+\end{figure}
+
+At each checkpoint, raw and EMA predictors are scored on the same held-out
+windows at training precision and any separately configured evaluation
+precision. A restart in the same directory restores the model, EMA, optimizer,
+and batch position from \texttt{last.pt}, then resumes the seed sequence.
+\repolink{src/episynth/training.py}{Trainer implementation.}
+
+\subsection{Run-directory contract}
+The CLI writes the complete configuration to \texttt{run.json}. The
+prequential estimator can recompute its result from the two float32 loss
+vectors listed in Table~\ref{tab:artifacts}.
+
+\begin{table}[H]
+\centering\small
+\caption{Artifacts of a prequential training run. The tag \texttt{1} indicates
+the final checkpoint and \texttt{ema} identifies the weight variant.}
+\label{tab:artifacts}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{59mm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+File & Contents\\
+\midrule
+\path{run.json}, \path{config.json} & CLI configuration and resolved trainer settings\\
+\path{window_loss.f32} & Pre-update NLL in nats per window, ordered by training seed\\
+\path{heldout_ema_1.f32} & Final EMA NLL in nats per window, ordered by held-out seed\\
+\path{heldout.jsonl} & Mean NLL per window and per point at each checkpoint\\
+\path{ckpt_1.pt}, \path{last.pt} & Final checkpoint and restart state\\
+\path{estimator_result.json} & Measurement returned by the estimator\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The archived \path{train_curve.csv} contains pre-update batch means per
+forecast point. Multiplying each mean by $Bh$ recovers its contribution to
+$\sum_i\ell_i$ up to export precision.
+
+\clearpage
+\section{Measurement methods}\label{sec:methods}
+\subsection{Prequential coding}\label{sec:prequential}
+Let $\bar\ell_f$ be the mean NLL per window of the final raw or EMA predictor
+on held-out windows generated from the same source. Given $N$ training windows,
+the estimator reports
+\begin{equation}
+ L=\frac{\sum_{i=1}^{N}\ell_i}{\ln 2},\qquad
+ H=\frac{N\bar\ell_f}{\ln 2},\qquad
+ S=L-H .
+ \label{eq:area}
+\end{equation}
+The fields \path{total_bits}, \path{data_part_bits}, and \path{model_part_bits}
+correspond to $L$, $H$, and $S$. The sign of $S$ is retained. The area in nats is
+$A_N=S\ln 2$. It depends on the training procedure, the budget, and the final
+weight variant. A lossless binary representation at a declared precision
+would use probability masses for the quantized values and an entropy coding
+algorithm to encode and recover those values.
+\repolink{src/episynth/estimators/prequential.py}{Prequential estimator.}
+
+\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}\label{sec:pvi}
+The estimator fits a context-free predictor and a predictor with access to
+context, using the same initialization, training windows, and normalization
+estimated from the training targets. The context-free predictor removes
+both context values and context metadata. The validation procedure selects
+the best context-free checkpoint and includes it among the candidates for
+the context-conditioned role. Training, validation, and test seed ranges
+are checked for overlap and source coverage.
+
+Let $d_j=(\ell_{\varnothing,j}-\ell_{C,j})/\ln 2$ on test window $j$,
+where both NLLs score the same target. The estimator reports
+\begin{equation}
+ \widehat I_{\mathcal V}=\frac{1}{M}\sum_{j=1}^M d_j,\qquad
+ \widehat{\mathrm{SE}}=\frac{\operatorname{sd}(d_1,\ldots,d_M)}{\sqrt{M}},
+ \label{eq:pvi}
+\end{equation}
+in bits per window, together with each predictor's mean test loss.
+The standard error is conditional on the selected fits. The test estimate
+can be negative. The manifest \path{v_information.json} records the fitted
+checkpoints, splits, and artifact paths.
+\repolink{src/episynth/estimators/v_information.py}{V-information estimator.}
+
+\subsection{OU Bayes reference}\label{sec:ou}
+The Ornstein--Uhlenbeck (OU) generator is a stationary Gaussian AR(1) model
+with a known prior over the autoregressive coefficient. Quadrature gives
+the marginal likelihood $M(x)$ of a segment $x$. The joint reference is
+$M(C,Y)/M(C)$. The pointwise reference $\prod_t p(Y_t\mid C)$ uses the
+factorization in Eq.~\eqref{eq:model-density}.
+
+The joint reference attains lower mean NLL (Table~\ref{tab:example-results}).
+Both references use the same conditional marginals, so the gap estimates
+the log-loss penalty for omitting dependence among future observations
+given the context. The score changes under quadrature refinement are much
+smaller than the gap.
+\repolink{src/episynth/checks/ou_bayes.py}{Bayesian likelihood functions.}
+
+\subsection{Requential coding}\label{sec:requential}
+In requential coding, a student is reconstructed by replaying updates on
+teacher-generated targets~\cite{qiu2026}. The leading term of the expected
+code length is the sum of the teacher-to-student Kullback--Leibler
+divergences in bits at the updates. The expected code length also includes
+overhead for encoding the indices of selected samples as binary messages.
+The \texttt{requential} registry entry
+exposes the intended interface and raises \texttt{NotImplementedError}
+when called. \repolink{doc/source/measurements.rst}{Measurement guide.}
+
+\clearpage
+\section{Worked measurements}\label{sec:examples}
+Run the examples from the repository root after installing the package.
+The commands use the committed configurations. The reported values are
+from the \repolink{publications/technical_report/data/example_results.json}{recorded CPU run}.
+
+\subsection{Prequential loss from a run directory}\label{sec:waveform-example}
 \begin{lstlisting}
 python -m episynth.train --config publications/technical_report/examples/prequential.json --out build/report_demo/prequential
 \end{lstlisting}
-The result contains $L$, $H$, and $S$ in bits. Figure~\ref{fig:demo} shows the
-per-batch loss and held-out endpoint. The example exercises the same public
-interface used for the larger experiments. Its small budget makes the
-sequence of operations easy to inspect.
-
-To recompute the measurement after training:
+The CPU run has positive excess loss because its mean pre-update NLL exceeds
+the final held-out EMA mean (Table~\ref{tab:example-results}).
+Figure~\ref{fig:demo} shows that in the archived run, small per-point
+differences from the endpoint continue to accumulate over many windows.
+Recompute $S$ directly from the loss files with
 \begin{lstlisting}[language=Python]
 from episynth.estimators.prequential import PrequentialEstimator
-result = PrequentialEstimator(variant="ema").from_run_dir(
-    "build/report_demo/prequential"
-)
+run = "build/report_demo/prequential"
+result = PrequentialEstimator(variant="ema").from_run_dir(run)
 print(result["model_part_bits"])
 \end{lstlisting}
-This entry point reads \texttt{window\_loss.f32} and
-\texttt{heldout\_ema\_1.f32}. The article's analysis script also supports the
-archived batch-mean CSV exports, which suffice for the linear area calculation.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.83\linewidth]{figures/demo_loss.pdf}
-\caption{CPU waveform example. The curve records loss before each update.
-The final EMA predictor is scored on separate held-out windows.}
+\includegraphics[width=\linewidth]{figures/demo_loss.pdf}
+\caption{Training loss and cumulative excess loss for the CPU and archived
+Waveform runs. The upper panels plot pre-update NLL per forecast point and
+the final held-out EMA mean. Archived batch losses are averaged in 80
+consecutive groups for display. The lower panels accumulate the signed
+differences over every batch, using the number of windows per batch and
+forecast observations per window.}
 \label{fig:demo}
 \end{figure}
 
-\subsection{Measure the value of context}
-The second example trains the paired predictors and reports their gain on a
-shared test set:
+\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}
 \begin{lstlisting}
 python -m episynth.train --config experiments/demos/v_information.json --out build/report_demo/v_information
 \end{lstlisting}
-Inspect the gain in \path{v_information_bits_per_window} and its uncertainty
-in \path{standard_error_bits_per_window}. The accompanying metadata records
-the training, validation, and test seed ranges and the selected checkpoints.
-A negative finite-sample gain is retained. This example demonstrates how to
-compare paired predictions with uncertainty under a deliberately small budget.
-In the recorded run, validation selects the context-free predictor for both
-roles, giving a measured gain of zero.
+Validation selects the context-free checkpoint for both roles, so the test
+loss vectors coincide. The zero gain and standard error in
+Table~\ref{tab:example-results} follow from this checkpoint selection.
+\repolink{publications/technical_report/run_examples.py}{Example runner.}
 
-The report's \texttt{reproduce.py} runs both examples, checks recomputation
-from their saved losses, and evaluates the OU reference at two quadrature
-resolutions. It records the outputs and environment in \texttt{data/}.
-The larger application compares synthetic sources through GIFT-Eval and is
-reported in the companion article.
+\clearpage
+\section{Archived pretraining and transfer}\label{sec:transfer}
+The comparison used eleven generators and two budgets, with one additional
+Waveform initialization at the larger budget. Each generated series contains
+1,024 observations. A training window contains 13 to 512 context observations,
+and the forecast target consists of the next 64 observations. The six-layer Moirai
+configuration has width 384, patch size 32, and 10,746,600 parameters. The runs used batches
+of 1,024 windows and scored the final EMA models on 100,000 separate windows
+from their respective generators. \repolink{experiments/episynth/README.md}{Run archive.}
 
-\section{Validation and extension}
-The existing test suite checks seeded generation, forecasting masks, density
-calculations, training and resume behavior, estimator outputs, and evaluation
-metrics. The report build records \ChecksPassed{} passed checks,
-\ChecksSkipped{} skipped checks, and \ChecksFailed{} failures. Comparisons
-requiring external benchmark data or published checkpoints report their
-availability separately. Small examples additionally verify that the saved
-losses reconstruct the returned measurements.
+\subsection{Zero-shot forecast evaluation}
+The final EMA predictors were evaluated without fine-tuning on 55 short-term
+GIFT-Eval configurations~\cite{aksu2024}. For each configuration, the
+continuous ranked probability score (CRPS) is computed from forecast
+samples and scaled by the seasonal error of each window's history.
+Mean absolute scaled error (MASE) uses the sample median. The scores are
+averaged over retained forecast observations. The ratio to the seasonal
+na\"ive forecast is computed within each configuration and then aggregated
+by geometric mean.
 
-To add a generator, implement the seed-to-series contract and register the
-class. To add an estimator, implement \texttt{run(model, generator, spec,
-config, out\_dir)} and register its name. Its result should identify the
-quantity, units, and artifacts needed for recomputation. Estimators can reuse
-\texttt{Trainer} or coordinate several runs, as V-information does.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{../article/figures/transfer_results.pdf}
+\caption{Excess prequential loss and downstream CRPS for eleven generators.
+A ratio below one indicates lower CRPS than the seasonal na\"ive forecast.
+The open marker shows the additional Waveform initialization.}
+\label{fig:transfer}
+\end{figure}
 
-The current estimator signatures use the Moirai model interface. Supporting
-another forecasting model requires adapting prediction, training, and
-checkpoint handling to that interface. Requential coding additionally needs
-reproducible sampling and probability evaluation for teacher and student.
-These extension points are documented alongside the
-\href{https://intsystems.github.io/Epiplexity/}{generated API reference}.
+\begin{table}[H]
+\centering\small
+\caption{Association of excess prequential loss with downstream CRPS.
+Intervals use paired bootstrap resampling within each set. The subset
+excludes Chaotic and Waveform and was selected after inspecting the results.}
+\label{tab:transfer}
+\begin{tabular}{@{}rrrcc@{}}
+\toprule
+Windows per run & Optimizer steps & Generators & Spearman $\rho$ & 95\% interval\\
+\midrule
+1,999,872  & 1,953  & 11 & $-0.18$ & $[-0.81,\,0.51]$\\
+39,999,488 & 39,062 & 11 & $0.00$  & $[-0.89,\,0.61]$\\
+39,999,488 & 39,062 &  9 & $-0.82$ & $[-1.00,\,-0.28]$\\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\texttt{episynth} provides a reproducible path from a controlled data source
-to a measured training trajectory and downstream forecast scores. Its saved
-artifacts support both small software examples and research comparisons
-whose assumptions can be inspected and revised.
+KernelSynth and ETS rank first and second in CRPS at both budgets. The
+Waveform repeat improves downstream CRPS substantially at nearly the
+same excess loss. In the full comparison, the intervals include zero at
+both budgets, giving little support for ranking generators by excess loss.
+The stronger association in the exploratory subset shows how the result
+depends on which generators are included.
+\repolink{publications/article/data/run_statistics.csv}{Per-run metrics.}
 
-\bibliographystyle{plainnat}
+\clearpage
+\section{Validation}\label{sec:validation}
+
+\begin{table}[H]
+\centering\small
+\caption{Recorded CPU measurements. Values are rounded independently.}
+\label{tab:example-results}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{38mm} >{\raggedright\arraybackslash}X r@{}}
+\toprule
+Measurement & Quantity & Value\\
+\midrule
+Prequential coding & Total loss $L$ (bits) & 14,828.66\\
+ & Endpoint cost $H$ (bits) & 13,344.14\\
+ & Excess loss $S$ (bits) & 1,484.53\\
+\addlinespace[3pt]
+Predictive $\mathcal V$-information & Mean test NLL in each role (bits per window) & 68.4402\\
+ & Paired gain and standard error (bits per window) & 0\\
+\addlinespace[3pt]
+OU Bayes reference & Scored windows (dequantization disabled) & 64\\
+ & Quadrature nodes (coarse / fine) & 512 / 1,024\\
+ & Mean joint NLL at fine resolution (nats per window) & 14.3602\\
+ & Mean pointwise NLL at fine resolution (nats per window) & 20.3312\\
+ & Maximum window NLL change under refinement (nats) & $2.35\times10^{-5}$\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\caption{Test coverage and outcomes in the recorded CPU suite.}
+\label{tab:test-coverage}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{27mm} >{\raggedright\arraybackslash}X rrr@{}}
+\toprule
+Component & Behavior verified and test modules & Passed & Skipped & Failed\\
+\midrule
+Data and windows &
+Series are reproducible by seed. Corpus reads recover stored rows.
+Window construction preserves context masks, target alignment, and seed order
+across worker counts.
+\testlink{generators}{Generators},
+\testlink{corpus}{Corpus},
+\testlink{windows}{Windows}. & \ChecksDataWindows\\
+\addlinespace[5pt]
+Model and training &
+Mixture likelihoods agree with PyTorch distributions. Reopening a completed
+run preserves its step count and loss vector. The CLI validates and records
+run settings.
+\testlink{model}{Model},
+\testlink{training}{Training},
+\testlink{train_cli}{CLI}. & \ChecksModelTraining\\
+\addlinespace[5pt]
+Prequential and OU &
+Saved losses reproduce the prequential decomposition. The OU reference
+agrees with the Gaussian conditional likelihood at a single prior node.
+\testlink{estimators}{Estimators},
+\testlink{ou_bayes}{OU}. & \ChecksPrequentialOU\\
+\addlinespace[5pt]
+Predictive $\mathcal V$-information &
+The paired gain agrees with an analytical Gaussian example. Tests exercise
+context removal, split isolation, checkpoint selection, and recovery from
+interruption. \testlink{v_information}{V-information}. & \ChecksVInformation\\
+\addlinespace[5pt]
+Forecast evaluation &
+The sample-based CRPS, seasonal scaling, and aggregate forecast scores
+agree with reference calculations. Tests also cover area and score-ratio
+summaries. \testlink{evaluation}{Evaluation},
+\testlink{analysis}{Analysis}. & \ChecksEvaluation\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Integration checks with external artifacts}
+The recorded suite skips two integration tests. The window-indexing test
+uses the GIFT-Eval snapshot specified by \texttt{GIFT\_EVAL\_DIR}. The
+likelihood test scores sinusoidal and noise windows using the published
+Moirai-Small checkpoint specified by \texttt{MOIRAI\_SMALL\_DIR}.
+\testlink{evaluation}{GIFT-Eval test.}
+\testlink{model}{Published-checkpoint test.}
+
+Run the library suite from the repository root.
+\begin{lstlisting}
+python -m pytest tests/episynth -q -rs
+\end{lstlisting}
+\repolink{publications/technical_report/data/test_results.json}{Per-test outcomes and skip reasons.}
+\repolink{publications/technical_report/README.md}{Report reproduction instructions.}
+
+\clearpage
+\section{Extending the library}\label{sec:extensions}
+\lstset{basicstyle=\footnotesize\ttfamily,aboveskip=5pt,belowskip=5pt}
+\subsection{Register a generator}
+Subclass \texttt{Generator}, set its \texttt{name}, and implement
+\texttt{\_batch(seeds)}. Return one row of length \texttt{self.length} for
+each seed. The example generates a sinusoid with an independent phase
+for each seed.
+\begin{lstlisting}[language=Python]
+import numpy as np
+from episynth.generators import Generator
+
+class RandomPhaseSine(Generator):
+    name = "random_phase_sine"
+
+    def _batch(self, seeds):
+        phases = np.array([
+            np.random.default_rng(int(seed)).uniform(0, 2 * np.pi)
+            for seed in seeds
+        ])
+        time = 2 * np.pi * np.arange(self.length) / 24
+        return np.sin(phases[:, None] + time[None, :])
+\end{lstlisting}
+Import the class in \path{src/episynth/generators/__init__.py}, add it to
+\texttt{GENERATORS}, and set \texttt{data.generator} to
+\texttt{random\_phase\_sine} for the CLI. An estimator can also receive the
+generator instance directly.
+\repolink{src/episynth/generators/__init__.py}{Generator registry.}
+
+\subsection{Register an estimator}
+Implement \texttt{run(model, generator, spec, config, out\_dir)} and return a
+JSON-compatible result with declared units. This example reuses the trainer
+and reports the endpoint cost $H/N$ from Eq.~\eqref{eq:area}.
+\begin{lstlisting}[language=Python]
+from episynth.estimators import build, register
+
+@register("endpoint_nll")
+class EndpointNLL:
+    def run(self, model, generator, spec, config, out_dir):
+        result = build("prequential").run(
+            model, generator, spec, config, out_dir
+        )
+        return {"bits_per_window": result["data_part_bits"] / result["n_windows"]}
+\end{lstlisting}
+Import the module before calling \texttt{build("endpoint\_nll")}.
+For the CLI, import the module through the built-in registry and set
+\texttt{estimator} to \texttt{endpoint\_nll}.
+\repolink{doc/source/extending.rst}{Extension guide.}
+
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{abbrvnat}
 \bibliography{references}
 \end{document}
