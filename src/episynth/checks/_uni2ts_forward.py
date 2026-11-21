@@ -1,11 +1,11 @@
-"""Прямой проход оригинального `MoiraiModule` из uni2ts на сохранённых входах.
+"""Direct passage of the original `MoiraiModule` from uni2ts on saved entrances.
 
-    python _uni2ts_forward.py <каталог чекпойнта> <inputs.npz> <out.npz>
+    python _uni2ts_forward.py <checkpoint directory> <inputs.npz> <out.npz>
 
-Запускается интерпретатором с установленным uni2ts 2.0.0. Входы: массивы `target`,
-`observed_mask`, `sample_id`, `time_id`, `variate_id`, `prediction_mask` и скаляр `patch_size`.
-Выход: `loc`, `scale`, `weights_logits` и параметры компонент после отображений в область
-определения, `log_prob` на `target`.
+Launched by an interpreter with installed uni2ts 2.0.0Entrances: arrays `target`, `observed_mask`,
+`sample_id`, `time_id`, `variate_id`, `prediction_mask` scalar `patch_size`Exit: `loc`, `scale`,
+`weights_logits` and component parameters after mapping to the definition area, `log_prob` on
+`target`.
 """
 
 import sys
@@ -15,7 +15,7 @@ import torch
 
 
 def main(ckpt_dir: str, inputs: str, out: str) -> None:
-    """Считает выходы оригинала и сохраняет их в `out`."""
+    """It counts the outputs of the original and saves them to `out`."""
     from uni2ts.model.moirai import MoiraiModule
 
     module = MoiraiModule.from_pretrained(ckpt_dir).eval()

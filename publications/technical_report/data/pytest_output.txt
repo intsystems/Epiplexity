@@ -2,6 +2,6 @@
 ...........................................                              [100%]
 - generated xml file: D:\GitHubD\Epiplexity\build\publication_split_checks\junit.xml -
 =========================== short test summary info ===========================
-SKIPPED [1] tests\episynth\test_evaluation.py:73: GIFT_EVAL_DIR не задан
-SKIPPED [1] tests\episynth\test_model.py:77: MOIRAI_SMALL_DIR не задан
+SKIPPED [1] tests\episynth\test_evaluation.py:73: GIFT_EVAL_DIR is unset
+SKIPPED [1] tests\episynth\test_model.py:77: MOIRAI_SMALL_DIR is unset
 113 passed, 2 skipped in 28.45s

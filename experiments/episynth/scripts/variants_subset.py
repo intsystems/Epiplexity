@@ -1,6 +1,6 @@
-"""Варианты оценки эпиплексии по сохранённым лоссам и их корреляции Спирмена с качеством.
+"""Compare epiplexity estimators and forecast performance using archived losses.
 
-Запуск: python epiplexity_variants.py <каталог результатов> <куда писать таблицу.md>
+Usage: python variants_subset.py <series directory> <output.md>
 """
 
 import json
@@ -21,7 +21,7 @@ H = 64
 
 
 def load(g):
-    """Лоссы окон, отложенные лоссы по чекпойнтам и финальные значения прогона."""
+    """Load training-window losses, held-out checkpoint losses, and final losses."""
     d = root / "runs" / f"{PREFIX}{g}"
     ell = np.fromfile(d / "window_loss.f32", dtype=np.float32).astype(np.float64)
     recs = [json.loads(line) for line in (d / "heldout.jsonl").read_text().splitlines()]
@@ -32,7 +32,7 @@ def load(g):
 
 
 def curve_area(fr, vals, lfin, n):
-    """Площадь над lfin под кусочно-линейной кривой отложенного лосса по долям прогона; до первого чекпойнта — значение первого."""
+    """Integrate the held-out loss above the final loss, interpolating linearly between\n    checkpoint fractions and holding the first value constant before its checkpoint."""
     x = np.concatenate([[0.0], fr]) * n
     y = np.concatenate([[vals[0]], vals]) - lfin
     return float(np.trapezoid(y, x))
@@ -67,20 +67,20 @@ for g in GENS:
     est["drop_ema"][g] = l0 - l_ema
 
 DESCR = {
-    "A_ema": "Σℓ − N·L_fin, L_fin EMA на отложенном (основная)",
-    "A_raw": "Σℓ − N·L_fin, L_fin текущих весов на отложенном",
-    "A_train_tail": "Σℓ − N·(средний обучающий лосс последних 2 % окон), без отложенного набора",
-    "A_min_ema": "Σℓ − N·min по чекпойнтам L_ema",
-    "A_pos_ema": "Σ max(ℓ − L_fin_ema, 0): только положительные превышения",
-    "A_first_half_ema": "площадь над L_fin_ema по первой половине окон",
-    "A_second_half_ema": "площадь над L_fin_ema по второй половине окон",
-    "A_heldout_curve_ema": "площадь под кусочно-линейной кривой отложенного лосса EMA по 7 чекпойнтам над L_fin",
-    "A_heldout_curve_raw": "то же по кривой текущих весов",
-    "A_rel_ema": "A_ema / (N·(L_start − L_fin)): доля площади от прямоугольника полного падения",
-    "sum_loss": "Σℓ без вычета (длина кода)",
-    "L_fin_ema": "финальный лосс EMA",
-    "L_fin_raw": "финальный лосс текущих весов",
-    "L_start": "лосс первого 1 % окон",
+    "A_ema": "Σℓ − N·L_fin using the final held-out EMA loss (primary estimate)",
+    "A_raw": "Σℓ − N·L_fin using the final held-out loss of the raw weights",
+    "A_train_tail": "Σℓ − N times the mean training loss of the last 2% of windows, without a held-out set",
+    "A_min_ema": "Σℓ − N times the minimum held-out EMA loss across checkpoints",
+    "A_pos_ema": "Σ max(ℓ − L_fin_ema, 0), the positive excess only",
+    "A_first_half_ema": "Area above L_fin_ema over the first half of the windows",
+    "A_second_half_ema": "Area above L_fin_ema over the second half of the windows",
+    "A_heldout_curve_ema": "Area above L_fin and under the piecewise-linear held-out EMA loss curve over seven checkpoints",
+    "A_heldout_curve_raw": "The same held-out curve area for raw weights",
+    "A_rel_ema": "A_ema / (N·(L_start − L_fin)), the area divided by the rectangle spanning the full loss drop",
+    "sum_loss": "Σℓ without subtraction (code length)",
+    "L_fin_ema": "Final held-out EMA loss",
+    "L_fin_raw": "Final held-out loss of the raw weights",
+    "L_start": "Mean loss of the first 1% of windows",
     "drop_ema": "L_start − L_fin_ema",
 }
 
@@ -90,21 +90,21 @@ qc = quality_table(evals, naive, metric="scaled_crps")
 qm = quality_table(evals, naive, metric="MASE[0.5]")
 qn = quality_table(evals, naive, metric="nll_per_point")
 targets = {
-    "CRPS/наив геом": {g: qc[g]["geo_mean_ratio"] for g in GENS},
-    "CRPS/наив медиана": {g: qc[g]["median_ratio"] for g in GENS},
-    "ранг CRPS": {g: qc[g]["mean_rank"] for g in GENS},
-    "MASE/наив геом": {g: qm[g]["geo_mean_ratio"] for g in GENS},
-    "NLL GIFT, ранг": {g: qn[g]["mean_rank"] for g in GENS},
+    "CRPS / naive (geometric mean)": {g: qc[g]["geo_mean_ratio"] for g in GENS},
+    "CRPS / naive (median)": {g: qc[g]["median_ratio"] for g in GENS},
+    "CRPS rank": {g: qc[g]["mean_rank"] for g in GENS},
+    "MASE / naive (geometric mean)": {g: qm[g]["geo_mean_ratio"] for g in GENS},
+    "GIFT-Eval NLL rank": {g: qn[g]["mean_rank"] for g in GENS},
 }
 EXCL = tuple(os.environ.get("EXCLUDE", "chaotic,waveform").split(","))
-samples = {"все 11": GENS, "без " + ", ".join(EXCL): [g for g in GENS if g not in EXCL]}
+samples = {"All 11": GENS, "Excluding " + ", ".join(EXCL): [g for g in GENS if g not in EXCL]}
 est = {k: v for k, v in est.items() if k in ("A_ema", "A_raw", "drop_ema", "L_fin_ema", "sum_loss")}
 
-lines = ["# Варианты оценки эпиплексии: корреляции Спирмена с качеством\n",
-         "Значение в ячейке — ρ Спирмена между оценкой и целью по генераторам; меньше цель — лучше модель, поэтому отрицательная ρ значит «больше эпиплексия — лучше». В скобках 95 % бутстреп-интервал для основных столбцов.\n"]
+lines = ['# Estimator variants and Spearman correlations with forecast performance\n',
+         "Each cell shows Spearman's ρ between an estimate and a performance metric across generators. Lower metric values are better, so negative ρ associates a higher estimate with better models. Brackets give 95% bootstrap intervals where reported.\n"]
 for sname, keep in samples.items():
     lines.append(f"\n## {sname} (n = {len(keep)})\n")
-    header = "| оценка | " + " | ".join(targets) + " |"
+    header = "| Estimator | " + " | ".join(targets) + " |"
     lines += [header, "|" + "---|" * (len(targets) + 1)]
     for name, vals in est.items():
         row = [f"`{name}`"]
@@ -116,10 +116,10 @@ for sname, keep in samples.items():
             else:
                 row.append(f"{spearmanr(x, y).statistic:+.2f}")
         lines.append("| " + " | ".join(row) + " |")
-lines.append("\n## Обозначения\n")
+lines.append("\n## Estimator definitions\n")
 lines += [f"- `{k}` — {v}" for k, v in DESCR.items()]
-lines.append("\n## Значения оценок, млн нат (кроме A_rel и L в натах на окно)\n")
-lines.append("| генератор | " + " | ".join(est) + " |")
+lines.append("\n## Estimate values (areas and total loss in million nats, point estimates of loss in nats per window, A_rel dimensionless)\n")
+lines.append("| Generator | " + " | ".join(est) + " |")
 lines.append("|" + "---|" * (len(est) + 1))
 for g in GENS:
     cells = []

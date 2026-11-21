@@ -1,14 +1,14 @@
-r"""Прогон прогнозчика по конфигурациям GIFT-Eval с записью метрик по окнам.
+r"""Run the forecaster by configurations GIFT-Eval with recording metrics on the windows.
 
-    python -m episynth.evaluation.run --data <снимок GiftEval> --out <каталог> \\
+    python -m episynth.evaluation.run --data <GiftEval snapshot> --out <catalogue>
         --model seasonal_naive | moirai [--checkpoint <model.pt|model.safetensors>] [--patch-size 32] \\
         [--protocol ours|notebook] [--configs electricity/H m4_hourly ...] [--device cuda]
 
-В каталог пишутся `windows/<конфигурация>.csv` (строка на окно: ряд, номер окна и все суммы
-`window_stats`) и `summary.csv` (строка на конфигурацию: метрики `aggregate`). Готовые
-конфигурации при повторном запуске пропускаются только при совпадении `evaluation.json`:
-настроек оценки, SHA-256 чекпойнта и абсолютного пути снимка данных. Содержимое снимка
-не хешируется; для изменённых данных или настроек нужен новый выходной каталог.
+In the catalog write 'windows/<configuration>.csv' (line on the window: row, window number and all
+sums) `window_stats`and `summary.csv` (configuration line: metrics) `aggregate`Finished
+configurations when restarted are passed only when matched. `evaluation.json`: evaluation settings,
+SHA-256 Checkpoint and absolute path of data capture. The contents of the image are not hashed; for
+changed data or settings, you need a new output directory.
 """
 
 import argparse
@@ -30,7 +30,7 @@ _SUMMARY_FIELDS = ("config", "model", "seconds", *AGGREGATE_FIELDS)
 
 
 def evaluate_config(dataset: GiftDataset, forecaster: Forecaster, chunk: int = 2048) -> tuple[list[dict], dict]:
-    """Записи окон и метрики датасета для прогнозчика."""
+    """Record windows and dataset metrics for the forecaster."""
     instances = list(dataset.test_instances())
     rows = []
     for start in range(0, len(instances), chunk):
@@ -44,7 +44,7 @@ def evaluate_config(dataset: GiftDataset, forecaster: Forecaster, chunk: int = 2
 
 
 def _load_model(args: argparse.Namespace) -> MoiraiModule:
-    """Восстанавливает native-модель по чекпойнту, uni2ts — по явной или стандартной конфигурации."""
+    """Restores the native model by checkpoint, uni2ts - by explicit or standard configuration."""
     if args.checkpoint is None:
         raise ValueError("--checkpoint is required for --model moirai")
     native = Path(args.checkpoint).suffix != ".safetensors"
@@ -74,7 +74,7 @@ def _load_model(args: argparse.Namespace) -> MoiraiModule:
 
 
 def build_forecaster(args: argparse.Namespace, dataset: GiftDataset, module: MoiraiModule | None = None) -> Forecaster:
-    """Прогнозчик по аргументам командной строки; готовая модель позволяет не читать чекпойнт повторно."""
+    """Forecaster on command line arguments; ready-made model allows you not to read checkpoint again."""
     if args.model == "seasonal_naive":
         return SeasonalNaive(dataset.season)
     if args.forecaster is None:
@@ -87,7 +87,7 @@ def build_forecaster(args: argparse.Namespace, dataset: GiftDataset, module: Moi
 
 
 def _prepare_output(args: argparse.Namespace, cfg: MoiraiConfig | None) -> None:
-    """Проверяет идентичность оценки до чтения готовых строк и любых изменений старого вывода."""
+    """Checks the identity of the score before reading the finished lines and any changes to the old conclusion."""
     identity = {"version": 1, "data": str(args.data.resolve()), "model": args.model, "term": args.term}
     if cfg is not None:
         digest = hashlib.sha256()
@@ -116,13 +116,13 @@ def _prepare_output(args: argparse.Namespace, cfg: MoiraiConfig | None) -> None:
 
 
 def main() -> None:
-    """Разбор аргументов и прогон по конфигурациям."""
+    """Analysis of arguments and run by configurations."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", choices=["seasonal_naive", "moirai"], required=True)
     parser.add_argument("--checkpoint", default=None)
-    parser.add_argument("--config-json", default=None, help="config.json прогона обучения или конфигурация модели")
+    parser.add_argument("--config-json", default=None, help="Training run config.json or model configuration")
     parser.add_argument("--weights", choices=["ema", "raw"], default="ema")
     parser.add_argument("--components", nargs="*", default=["student_t", "normal_fixed", "log_normal"])
     parser.add_argument("--patch-size", type=int, default=32)

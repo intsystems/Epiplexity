@@ -1,4 +1,4 @@
-"""Модели экспоненциального сглаживания ETS в форме пространства состояний."""
+"""Exponential smoothing models of ETS in the form of state space."""
 
 import numpy as np
 
@@ -11,17 +11,17 @@ _LEVEL_CEIL = 1e6
 
 
 class ETS(Generator):
-    r"""ETS со случайным сочетанием ошибки (A, M), тренда (N, A, затухающий) и сезонности (N, A, M).
+    r"""ETS with a random combination of error (A, M), trend (N, A, fading) and seasonality (N, A, M).
 
-    Параметры сглаживания и начальные состояния равномерные, период из
-    :math:`\{4, 7, 12, 24, 52\}`; уровень ограничен сверху и снизу, сезонные индексы
-    мультипликативной модели зажаты в :math:`[0{,}1;\,10]`. Ряд, вышедший за :math:`10^8` или потерявший
-    конечность, заменяется простой аддитивной моделью, как в оригинале. Распределение не
-    зависит от длины ряда. Рекурсия состояний считается пакетом по рядам поэлементно теми же
-    операциями, что у оригинала, поэтому основной режим совпадает с режимом воспроизведения.
+    The anti-aliasing parameters and initial states are uniform, the period from :math:`\{4, 7, 12,
+    24, 52\}`; the level is limited from above and below, the seasonal indexes of the multiplicative
+    model are sandwiched in :math:`[0{,}1;\,10]`. The series that went beyond :math:`10^8` or lost a
+    limb is replaced by a simple additive model, as in the original. The distribution does not
+    depend on the length of the series. The recursion of states is considered to be a packet of the
+    same operations as the original, so the main mode matches.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "ets"

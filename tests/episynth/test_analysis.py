@@ -1,4 +1,4 @@
-"""Слой анализа: площадь с ошибкой, кривая площади, сводки качества, корреляции."""
+"""Layer of analysis: area with error, area curve, summaries of quality, correlations."""
 
 import csv
 import json
@@ -15,7 +15,7 @@ def _write_run(tmp_path, losses, held):
 
 
 def test_run_area_and_curve(tmp_path):
-    """Площадь равна сумме лоссов минус N на финальный лосс; ошибка равна N на стандартную ошибку; кривая кончается площадью."""
+    """The area is equal to the sum of the loss minus N per final loss; the error is equal to N per standard error; the curve ends with the area."""
     losses = [5.0, 4.0, 3.0, 2.0]
     held = [2.0, 2.0, 1.0, 3.0]
     _write_run(tmp_path, losses, held)
@@ -108,7 +108,7 @@ def _write_summary(path, rows):
 
 
 def test_quality_table_and_correlations(tmp_path):
-    """Ранги, отношения к наиву и корреляция Спирмена с интервалом на игрушечных сводках."""
+    """Ranks, attitudes to naive and Spearman's correlation with intervals on toy summaries."""
     configs = ["a", "b", "c"]
     _write_summary(tmp_path / "naive.csv", [{"config": c, "model": "naive", "scaled_crps": 1.0} for c in configs])
     _write_summary(tmp_path / "m1.csv", [{"config": c, "model": "m", "scaled_crps": v} for c, v in zip(configs, [0.5, 0.5, 2.0], strict=True)])

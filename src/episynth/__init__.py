@@ -1,4 +1,4 @@
-"""Инструменты эксперимента по эпиплексии синтетических временных рядов."""
+"""Instruments of the experiment on epiplexity of synthetic time series."""
 
 __version__ = "0.1.0"
 

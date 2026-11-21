@@ -1,4 +1,4 @@
-"""Негладкие периодические волны: пила, меандр, треугольник."""
+"""Smooth periodic waves: saw, meander, triangle."""
 
 import numpy as np
 from scipy.signal import sawtooth, square
@@ -9,15 +9,16 @@ _TYPES = ["sawtooth", "square", "triangle"]
 
 
 class Waveform(Generator):
-    """Сумма одной–трёх негладких волн со случайными частотой, амплитудой, фазой и скважностью.
+    """The sum of one or three non-smooth waves with random frequency, amplitude, phase and porosity.
 
-    С вероятностью 0,3 амплитуда модулируется синусом, с вероятностью 0,7 добавляется белый
-    шум, с вероятностью 0,3 — линейный тренд. Частоты заданы числом периодов на ряд, поэтому
-    распределение формы не зависит от длины. Оригинал уже векторизован по времени, основной
-    режим совпадает с режимом воспроизведения.
+    With the probability of 0,3, the amplitude is modulated by the sine, with the probability of
+    0,7, white noise is added, with the probability of 0,3 is a linear trend. The frequencies are
+    given by the number of periods per series, so the distribution of the shape is independent of
+    the length. The original is already vectored in time, the main mode coincides with the playback
+    mode.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "waveform"

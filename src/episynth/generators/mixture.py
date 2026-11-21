@@ -1,4 +1,4 @@
-"""Равная смесь генераторов: сид выбирает компоненту и ряд в ней."""
+"""Equal mixture of generators: the seed selects a component and a series."""
 
 from collections.abc import Sequence
 
@@ -8,27 +8,28 @@ from .base import Generator
 
 
 class Mixture(Generator):
-    """Равная смесь генераторов одной длины ряда.
+    """Uniform mixture of generators with the same series length.
 
-    Сид `s` даёт ряд компоненты `s % k` с сидом `s // k`, где `k` — число компонент: подряд идущие
-    сиды обходят компоненты по кругу, и каждый ряд компоненты используется не более одного раза.
-    Диапазон сидов смеси `[a, b)` требует у каждой компоненты сидов из `[a // k, b // k]`; для
-    корпусов это значит, что отложенный набор смеси с первого сида `h` берёт у корпусов ряды с сида
-    `h // k`. Режим воспроизведения передаётся компоненте.
+    For `k` components, seed `s` selects component `s % k` with seed `s // k`.
+    Consecutive seeds cycle through the components without reusing a series.
+    A mixture range `[a, b)` requires component seeds within `[a // k, b // k]`.
+    For corpus-backed mixtures, a held-out split starting at seed `h` reads
+    from the component corpora starting at `h // k`. Reproduction mode is
+    forwarded to the selected component.
 
     Args:
-        components: Генераторы; длина ряда у всех одна.
+        components: Generators in assignment order.
 
     Attributes:
-        name: `mixture(` и имена компонент через запятую.
-        components: Компоненты в порядке задания.
+        name: `mixture(` followed by the comma-separated component names.
+        components: Generators in assignment order.
     """
 
     def __init__(self, components: Sequence[Generator]) -> None:
         if not components:
-            raise ValueError("смесь без компонент")
+            raise ValueError("A mixture needs at least one component")
         if len({g.length for g in components}) != 1:
-            raise ValueError("компоненты смеси с разной длиной ряда")
+            raise ValueError("Mixture components have different series lengths")
         super().__init__(components[0].length)
         self.components = list(components)
         self.name = "mixture(" + ",".join(g.name for g in self.components) + ")"

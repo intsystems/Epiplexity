@@ -1,4 +1,4 @@
-"""Генератор ОУ и точный байесовский лосс окон."""
+"""OU generator and precise Bayesian window loss."""
 
 import math
 
@@ -10,7 +10,7 @@ from episynth.windows import WindowSpec, make_windows
 
 
 def test_ou_generator_is_stationary_ar1():
-    """Ряды ОУ стационарны с единичной дисперсией; автокорреляция лага 1 лежит в носителе приора."""
+    """The OU series are stationary with unit variance; the autocorrelation of the 1 lag lies in the prior carrier."""
     gen = GENERATORS["ou"](length=1024)
     x = gen.generate(np.arange(400)).astype(np.float64)
     assert abs(x.var() - 1.0) < 0.1
@@ -21,7 +21,7 @@ def test_ou_generator_is_stationary_ar1():
 
 
 def test_single_node_matches_closed_form():
-    """При одном узле квадратуры точный лосс горизонта равен сумме условных гауссовских лог-плотностей AR(1)."""
+    """At one quadrature node, the exact loss of the horizon is equal to the sum of the conditional Gaussian log densities AR (1)."""
     phi = np.array([0.7])
     spec = WindowSpec(series_length=256, context_max=128, horizon=32, patch_size=16, context_lengths=(50, 128), dequantize_width=0.0)
     gen = GENERATORS["ou"](length=256)
@@ -40,7 +40,7 @@ def test_single_node_matches_closed_form():
 
 
 def test_log_marginal_prefix_consistency():
-    """Маргинал префикса длины 1 есть стандартная нормаль; квадратура даёт конечные значения."""
+    """The margin of the length prefix 1 is the standard normal; the square gives the finite values."""
     x = np.random.default_rng(0).standard_normal((5, 10))
     lm = log_marginal(x, np.ones(5, dtype=int), phi_nodes(50))
     assert np.allclose(lm, -0.5 * math.log(2 * math.pi) - 0.5 * x[:, 0] ** 2)
@@ -48,7 +48,7 @@ def test_log_marginal_prefix_consistency():
 
 
 def test_pointwise_bound_above_sequential_on_average():
-    """Поточечный эталон в среднем выше последовательного; при одном узле он равен сумме гауссовских лог-плотностей точек при контексте."""
+    """The point standard is on average higher than the sequential one; at one node it is equal to the sum of Gaussian log densities of points in context."""
     from episynth.checks.ou_bayes import pointwise_window_nll
 
     spec = WindowSpec(series_length=256, context_max=128, horizon=32, patch_size=16, context_lengths=(50, 128), dequantize_width=0.0)

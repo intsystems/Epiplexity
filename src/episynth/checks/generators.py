@@ -1,22 +1,23 @@
-r"""Проверка генераторов против оригиналов Mix, Don't Pick: воспроизведение, распределение, скорость.
+r"""Generators vs. originals Mix, Don't Pick: playback, distribution, speed.
 
-    python -m episynth.checks.generators --original <клон mix-dont-pick> --out <каталог> \
-        [--original-python <интерпретатор с зависимостями оригинала>] [--names ets sde ...]
+    python -m episynth.checks.generators --original < clone mix-dont-pick> --out <catalogue>
+        [-original-python <interpreter with dependencies of the original>] [-names ets sde ...]
 
-Оригинал считается отдельным интерпретатором (`_original_corpus.py`), потому что ему нужны
-свои версии зависимостей: под numpy 2 генератор TimeSynth оригинала падает в пошаговых
-циклах и молча подменяет ряды запасными. На каждый генератор пишется `<каталог>/<имя>.json`
-с тремя блоками.
+The original is considered a separate interpreter (`_original_corpus.py`) because it needs its own
+versions of dependencies: under the numpy 2, the original TimeSynth generator drops in step-by-step
+cycles and silently replaces the rows with spares. Each generator is written
+"<catalogue>/<name>.json" with three blocks.
 
-- `exact`: корпус `reproduce(seed, n)` против `generate_series(n)` оригинала с тем же сидом:
-  доля рядов, совпавших до бита, и наибольшая относительная ошибка (к стандартному
-  отклонению ряда) среди остальных.
-- `distribution`: статистики ряда (стандартное отклонение, размах, средний модуль
-  разности, автокорреляция разностей, доля энергии спектра выше четверти частоты
-  Найквиста) по корпусу оригинала и по корпусу основного режима на других сидах, p-значения
-  критерия Колмогорова–Смирнова; доля неконечных рядов у обоих. У генераторов, где основной
-  режим совпадает с режимом воспроизведения, это проверка самого критерия, а не кода.
-- `speed`: рядов в секунду у оригинала и у основного режима.
+- `exact`: hull `reproduce(seed, n)` vs `generate_series(n)` original with the same seat:
+  the proportion of rows that matched to the bit and the largest relative error (to the standard
+  deviation of the series) among the rest.
+- `distribution`: series statistics (standard deviation, scale, middle module)
+  The difference, the autocorrelation of the difference, the fraction of the energy of the spectrum
+  above a quarter of the Nyquist frequency) in the body of the original and in the body of the main
+  mode on other seats, the p-value of the Kolmogorov-Smirnov criterion; the proportion of infinite
+  series in both. In generators where the main mode coincides with the reproduction mode, this is a test
+  of the criterion itself, not of the code.
+- `speed`: rows per second for the original and the main mode.
 """
 
 import argparse
@@ -36,7 +37,7 @@ _HELPER = Path(__file__).with_name("_original_corpus.py")
 
 
 def original_corpus(python: str, repo: Path, name: str, length: int, seed: int, n: int) -> tuple[np.ndarray, float]:
-    """Корпус оригинала `(n, length)` float32 и время его генерации в секундах."""
+    """The body of the original `(n, length)` float32 and its generation time in seconds."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "corpus.npy"
         proc = subprocess.run(
@@ -49,7 +50,7 @@ def original_corpus(python: str, repo: Path, name: str, length: int, seed: int, 
 
 
 def series_stats(y: np.ndarray) -> dict[str, float]:
-    """Статистики одного ряда для сравнения распределений."""
+    """Statistics of the same series for comparison of distributions."""
     y = y.astype(np.float64)
     d = np.diff(y)
     dc = d - d.mean()
@@ -65,7 +66,7 @@ def series_stats(y: np.ndarray) -> dict[str, float]:
 
 
 def check_one(name: str, repo: Path, python: str, length: int, n_exact: int, n_stat: int, n_speed: int) -> dict:
-    """Все три проверки для одного генератора."""
+    """All three checks for one generator."""
     ours = GENERATORS[name](length=length)
     res: dict = {"generator": name, "length": length, "original_python": python}
 
@@ -105,7 +106,7 @@ def check_one(name: str, repo: Path, python: str, length: int, n_exact: int, n_s
 
 
 def main() -> None:
-    """Разбор аргументов и запуск проверок по списку генераторов."""
+    """Analysis of arguments and launching checks on the list of generators."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--original", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)

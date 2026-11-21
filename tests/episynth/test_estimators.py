@@ -1,4 +1,4 @@
-r"""Тесты плагинного интерфейса оценщиков эпиплексии."""
+r"""Plugin interface tests of epiplexity evaluators."""
 
 import json
 from pathlib import Path
@@ -12,7 +12,7 @@ from episynth.estimators.registry import _REGISTRY
 
 
 def test_builtin_estimators_registered():
-    """Встроенные оценщики зарегистрированы под ожидаемыми именами."""
+    """Built-in estimators are registered under expected names."""
     assert "prequential" in available()
     assert "requential" in available()
     assert "prequential" in _REGISTRY
@@ -20,20 +20,20 @@ def test_builtin_estimators_registered():
 
 
 def test_build_returns_instance():
-    """build создаёт экземпляр запрошенного оценщика."""
+    """build creates a copy of the requested estimator."""
     est = build("prequential")
     assert isinstance(est, PrequentialEstimator)
     assert isinstance(est, EpiplexityEstimator)
 
 
 def test_build_unknown_raises():
-    """build неизвестного имени бросает KeyError с перечнем доступных."""
+    """An unknown name builder drops a KeyError with a list of available ones."""
     with pytest.raises(KeyError, match="prequential"):
         build("no_such_estimator")
 
 
 def test_register_rejects_duplicates():
-    """Повторная регистрация того же имени бросает ValueError."""
+    """Re-registration of the same name is dropped by ValueError."""
 
     class _Dup(EpiplexityEstimator):
         name = "dupe"
@@ -45,7 +45,7 @@ def test_register_rejects_duplicates():
 
 
 def test_requential_is_skeleton():
-    """Requential-оценщик зарегистрирован, но его прогон ещё не реализован."""
+    """The Requential Estimator is registered, but its run has not yet been implemented."""
     est = build("requential")
     assert est.name == "requential"
     with pytest.raises(NotImplementedError):
@@ -53,14 +53,14 @@ def test_requential_is_skeleton():
 
 
 def test_prequential_from_run_dir_uses_heldout(tmp_path):
-    """from_run_dir считает площадь через heldout_ema_1.f32, а не через хвост прогона."""
+    """The from_run_dir counts the area through the heldout_ema_1.f32 rather than through the tail of the run."""
     import numpy as np
 
     np.asarray([5.0, 4.0, 3.0, 2.0], dtype=np.float32).tofile(tmp_path / "window_loss.f32")
     np.asarray([2.0, 2.0, 1.0, 3.0], dtype=np.float32).tofile(tmp_path / "heldout_ema_1.f32")
     est = build("prequential", variant="ema")
     res = est.from_run_dir(tmp_path)
-    # model part = sum_loss - N*l_fin = 14 - 4*2 = 6 нат
+    # model part = sum_loss - N*l_fin = 14 - 4*2 = 6 nats
     import math
 
     assert res["n_windows"] == 4.0

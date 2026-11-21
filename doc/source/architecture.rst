@@ -3,46 +3,48 @@
 Architecture
 ============
 
-Пакет ``episynth`` — это библиотека оценки эпиплексии синтетических временных рядов. Эксперимент
-устроен так: модель-наблюдатель обучается на потоке окон, сгенерированных синтетическим
-генератором, а оценщик возвращает разложение кодовой длины
-в битах или пользу контекста для прогноза в битах на окно (V-information).
+The ``episynth`` package estimates epiplexity in synthetic time series. An observer model
+trains on a stream of windows from a synthetic generator. The estimator reports a
+decomposition of the code length in bits or the predictive value of the context in bits
+per window (V-information).
 
-Слои
-----
+Layers
+------
 
-Библиотека разделена на нейтральные слои и плагинный слой оценщиков. Нейтральные слои не зависят
-от выбранного алгоритма оценки и используются всеми оценщиками одинаково.
+The library has shared layers and an estimator plugin layer. The shared layers are
+independent of the estimation algorithm and serve all estimators in the same way.
 
 .. list-table::
    :widths: 25 75
    :header-rows: 1
 
-   * - Модуль
-     - Назначение
+   * - Module
+     - Purpose
    * - ``episynth.generators``
-     - Одиннадцать генераторов одномерных рядов (KernelSynth, ETS, Waveform, SDE и др.) из
-       Mix, Don't Pick и OU-эталон. Ряд зависит только от сида и длины; ``generate(seeds)`` даёт ``(n, L)``.
+     - Eleven univariate series generators from Mix, Don't Pick (including KernelSynth, ETS,
+       Waveform and SDE), plus an OU reference generator. Each series depends only on its
+       seed and length. ``generate(seeds)`` returns an array of shape ``(n, L)``.
    * - ``episynth.windows``
-     - Окна задачи прогноза: ``WindowSpec`` (форма задачи), ``WindowBatch`` (батч окон),
-       ``WindowStream`` (поток батчей по возрастающим сидам в фоновом потоке).
+     - Forecasting windows. ``WindowSpec`` defines the task shape, ``WindowBatch`` holds
+       a batch of windows, and ``WindowStream`` streams batches in ascending seed order
+       on a background thread.
    * - ``episynth.model.moirai``
-     - Порт Moirai 1.x: ``MoiraiModule``, ``MoiraiConfig``, ``Mixture`` (смесь распределений
-       с ``log_prob`` и ``sample``), загрузка опубликованных чекпойнтов.
+     - Moirai 1.x port with ``MoiraiModule``, ``MoiraiConfig``, ``Mixture`` (a mixture
+       distribution with ``log_prob`` and ``sample``), and support for loading published
+       checkpoints.
    * - ``episynth.training``
-     - Общий движок обучения ``Trainer``: окна, EMA весов, чекпойнты, возобновление, heldout-оценка.
-       Протокол-специфичный шаг вынесен в переопределяемый ``compute_loss``.
+     - Shared ``Trainer`` for window batches, EMA weights, checkpointing, resuming runs,
+       and held-out evaluation. Override ``compute_loss`` for a protocol-specific step.
    * - ``episynth.evaluation``
-     - Оценка на GIFT-Eval: прогнозчики, метрики, ``run``.
+     - Forecasters, metrics, and the ``run`` entry point for GIFT-Eval evaluation.
    * - ``episynth.estimators``
-     - **Плагинный слой**: оценщики эпиплексии. Выбор и добавление алгоритмов.
-       Именно этот слой расширяется пользователем.
+     - **Plugin layer** for selecting epiplexity estimators and adding custom algorithms.
 
-Плагинный интерфейс оценщиков
------------------------------
+Estimator plugin interface
+--------------------------
 
-Центральная абстракция — :class:`episynth.estimators.base.EpiplexityEstimator` — контракт, который
-должен реализовать каждый алгоритм:
+Every estimation algorithm implements the
+:class:`episynth.estimators.base.EpiplexityEstimator` protocol.
 
 .. code-block:: python
 
@@ -53,12 +55,13 @@ Architecture
             config: TrainConfig, out_dir: str | Path,
         ) -> Mapping[str, Any]: ...
 
-Метод ``run`` выполняет обучение и возвращает JSON-совместимый словарь.
-Prequential возвращает ``model_part_bits`` и ``data_part_bits`` (в битах);
-V-information — predictive entropies и их разность в битах на окно.
+The ``run`` method carries out training and returns a JSON-compatible dictionary.
+The prequential estimator returns ``model_part_bits`` and ``data_part_bits``.
+The V-information estimator returns predictive entropies and their difference in bits
+per window.
 
-Алгоритмы регистрируются в :mod:`episynth.estimators.registry` по имени и создаются фабрикой
-:func:`episynth.estimators.registry.build`:
+Register algorithms by name in :mod:`episynth.estimators.registry` and instantiate them
+with the :func:`episynth.estimators.registry.build` factory.
 
 .. code-block:: python
 
@@ -75,51 +78,54 @@ V-information — predictive entropies и их разность в битах н
             self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
             config: TrainConfig, out_dir: str | Path,
         ) -> dict[str, float]:
-            ...  # обучение и подсчёт кодовой длины
+            ...  # Train and compute the code length.
             return {"model_part_bits": ..., "data_part_bits": ...}
 
-    est = build("my_estimator")          # выбор по имени
+    est = build("my_estimator")          # Select by name.
     result = est.run(model, generator, spec, config, "runs/my")
 
-Пользователь выбирает алгоритм по имени и может добавить собственный одним модулем, не меняя
-нейтральные слои.
+Users can select an algorithm by name or add a custom algorithm in a single module.
 
-Встроенные оценщики
+Built-in estimators
 -------------------
 
-* :class:`episynth.estimators.prequential.PrequentialEstimator` — prequential-оценка: сумма лоссов
-  окон до шага по ним (площадь над кривой лосса). Реализован поверх общего ``Trainer``.
-* :class:`episynth.estimators.requential.RequentialEstimator` — requential-оценка (код студента,
-  реконструируемого по индексам сэмплов из распределения учителя). Зарегистрирован, но его прогон
-  пока скелет: бросает :class:`NotImplementedError`. См. ``publications/research_notes/.../requential_coding.md``.
+* :class:`episynth.estimators.prequential.PrequentialEstimator` uses the shared ``Trainer``
+  to sum window losses before their training step (the area under the loss curve).
+* :class:`episynth.estimators.requential.RequentialEstimator` concerns the code for a student
+  reconstructed from indices of samples drawn from the teacher's distribution. The
+  registered stub raises :class:`NotImplementedError` on execution. See
+  ``publications/research_notes/.../requential_coding.md``.
 
-* :class:`episynth.estimators.v_information.VInformationEstimator` — два обучения
-  Moirai с общей нормировкой по train, выбор моделей на validation и парное
-  сравнение на test. Условный предиктор может игнорировать контекст.
+* :class:`episynth.estimators.v_information.VInformationEstimator` trains two Moirai
+  models with shared training-set normalization, selects checkpoints on the validation
+  set, and compares paired losses on the test set. The conditional predictor can
+  ignore the context.
 
-Взаимодействие ``Trainer`` и оценщика
--------------------------------------
+How estimators use the trainer
+------------------------------
 
-Общий ``Trainer`` в :mod:`episynth.training` выполняет механику обучения. Протокол-специфичный
-шаг — вычисление лосса каждого окна — вынесен в метод ``Trainer.compute_loss``. Prequential-оценщик
-использует ``Trainer`` без изменений; requential-оценщик (когда будет реализован) наследует
-``Trainer`` и переопределяет ``compute_loss``, чтобы возвращать KL-оценку учитель-студент.
+The shared ``Trainer`` in :mod:`episynth.training` runs the training loop and delegates
+protocol-specific window losses to ``Trainer.compute_loss``. The prequential estimator
+uses the standard implementation. The planned requential estimator subclasses
+``Trainer`` and overrides ``compute_loss`` to estimate the teacher-student KL divergence.
 
 CLI
 ---
 
-Выбор оценщика встроен в конфигурационный CLI :mod:`episynth.train`, которым запускаются большие
-серии экспериментов. Файл конфигурации (разделы ``data``, ``spec``, ``model``, ``train`` и поле
-``estimator``) передаётся через ``--config``, любое поле переопределяется через ``--set``:
+The :mod:`episynth.train` CLI selects an estimator and launches large experiment
+series. Pass the configuration file with ``--config``. It contains the ``data``,
+``spec``, ``model``, and ``train`` sections and the ``estimator`` field. Override
+any field with ``--set``.
 
 .. code-block:: bash
 
     python -m episynth.train --config configs/kernelsynth.json --out runs/epi \
         --set train.lr=3e-4 --set estimator=prequential
 
-Поле ``estimator`` задаёт имя алгоритма в реестре :mod:`episynth.estimators` (по умолчанию
-``prequential``). Прогон пишет обычные артефакты ``Trainer``, а результат оценки — в
-``estimator_result.json`` в каталоге прогона. Поддерживается и программный вызов:
-``build("prequential").run(model, generator, spec, config, out_dir)``.
-Параметры алгоритма передаются через ``estimator_config``. V-information пишет
-две ветви обучения и общий манифест; пример: ``experiments/demos/v_information.json``.
+The ``estimator`` field selects an algorithm from the :mod:`episynth.estimators`
+registry and defaults to ``prequential``. The run writes standard ``Trainer`` artifacts
+and saves the estimate as ``estimator_result.json`` in the run directory. The equivalent
+Python call is ``build("prequential").run(model, generator, spec, config, out_dir)``.
+Pass algorithm parameters through ``estimator_config``. The V-information estimator
+writes two training branches and a shared manifest. See
+``experiments/demos/v_information.json`` for an example.

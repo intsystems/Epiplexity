@@ -1,4 +1,4 @@
-"""Кусочно-постоянные ряды с резкими, линейными и сигмоидными переходами."""
+"""Piece-constant rows with sharp, linear and sigmoid transitions."""
 
 import numpy as np
 
@@ -9,17 +9,17 @@ _LEVEL_MODES = ["uniform", "random_walk", "clustered"]
 
 
 class StepFunction(Generator):
-    """Ряд из случайного числа сегментов постоянного уровня с переходами между ними.
+    """A series of a random number of constant level segments with transitions between them.
 
-    Число сегментов геометрическое, длины сегментов из распределения Дирихле, уровни
-    равномерные, случайное блуждание или кластеры; переход резкий, линейный или сигмоидный
-    (вероятности 0,5, 0,3, 0,2) шириной 1–5 % длины ряда; с вероятностью 0,7 добавляется
-    белый шум. Ширина перехода задана долей длины, поэтому при другой длине меняется форма
-    перехода в точках. Вырожденный ряд заменяется нулями, как в оригинале. Генерация
-    дешёвая, основной режим совпадает с режимом воспроизведения.
+    Number of segments geometric, segment lengths from the Dirichlet distribution, levels uniform,
+    random wandering or clusters; transition sharp, linear or sigmoid (probabilities) 0,5, 0,3, 0,2)
+    width 1–5 % of the length of the row; with probability 0,7 It adds white noise. The width of the
+    junction is given by fractions of the length, so at a different length, the shape of the
+    junction changes at the points. The degenerate series is replaced by zeros, like in the
+    original. The generation is cheap, the main mode is the same as the reproduction mode.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "stepfunction"

@@ -1,4 +1,4 @@
-"""Процесс Орнштейна–Уленбека с переключением режимов по марковской цепи."""
+"""The Ornstein-Ulenbeck process with regime switching on the Markov chain."""
 
 import numpy as np
 
@@ -8,18 +8,17 @@ _MAX_REGIMES = 4
 
 
 class SDE(Generator):
-    r"""ОУ-процесс с 2–4 режимами (вероятности 0,5, 0,3, 0,2), сменяемыми марковской цепью.
+    r"""OU process with 2-4 modes (probabilities 0,5, 0,3, 0,2), replaceable by Markov chain.
 
-    У каждого режима свои скорость возврата :math:`\theta`, уровень :math:`\mu` и волатильность
-    :math:`\sigma`; матрица переходов разыгрывается по строкам из распределения Дирихле с
-    тяжёлой диагональю. Шаг времени единичный, переход между шагами точный (Doob):
-    :math:`x_{t+1} = \mu_k + (x_t - \mu_k) e^{-\theta_k} + s_k \varepsilon_t` с
-    :math:`s_k^2 = \sigma_k^2 (1 - e^{-2\theta_k}) / (2\theta_k)`. Распределение не зависит от
-    длины ряда. Цепь и рекурсия считаются пакетом по рядам поэлементно теми же операциями,
-    что у оригинала, поэтому основной режим совпадает с режимом воспроизведения.
+    Each mode has its own rate of return :math:`\theta`, level :math:`\mu` and volatility
+    :math:`\sigma`; the transition matrix is played on rows from the Dirichlet distribution with a
+    heavy diagonal. The time step is single, the transition between steps is accurate (Doob):
+    :math:`x_{t+1} = \mu_k + (x_t - \mu_k) e^{-\theta_k} + s_k \varepsilon_t` with :math:`s_k^2 =
+    \sigma_k^2 (1 - e^{-2\theta_k}) / (2\theta_k)`. The distribution does not depend on the length
+    of the series. The chain and the recursion are considered to be the same as the original mode.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "sde"
@@ -50,7 +49,7 @@ class SDE(Generator):
         return cdf
 
     def _ou_scalar(self, regimes, thetas, mus, sigmas, rng) -> np.ndarray:
-        """Рекурсия ОУ по одному ряду, как у оригинала; нужна запасному пути."""
+        """Recursion of the OU in one row, like the original; you need an alternate path."""
         dt = 1.0
         x = np.empty(self.length)
         k0 = regimes[0]

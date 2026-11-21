@@ -1,4 +1,4 @@
-"""Слой окон: раскладка, маски, детерминизм, деквантование."""
+"""Window layer: layout, masks, determinism, dequantization."""
 
 import threading
 import time
@@ -14,7 +14,7 @@ SPEC = WindowSpec(series_length=256, context_max=128, horizon=32, patch_size=16,
 
 
 def test_layout_and_masks():
-    """Контекст выровнен по правому краю, горизонт в конце, заполнение слева без наблюдений."""
+    """The context is aligned on the right edge, the horizon at the end, filling on the left without observation."""
     series = np.arange(4 * 256, dtype=np.float32).reshape(4, 256)
     batch = make_windows(series, [0, 1, 2, 3], WindowSpec(**{**SPEC.model_dump(), "dequantize_width": 0.0}))
     S, P = SPEC.n_tokens, SPEC.patch_size
@@ -30,7 +30,7 @@ def test_layout_and_masks():
 
 
 def test_deterministic_by_seed_and_dequantization_scale():
-    """Окно зависит только от сида ряда; шум деквантования мал относительно масштаба контекста."""
+    """The window depends only on the row seat; the dequantization noise is small relative to the scale of the context."""
     gen = GENERATORS["waveform"](length=256)
     seeds = np.array([5, 6, 7])
     a = make_windows(gen.generate(seeds), seeds, SPEC)
@@ -42,7 +42,7 @@ def test_deterministic_by_seed_and_dequantization_scale():
 
 
 def test_stream_is_resumable():
-    """Поток батчей по номеру батча даёт те же окна, что и с начала."""
+    """The batch stream on the batch number gives the same windows as from the beginning."""
     gen = GENERATORS["sde"](length=256)
     full = list(WindowStream(gen, SPEC, batch_size=4, first_seed=100, n_batches=3))
     tail = list(WindowStream(gen, SPEC, batch_size=4, first_seed=100, n_batches=3, first_batch=2))
@@ -51,7 +51,7 @@ def test_stream_is_resumable():
 
 
 def test_context_length_distribution_follows_probs():
-    """Частоты длин контекста по многим сидам близки к заданным вероятностям; начало окна допустимо."""
+    """Context length frequencies for many seats are close to predetermined probabilities; the beginning of the window is permissible."""
     spec = WindowSpec(**{**SPEC.model_dump(), "context_lengths": (40, 64, 128), "context_probs": (0.2, 0.3, 0.5)})
     n = 20000
     batch = make_windows(np.zeros((n, 256), dtype=np.float32), np.arange(n), spec)
@@ -157,7 +157,7 @@ def test_close_does_not_wait_indefinitely_for_in_progress_generation():
 
 
 def test_pool_stream_matches_thread_stream():
-    """Поток из процессов даёт те же батчи в том же порядке, что поток из одного фонового потока."""
+    """The flow from the processes yields the same batches in the same order as the flow from a single background stream."""
     from episynth.windows import collect_windows
 
     gen = GENERATORS["waveform"](length=256)
@@ -171,7 +171,7 @@ def test_pool_stream_matches_thread_stream():
 
 
 def test_generators_pickle_for_workers(tmp_path):
-    """Корпус сериализуется путями, KernelSynth без тензора на устройстве; после десериализации ряды те же."""
+    """The case is serialized in ways, KernelSynth without tensor on the device; after deserialization, the rows are the same."""
     import pickle
 
     from episynth.corpus import Corpus, generate_corpus
@@ -190,7 +190,7 @@ def test_generators_pickle_for_workers(tmp_path):
 
 
 def test_collect_windows_respects_corpus_bounds(tmp_path):
-    """Сбор отложенного набора не запрашивает сиды за концом корпуса: последний батч короче."""
+    """Collecting a deferred set doesn't ask for the seats behind the end of the case: the last batch is shorter."""
     from episynth.corpus import Corpus, generate_corpus
     from episynth.windows import collect_windows
 

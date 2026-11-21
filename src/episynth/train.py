@@ -1,16 +1,17 @@
-"""Запуск прогона обучения по файлу конфигурации.
+"""Start a training run from a configuration file.
 
-Файл JSON с разделами `data` (откуда ряды), `spec` (форма задачи, `WindowSpec`), `model`
-(конфигурация Moirai, `MoiraiConfig`) и `train` (параметры прогона, `TrainConfig`). Раздел `data`
-задаёт генератор из реестра с генерацией на лету, либо корпус этого генератора (каталоги `corpus`),
-либо равную смесь нескольких таких источников (`mixture`). Поле `context_table` — путь к JSON с
-полями `lengths` и `probs`, которые подставляются в `spec` как распределение длин контекста.
-Любое поле переопределяется из командной строки через `--set раздел.поле=значение` (значение
-читается как JSON, иначе как строка). Разрешённая конфигурация пишется в каталог прогона как
-`run.json`; существующий `run.json` не перезаписывается, а прогон с `last.pt` возобновляется.
+The JSON file has `data` (series source), `spec` (`WindowSpec`), `model`
+(`MoiraiConfig`), and `train` (`TrainConfig`) sections. The `data` section
+selects a registered generator, a saved corpus of that generator through
+`corpus`, or an equally weighted `mixture` of sources. `context_table` points
+to a JSON file with `lengths` and `probs` for the context-length distribution.
+Override fields with `--set section.field=value`. Values are parsed as JSON
+when possible and otherwise kept as strings. The resolved config is written
+to `run.json` while an existing file is retained. A run with `last.pt` resumes.
 
-Поле `estimator` выбирает алгоритм, а `estimator_config` передаёт параметры его конструктора.
-V-information использует два подкаталога прогона и отдельные train/validation/test сплиты.
+`estimator` selects the algorithm and `estimator_config` supplies its
+constructor arguments. V-information uses two run subdirectories and
+separate training, validation, and test splits.
 
     python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth --set train.lr=3e-4
 """
@@ -32,13 +33,13 @@ from .windows import WindowSpec
 
 
 class DataConfig(BaseModel):
-    """Источник рядов.
+    """Source of time series.
 
     Attributes:
-        generator: Имя генератора в реестре; у смеси не используется, у корпуса служит проверкой.
-        corpus: Каталоги корпуса этого генератора; пусто — генерация на лету.
-        generator_args: Аргументы конструктора генератора при генерации на лету.
-        mixture: Компоненты равной смеси; непусто — остальные поля не используются.
+        generator: Registry name, also used to validate corpora. Mixtures use their component names.
+        corpus: Corpus directories for this generator. Empty means on-the-fly generation.
+        generator_args: Constructor arguments for on-the-fly generation.
+        mixture: Components of an equal mixture. A nonempty list takes precedence.
     """
 
     generator: str = ""
@@ -48,16 +49,17 @@ class DataConfig(BaseModel):
 
 
 class RunConfig(BaseModel):
-    """Полная конфигурация прогона.
+    """Complete run configuration.
 
     Attributes:
-        data: Источник рядов.
-        spec: Форма задачи.
-        model: Конфигурация модели; по умолчанию Moirai-Small с патчем 32 и тремя непрерывными компонентами.
-        train: Параметры прогона.
-        context_table: Путь к JSON с `lengths` и `probs`; задаёт распределение длин контекста в `spec`.
-        estimator_config: Аргументы конструктора выбранного оценщика.
-        estimator: Имя алгоритма оценки эпиплексии в реестре `episynth.estimators` (по умолчанию `prequential`).
+        data: Source of time series.
+        spec: Forecasting task shape.
+        model: Model configuration, defaulting to Moirai-Small with patch size 32
+            and three continuous mixture components.
+        train: Training settings.
+        context_table: Path to JSON with `lengths` and `probs` for `spec`.
+        estimator: Algorithm name in the `episynth.estimators` registry, defaulting to `prequential`.
+        estimator_config: Constructor arguments for the selected estimator.
     """
 
     data: DataConfig
@@ -71,16 +73,16 @@ class RunConfig(BaseModel):
     @model_validator(mode="after")
     def _check(self) -> "RunConfig":
         if self.spec.patch_size not in self.model.patch_sizes:
-            raise ValueError(f"размер патча {self.spec.patch_size} не входит в {self.model.patch_sizes}")
+            raise ValueError(f"Patch size {self.spec.patch_size} is not in {self.model.patch_sizes}")
         if self.spec.n_tokens > self.model.max_seq_len:
-            raise ValueError("окно длиннее max_seq_len модели")
+            raise ValueError("Window exceeds the model max_seq_len")
         if self.estimator not in estimators_available():
-            raise ValueError(f"неизвестный оценщик {self.estimator!r}; доступны {sorted(estimators_available())}")
+            raise ValueError(f"Unknown estimator {self.estimator!r}. Available estimators: {sorted(estimators_available())}")
         return self
 
 
 def resolve_context_table(raw: dict) -> dict:
-    """Подставляет таблицу длин контекста из файла `context_table` в раздел `spec` сырой конфигурации."""
+    """Substitutes the context length table from the `context_table` file to the `spec` section of the raw configuration."""
     path = raw.get("context_table")
     if path:
         table = json.loads(Path(path).read_text())
@@ -89,32 +91,32 @@ def resolve_context_table(raw: dict) -> dict:
 
 
 def build_generator(data: DataConfig, length: int) -> Generator:
-    """Источник рядов по разделу `data`: генератор, корпус или смесь.
+    """Build the generator, corpus, or mixture specified in `data`.
 
     Args:
-        data: Раздел конфигурации.
-        length: Длина ряда из формы задачи.
+        data: Configuration section.
+        length: The length of the series from the shape of the task.
 
     Returns:
-        Generator: Источник рядов.
+        Generator: Source of rows.
     """
     if data.mixture:
         return Mixture([build_generator(d, length) for d in data.mixture])
     if data.corpus:
         corpus = Corpus(*data.corpus)
         if data.generator and corpus.name != data.generator:
-            raise ValueError(f"корпус генератора {corpus.name}, а в конфигурации {data.generator}")
+            raise ValueError(f"Corpus generator {corpus.name} does not match configured generator {data.generator}")
         if corpus.length != length:
-            raise ValueError(f"длина ряда корпуса {corpus.length}, а в форме задачи {length}")
+            raise ValueError(f"Corpus series length {corpus.length} does not match task series length {length}")
         return corpus
     return GENERATORS[data.generator](length=length, **data.generator_args)
 
 
 def check_seed_ranges(generator: Generator, train: TrainConfig) -> None:
-    """Проверяет покрытие и непересечение обучающих и отложенных сидов."""
-    for name, first, n in (("обучающие", train.first_seed, train.n_windows), ("отложенные", train.heldout_first_seed, train.heldout_windows)):
+    """Check that training and held-out seed ranges are disjoint and covered by the source."""
+    for name, first, n in (("training", train.first_seed, train.n_windows), ("held-out", train.heldout_first_seed, train.heldout_windows)):
         if not seeds_available(generator, first, n):
-            raise ValueError(f"{name} сиды [{first}, {first + n}) не покрыты источником рядов {generator.name}")
+            raise ValueError(f"{name} seeds [{first}, {first + n}) are outside the coverage of source {generator.name}")
     validate_splits(generator, {
         "train": {"first_seed": train.first_seed, "n_windows": train.n_windows},
         "heldout": {"first_seed": train.heldout_first_seed, "n_windows": train.heldout_windows},
@@ -122,7 +124,10 @@ def check_seed_ranges(generator: Generator, train: TrainConfig) -> None:
 
 
 def apply_overrides(raw: dict, overrides: list[str]) -> dict:
-    """Подставляет `раздел.поле=значение` в сырой словарь конфигурации; значение читается как JSON, иначе строка."""
+    """Apply `section.field=value` overrides to a raw configuration.
+
+    Parse each value as JSON when possible and otherwise keep it as a string.
+    """
     for item in overrides:
         key, _, value = item.partition("=")
         node = raw
@@ -137,17 +142,17 @@ def apply_overrides(raw: dict, overrides: list[str]) -> dict:
 
 
 def load_run_config(path: str | Path, overrides: list[str] | None = None) -> RunConfig:
-    """Конфигурация из файла с переопределениями, с подставленной таблицей длин контекста."""
+    """Configuration from a redefinition file, with a context length table."""
     raw = resolve_context_table(apply_overrides(json.loads(Path(path).read_text()), overrides or []))
     return RunConfig.model_validate(raw)
 
 
 def main() -> None:
-    """Прогон из командной строки."""
-    parser = argparse.ArgumentParser(description="Запустить или возобновить прогон обучения по файлу конфигурации.")
+    """Command line run."""
+    parser = argparse.ArgumentParser(description="Start or resume a training run from a configuration file.")
     parser.add_argument("--config", required=True)
     parser.add_argument("--out", required=True)
-    parser.add_argument("--set", action="append", default=[], metavar="раздел.поле=значение")
+    parser.add_argument("--set", action="append", default=[], metavar="section.field=value")
     args = parser.parse_args()
     config = load_run_config(args.config, args.set)
     out = Path(args.out)

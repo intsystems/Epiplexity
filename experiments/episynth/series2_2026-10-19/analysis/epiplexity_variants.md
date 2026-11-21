@@ -1,11 +1,11 @@
-# Варианты оценки эпиплексии: корреляции Спирмена с качеством
+# Estimator variants and Spearman correlations with forecast performance
 
-Значение в ячейке — ρ Спирмена между оценкой и целью по генераторам; меньше цель — лучше модель, поэтому отрицательная ρ значит «больше эпиплексия — лучше». В скобках 95 % бутстреп-интервал для основных столбцов.
+Each cell shows Spearman's ρ between an estimate and a performance metric across generators. Lower metric values are better, so negative ρ associates a higher estimate with better models. Brackets give 95% bootstrap intervals where reported.
 
 
-## все 11 (n = 11)
+## All 11 (n = 11)
 
-| оценка | CRPS/наив геом | CRPS/наив медиана | ранг CRPS | MASE/наив геом | NLL GIFT, ранг |
+| Estimator | CRPS / naive (geometric mean) | CRPS / naive (median) | CRPS rank | MASE / naive (geometric mean) | GIFT-Eval NLL rank |
 |---|---|---|---|---|---|
 | `A_ema` | +0.00 [-0.89, +0.61] | +0.00 | -0.01 | -0.35 | -0.06 [-0.89, +0.69] |
 | `A_raw` | +0.19 [-0.67, +0.70] | +0.21 | +0.18 | -0.09 | -0.11 [-0.77, +0.61] |
@@ -23,9 +23,9 @@
 | `L_start` | -0.22 [-0.79, +0.52] | -0.43 | -0.55 | -0.40 | -0.50 [-0.80, +0.08] |
 | `drop_ema` | -0.03 [-0.93, +0.58] | -0.06 | -0.07 | -0.35 | -0.17 [-0.92, +0.59] |
 
-## без Chaotic, StepFunction (n = 9)
+## Excluding Chaotic, StepFunction (n = 9)
 
-| оценка | CRPS/наив геом | CRPS/наив медиана | ранг CRPS | MASE/наив геом | NLL GIFT, ранг |
+| Estimator | CRPS / naive (geometric mean) | CRPS / naive (median) | CRPS rank | MASE / naive (geometric mean) | GIFT-Eval NLL rank |
 |---|---|---|---|---|---|
 | `A_ema` | -0.28 [-0.98, +0.53] | -0.48 | -0.45 | -0.80 | -0.38 [-0.95, +0.46] |
 | `A_raw` | -0.12 [-0.89, +0.67] | -0.38 | -0.35 | -0.53 | -0.53 [-0.95, +0.22] |
@@ -43,27 +43,27 @@
 | `L_start` | -0.23 [-0.89, +0.58] | -0.42 | -0.53 | -0.42 | -0.52 [-0.89, +0.26] |
 | `drop_ema` | -0.33 [-1.00, +0.48] | -0.60 | -0.57 | -0.80 | -0.55 [-0.98, +0.23] |
 
-## Обозначения
+## Estimator definitions
 
-- `A_ema` — Σℓ − N·L_fin, L_fin EMA на отложенном (основная)
-- `A_raw` — Σℓ − N·L_fin, L_fin текущих весов на отложенном
-- `A_train_tail` — Σℓ − N·(средний обучающий лосс последних 2 % окон), без отложенного набора
-- `A_min_ema` — Σℓ − N·min по чекпойнтам L_ema
-- `A_pos_ema` — Σ max(ℓ − L_fin_ema, 0): только положительные превышения
-- `A_first_half_ema` — площадь над L_fin_ema по первой половине окон
-- `A_second_half_ema` — площадь над L_fin_ema по второй половине окон
-- `A_heldout_curve_ema` — площадь под кусочно-линейной кривой отложенного лосса EMA по 7 чекпойнтам над L_fin
-- `A_heldout_curve_raw` — то же по кривой текущих весов
-- `A_rel_ema` — A_ema / (N·(L_start − L_fin)): доля площади от прямоугольника полного падения
-- `sum_loss` — Σℓ без вычета (длина кода)
-- `L_fin_ema` — финальный лосс EMA
-- `L_fin_raw` — финальный лосс текущих весов
-- `L_start` — лосс первого 1 % окон
+- `A_ema` — Σℓ − N·L_fin using the final held-out EMA loss (primary estimate)
+- `A_raw` — Σℓ − N·L_fin using the final held-out loss of the raw weights
+- `A_train_tail` — Σℓ − N times the mean training loss of the last 2% of windows, without a held-out set
+- `A_min_ema` — Σℓ − N times the minimum held-out EMA loss across checkpoints
+- `A_pos_ema` — Σ max(ℓ − L_fin_ema, 0), the positive excess only
+- `A_first_half_ema` — Area above L_fin_ema over the first half of the windows
+- `A_second_half_ema` — Area above L_fin_ema over the second half of the windows
+- `A_heldout_curve_ema` — Area above L_fin and under the piecewise-linear held-out EMA loss curve over seven checkpoints
+- `A_heldout_curve_raw` — The same held-out curve area for raw weights
+- `A_rel_ema` — A_ema / (N·(L_start − L_fin)), the area divided by the rectangle spanning the full loss drop
+- `sum_loss` — Σℓ without subtraction (code length)
+- `L_fin_ema` — Final held-out EMA loss
+- `L_fin_raw` — Final held-out loss of the raw weights
+- `L_start` — Mean loss of the first 1% of windows
 - `drop_ema` — L_start − L_fin_ema
 
-## Значения оценок, млн нат (кроме A_rel и L в натах на окно)
+## Estimate values (areas and total loss in million nats, point estimates of loss in nats per window, A_rel dimensionless)
 
-| генератор | A_ema | A_raw | A_train_tail | A_min_ema | A_pos_ema | A_first_half_ema | A_second_half_ema | A_heldout_curve_ema | A_heldout_curve_raw | A_rel_ema | sum_loss | L_fin_ema | L_fin_raw | L_start | drop_ema |
+| Generator | A_ema | A_raw | A_train_tail | A_min_ema | A_pos_ema | A_first_half_ema | A_second_half_ema | A_heldout_curve_ema | A_heldout_curve_raw | A_rel_ema | sum_loss | L_fin_ema | L_fin_raw | L_start | drop_ema |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | kernelsynth | 926.1 | 383.2 | 386.2 | 926.1 | 2381.8 | 620.2 | 305.9 | 563.6 | 371.2 | 0.197 | -1287.3 | -55.34 | -41.76 | 62.39 | 117.73 |
 | ets | 138.6 | 62.8 | 63.9 | 138.6 | 3209.9 | 99.3 | 39.3 | 122.5 | 67.6 | 0.076 | 9303.8 | 229.13 | 231.03 | 274.65 | 45.52 |

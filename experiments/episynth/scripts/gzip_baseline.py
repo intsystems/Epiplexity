@@ -1,8 +1,8 @@
-"""База gzip: сжимаемость рядов корпуса, байт gzip на точку, по отложенным рядам каждого генератора.
+"""Measure gzip compressibility on held-out series from each corpus in bytes per point.
 
-Запуск: python gzip_baseline.py /workspace/corpora [n_series] > gzip_baseline.json
-Ряды берутся как есть (float32) и после нормировки по ряду с квантованием до int16 на сетке
-из 2^15 уровней размаха, чтобы сжимаемость не зависела от масштаба и битового шума float32.
+Usage: python gzip_baseline.py /workspace/corpora [n_series] > gzip_baseline.json
+
+Compare raw float32 values with per-series normalized values quantized to int16\non a grid of 2**15 levels across the range. Quantization removes scale and\nfloat32 bit noise from the compressibility comparison.
 """
 
 import gzip
@@ -14,7 +14,7 @@ import numpy as np
 
 
 def main() -> None:
-    """Печатает JSON {генератор: {raw_bytes_per_point, q16_bytes_per_point}}."""
+    """Prints JSON {generator: {raw_bytes_per_point, q16_bytes_per_point}}."""
     root = Path(sys.argv[1])
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 5000
     out = {}

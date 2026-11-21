@@ -1,1 +1,1 @@
-"""Проверки компонентов пакета против внешних эталонов."""
+"""Check the components of the package against external standards."""

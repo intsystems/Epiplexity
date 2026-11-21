@@ -1,7 +1,8 @@
-"""Метрика к наиву против эпиплексии с прямой регрессии и горизонталью TimesFM-3 (опубликованные числа лидерборда GIFT-Eval на тех же 55 задачах).
+"""Plot forecast metrics against epiplexity with regression fits and the published TimesFM-3 GIFT-Eval result on the same 55 tasks.
 
-Запуск: SERIES_PREFIX=s2_ python series_figures4.py <каталог результатов> <каталог рисунков> <каталог published>
-Пишет fig_{crps,mase,mwsql}_vs_epiplexity_lines.{pdf,png}.
+Usage: SERIES_PREFIX=s2_ python series_figures4.py <series directory> <figure directory> <leaderboard directory>
+
+Writes fig_{crps,mase,mwsql}_vs_epiplexity_lines.{pdf,png}.
 """
 
 import os
@@ -34,11 +35,11 @@ area = {g: run_area(root / "runs" / f"{PREFIX}{g}", "ema").area / 1e6 for g in g
 tables = {
     "crps": ("CRPS", quality_table(evals, naive, metric="scaled_crps")),
     "mase": ("MASE", quality_table(evals, naive, metric="MASE[0.5]")),
-    "mwsql": ("CRPS лидерборда (MWSQL)", quality_table(evals, naive, metric="mean_weighted_sum_quantile_loss")),
+    "mwsql": ("Leaderboard CRPS (MWSQL)", quality_table(evals, naive, metric="mean_weighted_sum_quantile_loss")),
 }
 
-# TimesFM-3: опубликованные числа лидерборда на тех же 55 задачах; знаменатель — наш точечный наив
-# (его MASE совпадает с опубликованным до 4e-8, его MWSQL равен ND, который совпадает с опубликованным ND).
+# TimesFM-3: published leaderboard numbers on the same 55 tasks; the denominator is our point naive
+# Its MASE matches the published value to 4e-8. Its MWSQL equals ND, which also matches.
 ours_naive = pd.read_csv(naive).set_index("config")
 pub_tfm = pd.read_csv(pub / "gift_eval_timesfm-3.csv").set_index("dataset")
 pub_naive = pd.read_csv(pub / "gift_eval_seasonal_naive.csv").set_index("dataset")
@@ -50,7 +51,7 @@ tfm = {
 }
 tfm["crps"] = tfm["mwsql"]
 tfm_lb = gm(pub_tfm.loc[cfgs, "eval_metrics/mean_weighted_sum_quantile_loss"].to_numpy() / pub_naive.loc[cfgs, "eval_metrics/mean_weighted_sum_quantile_loss"].to_numpy())
-print(f"TimesFM-3 к нашему точечному наиву: MASE {tfm['mase']:.3f}, MWSQL {tfm['mwsql']:.3f}; к наиву лидерборда (вероятностному) MWSQL {tfm_lb:.3f}")
+print(f"TimesFM-3 relative to our pointwise seasonal-naive forecast: MASE {tfm['mase']:.3f}, MWSQL {tfm['mwsql']:.3f}; relative to the leaderboard seasonal-naive forecast (probabilistic) MWSQL {tfm_lb:.3f}")
 
 gen_handles = [Line2D([], [], marker="o", color=colors[g], ls="", label=NAMES[g]) for g in gens]
 for key, (label, table) in tables.items():
@@ -60,19 +61,19 @@ for key, (label, table) in tables.items():
         ax.scatter(area[g], table[g]["geo_mean_ratio"], s=80, color=colors[g], zorder=3)
     xs = np.linspace(0, x.max() * 1.03, 50)
     line_handles = []
-    for keep_name, keep, style in (("все 11", gens, dict(color="k", lw=1.2)), ("без Chaotic, Waveform", [g for g in gens if g not in SUBSET_EXCL], dict(color="k", lw=1.0, ls=":"))):
+    for keep_name, keep, style in (("All 11", gens, dict(color="k", lw=1.2)), ("without Chaotic and Waveform", [g for g in gens if g not in SUBSET_EXCL], dict(color="k", lw=1.0, ls=":"))):
         xi = np.array([area[g] for g in keep]); yi = np.array([table[g]["geo_mean_ratio"] for g in keep])
         b, a = np.polyfit(xi, yi, 1)
         rho, lo, hi = spearman_ci(xi, yi, n_boot=2000)
-        h, = ax.plot(xs, a + b * xs, zorder=2, label=f"МНК, {keep_name}: ρ = {rho:+.2f} [{lo:+.2f}; {hi:+.2f}]", **style)
+        h, = ax.plot(xs, a + b * xs, zorder=2, label=f"OLS, {keep_name}: ρ = {rho:+.2f} [{lo:+.2f}; {hi:+.2f}]", **style)
         line_handles.append(h)
-        print(f"{key} {keep_name}: наклон {b:.4f}/млн нат, Спирмен {rho:+.2f} [{lo:+.2f}, {hi:+.2f}], Пирсон {np.corrcoef(xi, yi)[0,1]:+.2f}")
-    h = ax.axhline(tfm[key], color="tab:red", lw=1.2, ls="--", label=f"TimesFM-3 (лидерборд): {tfm[key]:.3f}")
+        print(f"{key} {keep_name}: slope {b:.4f} per million nats, Spearman {rho:+.2f} [{lo:+.2f}, {hi:+.2f}], Pearson {np.corrcoef(xi, yi)[0,1]:+.2f}")
+    h = ax.axhline(tfm[key], color="tab:red", lw=1.2, ls="--", label=f"TimesFM-3 (leaderboard): {tfm[key]:.3f}")
     line_handles.append(h)
-    h = ax.axhline(1.0, color="gray", lw=0.8, ls="--", label="сезонный наив")
+    h = ax.axhline(1.0, color="gray", lw=0.8, ls="--", label="seasonal naive")
     line_handles.append(h)
-    ax.set_xlabel("эпиплексия $A$, млн нат")
-    ax.set_ylabel(f"{label} / сезонный наив")
+    ax.set_xlabel("Epiplexity $A$ (million nats)")
+    ax.set_ylabel(f"{label} / seasonal naive")
     ax.set_ylim(min(y.min(), tfm[key]) - 0.06, y.max() + 0.22)
     leg1 = ax.legend(handles=line_handles, fontsize=8, frameon=False, loc="upper left")
     ax.add_artist(leg1)

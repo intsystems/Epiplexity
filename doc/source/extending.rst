@@ -6,14 +6,13 @@ The protocol returns method-specific JSON-compatible results. See
 result and the proposed Bayesian reference wrapper. Registering a class supplies a name; its algorithm still
 needs an implementation.
 
-Чтобы добавить новый алгоритм оценки эпиплексии, достаточно написать **один модуль** и не менять
-остальные части библиотеки. Всё, что нужно, — реализовать контракт
-:class:`episynth.estimators.base.EpiplexityEstimator` и зарегистрировать его.
+Add an epiplexity estimation algorithm in **one module** by implementing and
+registering the :class:`episynth.estimators.base.EpiplexityEstimator` protocol.
 
-Шаг 1. Контракт
----------------
+Step 1. Implement the protocol
+------------------------------
 
-Каждый оценщик должен иметь атрибут ``name`` и метод ``run``:
+Each estimator must provide a ``name`` attribute and a ``run`` method.
 
 .. code-block:: python
 
@@ -21,25 +20,25 @@ needs an implementation.
         self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
         config: TrainConfig, out_dir: str | Path,
     ) -> Mapping[str, Any]:
-        """Выполнить прогон обучения и вернуть оценку в битах."""
+        """Run training and return the estimate in bits."""
 
-Аргументы:
+Arguments
 
-* ``model`` (:class:`~episynth.model.moirai.MoiraiModule`) — модель-наблюдатель;
-* ``generator`` (:class:`~episynth.generators.base.Generator`) — генератор рядов;
-* ``spec`` (:class:`~episynth.windows.WindowSpec`) — форма задачи прогноза;
-* ``config`` (:class:`~episynth.training.TrainConfig`) — параметры прогона;
-* ``out_dir`` — каталог для артефактов.
+* ``model`` (:class:`~episynth.model.moirai.MoiraiModule`) is the observer model.
+* ``generator`` (:class:`~episynth.generators.base.Generator`) supplies time series.
+* ``spec`` (:class:`~episynth.windows.WindowSpec`) defines the forecasting task shape.
+* ``config`` (:class:`~episynth.training.TrainConfig`) supplies run settings.
+* ``out_dir`` is the directory for run artifacts.
 
-Возврат — JSON-совместимый словарь с полями метода. У prequential это
-``model_part_bits`` и ``data_part_bits``; у V-information — энтропии и их разность
-в битах на окно. Протокол аннотирован как ``Mapping[str, Any]`` для поддержки
-типизированных словарей результатов.
+The method returns a JSON-compatible dictionary with algorithm-specific fields.
+The prequential estimator returns ``model_part_bits`` and ``data_part_bits``.
+The V-information estimator returns entropies and their difference in bits per window.
+The protocol returns ``Mapping[str, Any]`` to support typed result dictionaries.
 
-Шаг 2. Модуль алгоритма
------------------------
+Step 2. Create the algorithm module
+-----------------------------------
 
-Создайте файл, например ``my_package/my_estimator.py``:
+Create a file such as ``my_package/my_estimator.py``.
 
 .. code-block:: python
 
@@ -62,28 +61,28 @@ needs an implementation.
             self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
             config: TrainConfig, out_dir: str | Path,
         ) -> dict[str, float]:
-            # Рабочий пример обёртки над встроенным алгоритмом.
-            # Собственный алгоритм заменит тело этого метода.
+            # Wrap the built-in algorithm in this example.
+            # Replace the method body with your own algorithm.
             return build("prequential", variant=self.variant).run(
                 model, generator, spec, config, out_dir
             )
 
-Шаг 3. Использование
---------------------
+Step 3. Use the estimator
+-------------------------
 
-После регистрации алгоритм доступен по имени через фабрику и CLI:
+After registration, the algorithm is available by name through the factory and CLI.
 
 .. code-block:: python
 
-    import my_package.my_estimator  # регистрирует внешний плагин
+    import my_package.my_estimator  # Register the external plugin.
     from episynth.estimators import build
     est = build("my_estimator", variant="ema")
     result = est.run(model, generator, spec, config, "runs/my")
 
-Для встроенного оценщика достаточно поля ``estimator`` в конфигурации CLI.
-``estimator_config`` передаёт аргументы конструктора, например
-``{"variant": "raw", "test_windows": 1000}`` для V-information.
-Внешний плагин нужно импортировать **в том же процессе** перед вызовом CLI:
+Select a built-in estimator with the ``estimator`` field in the CLI configuration.
+Pass constructor arguments through ``estimator_config``, for example
+``{"variant": "raw", "test_windows": 1000}`` for V-information.
+Import an external plugin **in the same process** before calling the CLI.
 
 .. code-block:: python
 
@@ -96,14 +95,14 @@ needs an implementation.
                 "--set", "estimator=my_estimator"]
     main()
 
-Если вы добавляете алгоритм в саму библиотеку ``episynth``, положите его в
-``src/episynth/estimators/`` и убедитесь, что он импортируется (встроенные оценщики
-регистрируются в :mod:`episynth.estimators.registry` автоматически при импорте).
+To add an algorithm to ``episynth`` itself, place it in
+``src/episynth/estimators/`` and arrange for it to be imported. Built-in estimators
+register automatically in :mod:`episynth.estimators.registry` when imported.
 
-Пример: минимальный оценщик с общим ``Trainer``
------------------------------------------------
+A minimal estimator using the shared ``Trainer``
+------------------------------------------------
 
-Проверка регистрации:
+Check registration as shown below.
 
 .. code-block:: python
 

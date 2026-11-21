@@ -1,20 +1,30 @@
-r"""Обучение модели на потоке окон с логом лосса каждого окна, EMA весов и отложенным набором.
+r"""Train on a window stream with per-window loss logs, EMA weights, and held-out evaluation.
 
-Протокол: каждое окно модель видит один раз, лосс окна записывается до шага по нему, поэтому
-сумма лоссов есть prequential-длина кода, а площадь над финальным лоссом — оценка эпиплексии
-(Finzi и др., 2026, arXiv:2601.03220). Шаг обучения постоянный после линейного разогрева,
-веса усредняются экспоненциально. Чекпойнты (текущие веса, EMA, оптимизатор) сохраняются на
-заданных долях прогона, на каждом считается лосс обоих вариантов весов на отложенном наборе в
-точности обучения (это финальный лосс для площади) и, если задана другая, в ней тоже.
+The model sees each training window once. Its loss is computed before the
+update, so the sum is the prequential code length. The area above final loss
+estimates epiplexity (Finzi et al., 2026, arXiv:2601.03220). The learning rate
+is constant after linear warmup, and the trainer maintains an exponential
+moving average (EMA) of the weights. Checkpoints contain raw and EMA weights
+and optimizer state. At each checkpoint both weight variants are evaluated
+on the held-out windows at training precision and, if configured, at a
+second precision. The final held-out loss at training precision defines the
+area baseline.
 
-Файлы в каталоге прогона: `config.json`; `window_loss.f32` и `window_log_scale.f32` — лосс
-окна в натах (сумма по горизонту, в исходных единицах ряда) и логарифм масштаба нормировки
-окна, по номеру окна, float32 без заголовка; `steps.csv` — шаги; `heldout.jsonl` — оценки на
-отложенном наборе; `heldout_<вариант>_<доля>.f32` — лоссы окон отложенного набора на каждом
-чекпойнте по вариантам `raw`, `ema` (точность обучения) и `raw_<точность>`, `ema_<точность>`
-(другая точность оценки), float32 по номеру окна набора, для бутстрепа финального лосса;
-`ckpt_<доля>.pt` и `last.pt`. Лосс в нормированных единицах равен лоссу окна минус горизонт,
-умноженный на логарифм масштаба: :math:`\ell_{\mathrm{norm}} = \ell_{\mathrm{original}} - h\log s`.
+The run directory contains:
+
+- `config.json`, the run settings.
+- `window_loss.f32` and `window_log_scale.f32`, headerless float32 vectors
+  in window order. They record horizon-summed NLL in nats in the original
+  series units and the log of the normalization scale, respectively.
+- `steps.csv` for step logs and `heldout.jsonl` for held-out summaries.
+- `heldout_<variant>_<fraction>.f32` for the per-window losses of each
+  checkpoint. Use `raw` and `ema` for training precision or
+  `raw_<precision>` and `ema_<precision>` for another evaluation precision.
+  These have no header and support bootstrapping the final loss.
+- `ckpt_<fraction>.pt` and `last.pt` for checkpoint state.
+
+In normalized units, :math:`\ell_{\mathrm{norm}} = \ell_{\mathrm{original}} - h\log s`,
+where :math:`h` is the horizon and :math:`s` is the normalization scale.
 """
 
 import csv
@@ -45,31 +55,31 @@ RESUME_RUNTIME_FIELDS = frozenset({"device", "compile", "eval_batch_size", "stre
 
 
 class TrainConfig(BaseModel):
-    r"""Параметры прогона обучения.
+    r"""Training run settings.
 
     Attributes:
-        n_windows: Бюджет: число обучающих окон; кратно `batch_size`.
-        batch_size: Окон на шаг.
-        lr: Шаг обучения после разогрева.
-        warmup_steps: Длина линейного разогрева в шагах.
-        weight_decay: Коэффициент регуляризации весов линейных слоёв.
-        betas: Моменты AdamW.
-        eps: Слагаемое AdamW.
-        grad_clip: Порог нормы градиента.
-        ema_fraction: Постоянная времени EMA весов в долях прогона.
-        checkpoint_fractions: Доли промежуточных чекпойнтов; финальный сохраняется всегда.
-        heldout_windows: Размер отложенного набора.
-        heldout_first_seed: Сид первого окна отложенного набора; диапазон не пересекается с обучающим.
-        first_seed: Сид первого обучающего окна.
-        eval_batch_size: Окон на батч при оценке.
-        precision: Точность прямого прохода при обучении; лосс всегда в float32.
-        eval_precision: Дополнительная точность оценки на отложенном наборе (fp32 или bf16).
-        compile: Компилировать ли модель `torch.compile` для шагов обучения.
-        fused_adam: Использовать ли fused AdamW (только CUDA).
-        init_seed: Сид инициализации весов.
-        device: Устройство.
-        log_every: Через сколько шагов писать строку в `steps.csv`.
-        stream_workers: Число процессов генерации окон; 0 — один фоновый поток.
+        n_windows: Number of training windows. Must be a multiple of `batch_size`.
+        batch_size: Windows per update.
+        lr: Learning rate after warmup.
+        warmup_steps: Linear warmup duration in steps.
+        weight_decay: Weight decay for linear layers.
+        betas: AdamW moment coefficients.
+        eps: AdamW epsilon.
+        grad_clip: Gradient norm clipping threshold.
+        ema_fraction: EMA time constant as a fraction of the run.
+        checkpoint_fractions: Intermediate checkpoint fractions. The final checkpoint is always saved.
+        heldout_windows: Number of held-out windows.
+        heldout_first_seed: First held-out seed. The held-out and training ranges must be disjoint.
+        first_seed: First training seed.
+        eval_batch_size: Windows per evaluation batch.
+        precision: Training forward-pass precision. Loss is always computed in float32.
+        eval_precision: Additional held-out evaluation precision, fp32 or bf16.
+        compile: Use `torch.compile` for training updates.
+        fused_adam: Use fused AdamW on CUDA.
+        init_seed: Weight initialization seed.
+        device: Training device.
+        log_every: Step interval for `steps.csv`.
+        stream_workers: Window-generation processes. Zero uses one background thread.
     """
 
     n_windows: int
@@ -97,12 +107,12 @@ class TrainConfig(BaseModel):
 
     @property
     def n_steps(self) -> int:
-        """Число шагов прогона."""
+        """Number of steps run."""
         return self.n_windows // self.batch_size
 
 
 def window_nll(mixture: Mixture, batch: WindowBatch, patch_size: int) -> torch.Tensor:
-    """Лосс каждого окна `(B,)` в натах: сумма минус лог-плотности по наблюдаемым точкам горизонта."""
+    """Loss of each window `(B,)` in nats: sum minus log density at observable points of the horizon."""
     mask = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask
     # Mask before log_prob as well: NaN intermediates can poison gradients even
     # when the resulting loss is masked out. Observed forecast labels are kept.
@@ -112,7 +122,7 @@ def window_nll(mixture: Mixture, batch: WindowBatch, patch_size: int) -> torch.T
 
 
 def param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
-    """Группы параметров как в uni2ts: регуляризуются веса линейных слоёв, остальное нет."""
+    """Parameter groups as in uni2ts: the weights of the linear layers are regularized, the rest is not."""
     decay, no_decay = [], []
     for module in model.modules():
         for name, p in module.named_parameters(recurse=False):
@@ -126,24 +136,24 @@ def param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
 
 
 class Trainer:
-    """Прогон обучения одной модели на одном генераторе с записью всех величин в каталог.
+    """Train one model on one generator and write the run artifacts.
 
-    Общий движок обучения: окна, чекпойнты, EMA весов, возобновление и heldout-оценка общие для
-    всех протоколов оценки эпиплексии. Протокол-специфичный шаг вынесен в переопределяемый метод
-    :meth:`compute_loss`, который возвращает лосс каждого окна батча и (необязательно) логарифм
-    масштаба нормировки для записи. По умолчанию реализует prequential-протокол (площадь над
-    кривой лосса): подклассы, например requential-учитель-студент, переопределяют `compute_loss`.
+    The training engine shares window generation, checkpoints, EMA weights,
+    resume, and held-out evaluation across estimation protocols. Override
+    :meth:`compute_loss` to return protocol-specific per-window losses and an
+    optional log normalization scale. The default is prequential loss.
+    A subclass can implement a requential teacher-student objective.
 
     Args:
-        model: Модель; инициализирована извне, веса заменяются при возобновлении.
-        generator: Генератор рядов.
-        spec: Форма задачи.
-        config: Параметры прогона.
-        out_dir: Каталог прогона; существующий `last.pt` в нём возобновляет прогон.
+        model: Initialized model. Its weights are replaced when resuming.
+        generator: Time-series generator.
+        spec: Forecasting task shape.
+        config: Training settings.
+        out_dir: Run directory. An existing `last.pt` resumes the run.
 
     Attributes:
-        step: Число сделанных шагов.
-        ema: Экспоненциально усреднённые веса в порядке `model.parameters()`.
+        step: Number of completed updates.
+        ema: Exponentially averaged weights in `model.parameters()` order.
     """
 
     def __init__(self, model: MoiraiModule, generator: Generator, spec: WindowSpec, config: TrainConfig, out_dir: str | Path) -> None:
@@ -169,23 +179,23 @@ class Trainer:
         self._heldout: WindowBatch | None = None
 
     def lr_at(self, step: int) -> float:
-        """Шаг обучения на данном шаге: линейный разогрев, затем постоянный."""
+        """The learning step at this step: linear heating, then permanent."""
         if self.config.warmup_steps == 0:
             return self.config.lr
         return self.config.lr * min(1.0, (step + 1) / self.config.warmup_steps)
 
     def compute_loss(self, batch: WindowBatch) -> tuple[torch.Tensor, torch.Tensor | None]:
-        """Лосс каждого окна батча и (необязательно) лог масштаба нормировки.
+        """Compute each window's loss and, when available, its log normalization scale.
 
-        Протокол-специфичный шаг. Prequential-реализация возвращает `window_nll` по окну и лог
-        масштаба нормировки модели; requential-реализация переопределяет и возвращает KL-оценку.
+        For the prequential protocol, return `window_nll` and the log of the scale
+        used by the model. Subclasses can override this for different protocols.
 
         Args:
-            batch: Окна на устройстве модели.
+            batch: Windows on the model's device.
 
         Returns:
-            tuple[torch.Tensor, torch.Tensor | None]: лосс `(B,)` в натах на окно и либо лог
-                масштаба нормировки `(B,)`, либо `None`, если протокол его не пишет.
+            tuple[torch.Tensor, torch.Tensor | None]: Losses of shape `(B,)` in nats per
+            window and either log scales of shape `(B,)` or `None`.
         """
         mix = self._forward(**batch.model_inputs(), patch_size=self.spec.patch_size)
         per_window = window_nll(mix, batch, self.spec.patch_size)
@@ -196,7 +206,7 @@ class Trainer:
         return torch.autocast(device_type=str(self.config.device).split(":")[0], dtype=torch.bfloat16, enabled=precision == "bf16")
 
     def checkpoint_steps(self) -> dict[int, float]:
-        """Шаги чекпойнтов с их долями прогона; финальный шаг включён всегда."""
+        """Checkpoint steps with their share runs; the final step is always included."""
         steps = {max(1, round(f * self.config.n_steps)): f for f in self.config.checkpoint_fractions}
         steps[self.config.n_steps] = 1.0
         return steps
@@ -227,7 +237,7 @@ class Trainer:
                 raise ValueError(f"incompatible saved {key} configuration; use a new output directory")
 
     def save(self, path: Path) -> None:
-        """Атомарно сохраняет веса, EMA, оптимизатор и номер шага."""
+        """Atomically retains weights, EMA, optimizer and step number."""
         temporary = path.with_suffix(path.suffix + ".tmp")
         torch.save(
             {
@@ -246,7 +256,7 @@ class Trainer:
         temporary.replace(path)
 
     def load(self, path: Path) -> None:
-        """Восстанавливает состояние из чекпойнта этого же прогона."""
+        """Restores the state from the checkpoint of the same run."""
         state = torch.load(path, map_location=self.config.device, weights_only=False)
         self._validate_saved_config(state, checkpoint=True)
         if not isinstance(state["step"], int) or not 0 <= state["step"] <= self.config.n_steps:
@@ -260,7 +270,7 @@ class Trainer:
         self.step = state["step"]
 
     def heldout(self) -> WindowBatch:
-        """Отложенный набор окон, генерируется один раз и держится на устройстве."""
+        """Build the held-out windows on first use and cache them on the model's device."""
         if self._heldout is None:
             seeds = np.arange(self.config.heldout_first_seed, self.config.heldout_first_seed + self.config.heldout_windows)
             self._heldout = collect_windows(self.generator, self.spec, seeds, workers=self.config.stream_workers).to(self.config.device)
@@ -268,16 +278,16 @@ class Trainer:
 
     @torch.no_grad()
     def evaluate(self, batch: WindowBatch, use_ema: bool, precision: str | None = None, save_to: Path | None = None) -> dict[str, float]:
-        """Средний лосс на окно и на точку по батчу окон для текущих или EMA весов.
+        """Compute mean loss per window and point for raw or EMA weights.
 
         Args:
-            batch: Окна на устройстве модели.
-            use_ema: Подставить ли EMA веса на время оценки.
-            precision: Точность прямого прохода; `None` — `eval_precision` из конфига.
-            save_to: Куда записать лоссы окон float32 по порядку окон батча; `None` — не писать.
+            batch: Forecasting windows on the model's device.
+            use_ema: Temporarily evaluate with EMA weights.
+            precision: Forward-pass precision. `None` uses `eval_precision`.
+            save_to: Optional path for float32 per-window losses in batch order.
 
         Returns:
-            dict[str, float]: `nats_per_window`, `nats_per_point`, `n_windows`.
+            dict[str, float]: `nats_per_window`, `nats_per_point`, and `n_windows`.
         """
         precision = precision or self.config.eval_precision
         was_training = self.model.training
@@ -310,7 +320,7 @@ class Trainer:
         return {"nats_per_window": float(per_window.sum() / n), "nats_per_point": float(per_window.sum() / n / self.spec.horizon), "n_windows": n}
 
     def run(self) -> None:
-        """Выполняет или возобновляет прогон до конца бюджета."""
+        """Performs or resumes running until the end of the budget."""
         cfg = self.config
         self.out_dir.mkdir(parents=True, exist_ok=True)
         config_path = self.out_dir / "config.json"
@@ -483,6 +493,6 @@ class Trainer:
 
 
 def build_model(config: MoiraiConfig, init_seed: int) -> MoiraiModule:
-    """Модель с детерминированной инициализацией."""
+    """A model with deterministic initialization."""
     torch.manual_seed(init_seed)
     return MoiraiModule(config)

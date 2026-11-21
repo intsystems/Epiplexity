@@ -1,4 +1,4 @@
-"""Обучение: короткий прогон на CPU, файлы прогона, возобновление."""
+"""Training: short run on CPU, run files, resumption."""
 
 import csv
 import json
@@ -31,7 +31,7 @@ def _setup(tmp_path, n_windows: int):
 
 
 def test_smoke_run_writes_logs_and_resumes(tmp_path):
-    """Прогон пишет лосс каждого окна, шаги и отложенные оценки; повторный запуск возобновляет и не меняет файлы."""
+    """Run writes the loss of each window, steps, and held-out evaluations; restart resumes and does not change files."""
     trainer, cfg = _setup(tmp_path, 48)
     trainer.run()
     out = tmp_path / "run"

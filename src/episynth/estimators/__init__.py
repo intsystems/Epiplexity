@@ -1,9 +1,9 @@
-r"""Оценщики эпиплексии: плагинный интерфейс выбора и добавления алгоритмов.
+r"""Epiplexity estimators: a plug-in interface for selecting and adding algorithms.
 
-Пользователь выбирает алгоритм по имени через :func:`~episynth.estimators.registry.build` или CLI
-``python -m episynth.estimators.run --estimator <name>``. Новый алгоритм добавляется одним модулем:
-определить класс, реализующий :class:`~episynth.estimators.base.EpiplexityEstimator`, и пометить его
-``@register("name")``; остальные модули библиотеки менять не нужно.
+The user selects the algorithm by name via :func:`~episynth.estimators.registry.build` or CLI
+``python -m episynth.estimators.run --estimator <name>``. The new algorithm is added by one module:
+determine the class implementing :class:`~episynth.estimators.base.EpiplexityEstimator` and mark it
+with ``@register("name")``; the remaining modules of the library do not need to be changed.
 """
 
 from .base import EpiplexityEstimator

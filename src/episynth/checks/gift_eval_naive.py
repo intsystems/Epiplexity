@@ -1,13 +1,13 @@
-r"""Сверка нашего конвейера оценки с опубликованными числами seasonal naive GIFT-Eval.
+r"""Convergence of our estimation pipeline with the published numbers seasonal naive GIFT-Eval.
 
-    python -m episynth.checks.gift_eval_naive --data <снимок GiftEval> --published <results/Seasonal_Naive/all_results.csv> \\
-        [--out <каталог прогона>] [--configs ...]
+    python -m episynth.checks.gift_eval_naive --data <image GiftEval> --published <results/Seasonal_Naive/all_results.csv>
+        [--out <catalogue run>] [--configs ...]
 
-Считает сезонный наивный прогноз нашим кодом по краткосрочным конфигурациям и сравнивает
-точечные метрики (MASE, sMAPE, ND, MAE, MSE[0.5]) с опубликованными: они зависят только от
-данных, окон и формул, а не от интервалов statsforecast. Квантильные метрики опубликованного
-наива зависят от его интервалов и здесь не сверяются. Печатает относительное расхождение по
-конфигурациям и наибольшее по каждой метрике.
+Considers the seasonal naive forecast our code for short-term configurations and compares point
+metrics (MASE, sMAPE, ND, MAE, MSE [0.5]) with published ones: they depend only on the data, windows
+and formulas, and not on the intervals of the statsforecast. Quantile metrics of the published naive
+depend on its intervals and are not checked here. Prints the relative divergence on each
+configuration and the largest configuration.
 """
 
 import argparse
@@ -22,7 +22,7 @@ _POINT = {"MASE[0.5]": "eval_metrics/MASE[0.5]", "sMAPE[0.5]": "eval_metrics/sMA
 
 
 def main() -> None:
-    """Разбор аргументов, прогон наива и сравнение."""
+    """Analysis of arguments, running naive and comparison."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--published", type=Path, required=True)
@@ -41,7 +41,7 @@ def main() -> None:
         worst = {k: max(v, rel[k]) for k, v in worst.items()}
         out_rows.append({"config": ds.config, "windows": ds.windows, "series": len(ds.series), **{f"rel_{k}": v for k, v in rel.items()}, **{f"ours_{k}": v for k, v in agg.items() if k in rel}})
         print(f"{ds.config:40s} " + " ".join(f"{k} {v:.1e}" for k, v in rel.items()), flush=True)
-    print("наибольшее относительное расхождение:", {k: f"{v:.1e}" for k, v in worst.items()})
+    print("Largest relative discrepancy:", {k: f"{v:.1e}" for k, v in worst.items()})
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
         with open(args.out / "naive_check.csv", "w", newline="") as f:

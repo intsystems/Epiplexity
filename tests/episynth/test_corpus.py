@@ -1,4 +1,4 @@
-"""Слой корпуса: совпадение с генератором, объединение каталогов, ошибки."""
+"""Layer of the case: coincidence with the generator, combining directories, errors."""
 
 from types import SimpleNamespace
 
@@ -12,7 +12,7 @@ from episynth.windows import WindowSpec, window_batch
 
 
 def test_corpus_rows_equal_generator(tmp_path):
-    """Строки корпуса равны рядам генератора по тем же сидам, манифест полон, окна совпадают."""
+    """The lines of the case are equal to the rows of the generator on the same seeds, the manifesto is full, the windows coincide."""
     out = tmp_path / "waveform" / "train"
     manifest = generate_corpus("waveform", first_seed=100, n=50, out=out, length=256, workers=2, chunk=16)
     assert manifest == CorpusManifest.model_validate_json((out / "manifest.json").read_text())
@@ -28,7 +28,7 @@ def test_corpus_rows_equal_generator(tmp_path):
 
 
 def test_corpus_parts_and_errors(tmp_path):
-    """Несколько каталогов отдают ряды по своим диапазонам; чужие сиды, пересечения и перезапись — ошибки."""
+    """Several directories give rows according to their ranges; other people's seats, intersections, and overwriting are errors."""
     train, heldout = tmp_path / "train", tmp_path / "heldout"
     generate_corpus("stepfunction", first_seed=0, n=10, out=train, length=128, workers=1, chunk=4)
     generate_corpus("stepfunction", first_seed=1000, n=10, out=heldout, length=128, workers=1, chunk=4)
@@ -44,11 +44,11 @@ def test_corpus_parts_and_errors(tmp_path):
         generate_corpus("stepfunction", first_seed=0, n=10, out=train, length=128, workers=1)
     overlap = tmp_path / "overlap"
     generate_corpus("stepfunction", first_seed=5, n=10, out=overlap, length=128, workers=1, chunk=4)
-    with pytest.raises(ValueError, match="пересекаются"):
+    with pytest.raises(ValueError, match="overlap"):
         Corpus(train, overlap)
     other = tmp_path / "other"
     generate_corpus("waveform", first_seed=0, n=4, out=other, length=128, workers=1)
-    with pytest.raises(ValueError, match="разных генераторов"):
+    with pytest.raises(ValueError, match="different generators"):
         Corpus(train, other)
 
 
@@ -59,7 +59,7 @@ def test_corpus_parts_and_errors(tmp_path):
     ("kernelsynth", {"max_kernels": 2}, False),
 ])
 def test_corpus_parts_require_matching_generator_arguments(tmp_path, generator, args, compatible):
-    """Явные значения по умолчанию совместимы со старыми манифестами без них; другие настройки — нет."""
+    """Explicit default values are compatible with older manifestos without them; other settings are not."""
     parts = [tmp_path / "first", tmp_path / "second"]
     for i, (part, kwargs) in enumerate(zip(parts, ({}, args), strict=True)):
         part.mkdir()

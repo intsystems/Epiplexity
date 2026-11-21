@@ -1,20 +1,21 @@
-r"""Prequential-оценщик эпиплексии.
+r"""Estimate epiplexity from prequential loss.
 
-Обёртка над общим движком :class:`episynth.training.Trainer`: тот уже выполняет prequential-прогон
-(пишет лосс каждого окна до шага по нему в `window_loss.f32` и лоссы отложенного набора на
-последнем чекпойнте в `heldout_ema_1.f32`). После прогона оценщик пересчитывает покомпонентную
-кодовую длину в битах через :func:`episynth.analysis.run_area`.
+The shared :class:`episynth.training.Trainer` writes pre-update window
+losses to `window_loss.f32` and final EMA losses on held-out windows to
+`heldout_ema_1.f32`. After training, :func:`episynth.analysis.run_area`
+computes the area and its code-length components.
 
-Формулы (в натах, лосс окна `l_i` в исходных единицах ряда, `L_fin` — средний лосс окна на
-отложенном наборе у последнего чекпойнта для варианта весов `ema`):
+Let :math:`l_i` be the window loss in the original series units and
+:math:`L_{\mathrm{fin}}` be the final checkpoint's mean held-out loss
+for the selected weight variant. The quantities in nats are:
 
-* prequential-длина кода: :math:`L = \sum_i l_i`;
-* оценка model part (площадь над финальным лоссом): :math:`A = \sum_i l_i - N L_\mathrm{fin}`;
-* оценка data part: :math:`H = L - A`.
+* Total prequential code length :math:`L = \sum_i l_i`.
+* Model part :math:`A = \sum_i l_i - N L_{\mathrm{fin}}`.
+* Data part :math:`H = L - A`.
 
-Площадь, в отличие от ранней версии (средний лосс хвоста прогона), использует отложенный набор,
-как в основном протоколе эксперимента; это и есть финальный лосс конечной модели. Перевод в биты —
-делением на :math:`\ln 2`.
+The current protocol uses final held-out loss as the baseline. Earlier
+runs used the mean loss near the end of training. Divide by :math:`\ln 2`
+to convert nats to bits.
 """
 
 from __future__ import annotations
@@ -34,20 +35,20 @@ _LN2 = 0.6931471805599453
 
 @register("prequential")
 class PrequentialEstimator(EpiplexityEstimator):
-    """Prequential-оценка эпиплексии (площадь над кривой лосса).
+    """Estimate the model and data parts from the prequential training run.
 
-    Использует общий :class:`~episynth.training.Trainer` в его prequential-режиме по умолчанию, затем читает
-    `window_loss.f32` и `heldout_ema_1.f32` из каталога прогона через :func:`~episynth.analysis.run_area` и считает
-    разложение на model/data part в битах.
+    Use the shared :class:`~episynth.training.Trainer`, then read
+    `window_loss.f32` and the selected final held-out losses using
+    :func:`~episynth.analysis.run_area`. Return code lengths in bits.
     """
 
     name = "prequential"
 
     def __init__(self, variant: str = "ema") -> None:
-        r"""Создаёт оценщик.
+        r"""Select the final weight variant.
 
         Args:
-            variant: Вариант весов финального лосса в :func:`~episynth.analysis.run_area`: `ema` или `raw`.
+            variant: Use `ema` or `raw` for the held-out baseline.
         """
         if variant not in ("ema", "raw"):
             raise ValueError("variant must be 'ema' or 'raw'.")
@@ -61,17 +62,17 @@ class PrequentialEstimator(EpiplexityEstimator):
         config: TrainConfig,
         out_dir: str | Path,
     ) -> dict[str, float]:
-        """Выполняет prequential-прогон и возвращает оценку в битах.
+        """Performs a prequential run and returns the score in bits.
 
         Args:
-            model: Модель-наблюдатель.
-            generator: Генератор рядов.
-            spec: Форма задачи.
-            config: Параметры прогона.
-            out_dir: Каталог прогона.
+            model: Observer model.
+            generator: Row generator.
+            spec: The shape of the task.
+            config: Parameters run.
+            out_dir: Run directory.
 
         Returns:
-            dict[str, float]: ``model_part_bits``, ``data_part_bits``, ``total_bits`` и
+            dict[str, float]: ``model_part_bits``, ``data_part_bits``, ``total_bits`` and
                 ``n_windows``.
         """
         out = Path(out_dir)
@@ -79,14 +80,14 @@ class PrequentialEstimator(EpiplexityEstimator):
         return self.from_run_dir(out)
 
     def from_run_dir(self, out_dir: str | Path) -> dict[str, float]:
-        """Считает оценку из готового каталога прогона `Trainer` через `analysis.run_area`.
+        """Compute the estimate from a completed `Trainer` run using `analysis.run_area`.
 
         Args:
-            out_dir: Каталог прогона с `window_loss.f32` и `heldout_<variant>_1.f32`.
+            out_dir: Run directory with `window_loss.f32` and `heldout_<variant>_1.f32`.
 
         Returns:
-            dict[str, float]: ``model_part_bits``, ``data_part_bits``, ``total_bits`` и
-                ``n_windows`` (площадь в битах, оставшиеся в натах несущественны для разложения).
+            dict[str, float]: `model_part_bits`, `data_part_bits`, `total_bits`,
+            and `n_windows`.
         """
         area = run_area(out_dir, self.variant)
         total_nats = area.sum_loss

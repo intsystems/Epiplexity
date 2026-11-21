@@ -1,4 +1,4 @@
-"""Семейство GARCH: GARCH(1,1), GJR-GARCH и EGARCH."""
+"""The family GARCH: GARCH(1,1), GJR-GARCH and EGARCH."""
 
 import numpy as np
 
@@ -9,17 +9,17 @@ _E_ABS_Z = np.sqrt(2 / np.pi)
 
 
 class GARCH(Generator):
-    r"""Доходности GARCH(1,1), GJR-GARCH или EGARCH, с вероятностью 0,5 накопленные в цены.
+    r"""Yields GARCH(1,1), GJR-GARCH or EGARCH, with probability 0,5 accumulated in prices.
 
-    Инновации нормальные или Стьюдента с 3–10 степенями свободы (нормированы к единичной
-    дисперсии), среднее нулевое, постоянное или AR(1), безусловная волатильность
-    логравномерная из :math:`[0{,}005;\,0{,}5]`; 500 точек разгона отбрасываются. Распределение
-    не зависит от длины ряда. Рекурсии считаются пакетом по рядам поэлементно теми же
-    операциями, что у оригинала (квадрат берётся как у скалярного `**` Python), поэтому
-    основной режим совпадает с режимом воспроизведения.
+    Innovation Normal or Student with 3–10 degrees of freedom (normalized to unit variance), mean
+    zero, constant or AR(1Unconditional volatility is log-equal from :math:`[0{,}005;\,0{,}5]`; 500
+    Acceleration points are discarded. The distribution does not depend on the length of the row.
+    Recursion is considered a packet in rows, elementally the same operations as the original (the
+    square is taken as the scalar one). `**` Python), so the main mode is the same as the playback
+    mode.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "garch"
@@ -32,7 +32,7 @@ class GARCH(Generator):
 
     @staticmethod
     def _garch11(omega, alpha, beta, mu, phi, z) -> np.ndarray:
-        """Рекурсия GARCH(1,1); параметры — массивы по рядам, `z` формы `(n, T)`."""
+        """Recursion GARCH(1,1); parameters - arrays in rows, `z` form `(n, T)`."""
         T = z.shape[1]
         sigma2 = omega / (1 - alpha - beta)
         eps = np.sqrt(sigma2) * z[:, 0]

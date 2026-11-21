@@ -1,4 +1,4 @@
-"""Три определения по оси x: длина кода без вычета, площадь с вычетом L_fin EMA, площадь с вычетом L_fin текущих весов."""
+"""Compare total code length and excess areas with EMA and raw-weight baselines."""
 import os
 import sys
 from pathlib import Path
@@ -19,9 +19,9 @@ naive = root / "eval" / "seasonal_naive" / "summary.csv"
 ema = {g: run_area(root / "runs" / f"{PREFIX}{g}", "ema") for g in gens}
 raw = {g: run_area(root / "runs" / f"{PREFIX}{g}", "raw") for g in gens}
 xs = {
-    "длина кода $\\sum_i \\ell_i$ без вычета, млн нат": {g: ema[g].sum_loss / 1e6 for g in gens},
-    "$A = \\sum_i \\ell_i - N L_{fin}$, $L_{fin}$ EMA-весов, млн нат": {g: ema[g].area / 1e6 for g in gens},
-    "$A$ с $L_{fin}$ текущих весов, млн нат": {g: raw[g].area / 1e6 for g in gens},
+    "Code length (million nats)": {g: ema[g].sum_loss / 1e6 for g in gens},
+    "Area $A$ with EMA baseline (million nats)": {g: ema[g].area / 1e6 for g in gens},
+    "Area $A$ with raw-weight baseline (million nats)": {g: raw[g].area / 1e6 for g in gens},
 }
 handles = [Line2D([], [], marker="o", color=colors[g], ls="", label=NAMES[g]) for g in gens]
 for key, metric, fname in (("CRPS", "scaled_crps", "fig_crps_vs_three_areas"), ("MASE", "MASE[0.5]", "fig_mase_vs_three_areas")):
@@ -33,7 +33,7 @@ for key, metric, fname in (("CRPS", "scaled_crps", "fig_crps_vs_three_areas"), (
         ax.axhline(1.0, color="gray", lw=0.8, ls="--")
         ax.set_xlabel(label)
         ax.grid(alpha=0.3)
-    axes[0].set_ylabel(f"{key} / сезонный наив")
+    axes[0].set_ylabel(f"{key} / seasonal naive")
     axes[-1].legend(handles=handles, fontsize=8, ncol=2, frameon=False, loc="best")
     fig.tight_layout()
     fig.savefig(out / f"{fname}.pdf"); fig.savefig(out / f"{fname}.png", dpi=140)

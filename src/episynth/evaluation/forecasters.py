@@ -1,13 +1,13 @@
-r"""Прогнозчики для оценки: сезонный наивный и Moirai в двух протоколах.
+r"""Forecasters to evaluate: seasonal naive and Moirai in two protocols.
 
-Прогнозчик получает истории окон и горизонт и возвращает сэмплы прогноза, а если умеет —
-минус лог-плотность правды. Протокол Moirai `"ours"` — форма задачи обучения: последние
-`context_max` точек истории, ведущие NaN отбрасываются как отсутствующая история, внутренние
-заполняются линейной интерполяцией, прогноз на `horizon_max` точек, из которых берутся первые
-:math:`h`. Протокол `"notebook"` повторяет `MoiraiForecast` из тетради GIFT-Eval: история до 4000
-точек, токены левее её начала — заполнение вне внимания, NaN внутри истории как
-ненаблюдаемые без заполнения, индексы времени от первого наблюдаемого патча,
-:math:`\lceil h / P \rceil` прогнозных токенов.
+The forecaster gets the window histories and the horizon and returns the forecast samples, and if he
+can, minus the truth log density. `"ours"` The form of the learning task: the latest `context_max`
+points of history leading NaN Discarded as a missing history, the internals are filled with linear
+interpolation, the prognosis `horizon_max` From which are taken the first :math:`h`Protocol.
+`"notebook"` repeat `MoiraiForecast` notebook GIFT-Eval: History before 4000 Dots, tokens to the
+left of the beginning — filling out, out of the spotlight. NaN within the history as unobservable
+without filling, time indexes from the first observed patch, :math:`\lceil h / P \rceil` Predictive
+tokens.
 """
 
 import math
@@ -22,12 +22,12 @@ from ..model.moirai import MoiraiModule
 
 @dataclass
 class Forecast:
-    """Прогноз батча окон.
+    """Forecasts for a batch of windows.
 
     Attributes:
-        samples: Сэмплы `(n, B, h)` float32.
-        nll: Минус лог-плотность правды `(B, h)` float32 или `None`, если правда не передана или плотности нет.
-        context_length: Сколько точек истории использовано `(B,)`.
+        samples: Samples `(n, B, h)` float32.
+        nll: Minus the truth log density of `(B, h)` float32 or `None` if the truth is not transmitted or there is no density.
+        context_length: How many points of history are used by `(B,)`?
     """
 
     samples: np.ndarray
@@ -36,21 +36,21 @@ class Forecast:
 
 
 class Forecaster(ABC):
-    """Прогнозчик окон одномерных рядов."""
+    """One-dimensional window forecaster."""
 
     @abstractmethod
     def predict(self, histories: list[np.ndarray], horizon: int, labels: list[np.ndarray] | None = None) -> Forecast:
-        """Прогноз для списка историй на `horizon` точек; `labels` нужны только для лог-плотности."""
+        """Prediction for a list of histories on `horizon` points; `labels` is only needed for log density."""
 
 
 class SeasonalNaive(Forecaster):
-    """Повтор последнего сезона истории; при истории короче сезона — последнее значение.
+    """Repeat the last season of history; with a shorter season, the last value.
 
-    NaN в истории заполняются последним наблюдённым значением. Один сэмпл, так что все
-    квантили равны точечному прогнозу.
+    The NaN in history is filled with the last observed value. One sample, so all quantiles are
+    equal to the point prediction.
 
     Args:
-        season: Сезонность.
+        season: Seasonal.
     """
 
     def __init__(self, season: int) -> None:
@@ -60,7 +60,7 @@ class SeasonalNaive(Forecaster):
         self, histories: list[np.ndarray], horizon: int,
         labels: list[np.ndarray] | None = None,
     ) -> Forecast:
-        """Прогноз `(1, B, h)`."""
+        """`(1, B, h)` forecast."""
         out = np.empty((1, len(histories), horizon), dtype=np.float32)
         for i, h in enumerate(histories):
             y = _forward_fill(h.astype(np.float64))
@@ -94,17 +94,17 @@ def _interpolate_nan(y: np.ndarray) -> np.ndarray:
 
 
 class MoiraiForecaster(Forecaster):
-    """Прогноз моделью Moirai сэмплированием из предсказательной смеси.
+    """Forecast model Moirai sampled from a predictive mixture.
 
     Args:
-        module: Модель.
-        patch_size: Размер патча из конфигурации модели.
-        protocol: `"ours"` или `"notebook"`.
-        context_max: Наибольшая длина истории: 512 в нашем протоколе, 4000 в тетради.
-        horizon_max: Длина прогноза модели в нашем протоколе; кратна патчу.
-        n_samples: Число сэмплов.
-        batch_size: Окон на батч.
-        device: Устройство.
+        module: Model.
+        patch_size: Patch size from the model configuration.
+        protocol: `"ours"` or `"notebook"`.
+        context_max: Longest history: 512 in our protocol, 4000 in the notebook.
+        horizon_max: The length of the model forecast in our protocol; a multiple of the patch.
+        n_samples: Number of samples.
+        batch_size: Windows on batch.
+        device: The device.
     """
 
     def __init__(
@@ -146,7 +146,7 @@ class MoiraiForecaster(Forecaster):
         self, histories: list[np.ndarray], horizon: int,
         labels: list[np.ndarray] | None = None,
     ) -> Forecast:
-        """Сэмплы `(n, B, h)` и, при `labels`, минус лог-плотность `(B, h)`."""
+        """Samples of `(n, B, h)` and, at `labels`, minus the `(B, h)` log density."""
         if not isinstance(horizon, int) or isinstance(horizon, bool) or horizon <= 0:
             raise ValueError("horizon must be a positive integer")
         if self.protocol == "ours" and horizon > self.horizon_max:

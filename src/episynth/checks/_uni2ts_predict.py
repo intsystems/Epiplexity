@@ -1,9 +1,9 @@
-"""Прогноз `MoiraiForecast` из uni2ts на сохранённых окнах.
+"""Prediction `MoiraiForecast` from uni2ts on saved windows.
 
-    python _uni2ts_predict.py <каталог чекпойнта> <windows.npz> <out.npy> <patch> <context> <n_samples>
+    python _uni2ts_predict.py <checkpoint directory> <windows.npz> <out.npy> <patch> <context> <n_samples>
 
-Запускается интерпретатором с uni2ts 2.0.0 и gluonts. Входы: массивы `h<i>` (истории) и
-скаляр `h` (горизонт). Выход: медианы прогнозов `(B, h)`.
+Launched by an interpreter with uni2ts 2.0.0 and gluonts. Entrances: `h<i>` arrays (history) and `h`
+scalar (horizon). Output: medians of `(B, h)` predictions.
 """
 
 import sys
@@ -14,7 +14,7 @@ import torch
 
 
 def main(ckpt_dir: str, windows: str, out: str, patch: int, context: int, n_samples: int) -> None:
-    """Считает медианы прогнозов и сохраняет их в `out`."""
+    """It counts the medians of forecasts and stores them in `out`."""
     from gluonts.dataset.common import ListDataset
     from uni2ts.model.moirai import MoiraiForecast, MoiraiModule
 

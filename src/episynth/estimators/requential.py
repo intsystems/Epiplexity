@@ -1,22 +1,23 @@
-r"""Requential-оценщик эпиплексии (скелет).
+r"""Requential epiplexity estimator stub.
 
-Требует реализации (см. литературу: Qiu и др., 2026, arXiv:2607.11883; заметки в
-`publications/research_notes/.../requential_coding.md`):
+See Qiu et al. (2026), arXiv:2607.11883, and the project notes in
+`publications/research_notes/.../requential_coding.md`.
 
-* **Учитель и студент** — два экземпляра :class:`~episynth.model.moirai.MoiraiModule` одинаковой
-  конфигурации. Учитель обучается на реальных батчах из генератора и сглаживается EMA; студент
-  обучается только на сэмплах из распределения учителя.
-* **Оценка KL за шаг** — на батче, сэмплированном из EMA-учителя, несмещённая оценка
-  :math:`\mathrm{KL}_i = \frac1{|B|}\sum[\log Q_i(x) - \log P_i^s(x)]` (в битах через
-  :math:`\ln 2`).
-* **Seedable-сэмплирование** — предложения студента должны регенерироваться по ключу
-  (seed, step, index) для декодера; сейчас `Mixture.sample` использует глобальный RNG.
-* **Iso-loss projection / KL-threshold** — периодический сброс учителя к студенту, чтобы KL не рос.
+* **Teacher and student:** two copies of :class:`~episynth.model.moirai.MoiraiModule`
+  with the same architecture. The teacher trains on generator batches with EMA.
+  The student trains on samples from the teacher's predictive distribution.
+* **Per-step KL:** estimate it on a batch sampled from the EMA teacher with
+  :math:`\mathrm{KL}_i = \frac{1}{|B|}\sum[\log Q_i(x)-\log P_i^s(x)]`.
+  Divide by :math:`\ln 2` to obtain bits.
+* **Seeded sampling:** the decoder must regenerate student proposals from the
+  seed, step, and index. `Mixture.sample` currently uses the global RNG.
+* **Iso-loss projection or KL threshold:** periodically reset the teacher to the
+  student to limit KL growth.
 
-Кодовая длина: :math:`\mathbb{E}[L_\mathrm{req}] = C_\mathrm{setup} + \sum_i[\mathrm{KL}_i
-+ 2\log_2(1+\mathrm{KL}_i) + \kappa]`, :math:`\kappa < 5.21`; на практике ведущий член — суммарный KL.
-Оценщик зарегистрирован в реестре, но его прогон пока не реализован и вызывает
-:class:`NotImplementedError`.
+Expected code length is :math:`\mathbb{E}[L_\mathrm{req}] = C_\mathrm{setup} +
+\sum_i[\mathrm{KL}_i + 2\log_2(1+\mathrm{KL}_i) + \kappa]`, with :math:`\kappa < 5.21`.
+The total KL is the leading term in practice. The registered stub raises
+:class:`NotImplementedError` on execution.
 """
 
 from __future__ import annotations
@@ -33,10 +34,11 @@ from .registry import register
 
 @register("requential")
 class RequentialEstimator(EpiplexityEstimator):
-    """Requential-оценка эпиплексии (код студента, реконструируемого по индексам сэмплов).
+    """Requential-assessment of epiplexity (code of the student reconstructed by sample indices).
 
-    Каркас: структура метода `run` и ожидаемые аргументы зафиксированы, но шаги requential-протокола
-    (учитель-студент, KL, iso-loss projection) ещё не реализованы и бросают :class:`NotImplementedError`.
+    The framework: the structure of the `run` method and the expected arguments are fixed, but the
+    steps of the requential protocol (teacher-student, KL, iso-loss projection) are not yet
+    implemented and throw :class:`NotImplementedError`.
     """
 
     name = "requential"
@@ -48,13 +50,13 @@ class RequentialEstimator(EpiplexityEstimator):
         projection_steps: tuple[int, ...] = (100, 150, 225),
         kl_scale: float = 1.0,
     ) -> None:
-        """Создаёт скелет requential-оценщика.
+        """Creates the skeleton of a requential estimator.
 
         Args:
-            teacher_ema: Постоянная времени EMA учителя (доля шага от текущего шага).
-            student_ema: Постоянная времени EMA студента.
-            projection_steps: Шаги, на которых делается iso-loss projection (сброс учителя к студенту).
-            kl_scale: Масштабный множитель для KL-оценки (заглушка).
+            teacher_ema: Time constant EMA teacher (share of step from current step).
+            student_ema: Time constant EMA student.
+            projection_steps: Steps by which iso-loss projection is made.
+            kl_scale: Scale multiplier for the KL score (stub).
         """
         self.teacher_ema = teacher_ema
         self.student_ema = student_ema
@@ -69,10 +71,10 @@ class RequentialEstimator(EpiplexityEstimator):
         config: TrainConfig,
         out_dir: str | Path,
     ) -> dict[str, float]:
-        """Заглушка: requential-прогон ещё не реализован.
+        """Stub: The requential run has not yet been implemented.
 
         Raises:
-            NotImplementedError: Всегда, пока не реализованы учитель-студент и KL.
+            NotImplementedError: Always, until implemented teacher-student and KL.
         """
         raise NotImplementedError(
             "RequentialEstimator.run is not implemented yet. "

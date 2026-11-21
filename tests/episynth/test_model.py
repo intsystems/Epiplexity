@@ -1,4 +1,4 @@
-"""Перенос Moirai: число параметров, загрузка чекпойнта, формулы компонент смеси, прямой проход."""
+"""Moirai transfer: number of parameters, checkpoint load, formula components of the mixture, direct passage."""
 
 import math
 import os
@@ -16,13 +16,13 @@ CKPT = os.environ.get("MOIRAI_SMALL_DIR")
 
 
 def test_param_count_matches_published_small():
-    """Конфигурация small с четырьмя компонентами и пятью патчами даёт 13 827 528 параметров."""
+    """The small configuration with four components and five patches gives the 13 827 528 parameters."""
     model = MoiraiModule(small())
     assert sum(p.numel() for p in model.parameters()) == 13_827_528
 
 
 def test_component_log_probs_match_torch_distributions():
-    """Формулы компонент совпадают с `torch.distributions` на случайных параметрах."""
+    """The formulas of the components coincide with the `torch.distributions` on random parameters."""
     g = torch.Generator().manual_seed(0)
     shape = (2, 3, 5)
     df = 2 + torch.rand(shape, generator=g) * 5
@@ -62,7 +62,7 @@ def test_component_log_probs_match_torch_distributions():
 
 
 def test_forward_shapes_and_finite_nll():
-    """Прямой проход на окнах генератора даёт конечную лог-плотность нужной формы."""
+    """Direct passage on the windows of the generator gives the final log density of the desired shape."""
     spec = WindowSpec(series_length=256, context_max=128, horizon=32, patch_size=16, context_lengths=(64, 128))
     gen = GENERATORS["sde"](length=256)
     seeds = np.arange(4)
@@ -129,11 +129,11 @@ def test_fixed_scaling_matches_external_transform_with_partial_context_patches()
                                expected.log_prob(transformed["target"]) - math.log(3), atol=1e-5, rtol=1e-5)
 
 
-@pytest.mark.skipif(CKPT is None, reason="MOIRAI_SMALL_DIR не задан")
+@pytest.mark.skipif(CKPT is None, reason="MOIRAI_SMALL_DIR is unset")
 def test_pretrained_checkpoint_loads_and_fits_sine_better_than_noise():
-    """Опубликованный чекпойнт грузится и даёт синусу заметно меньший лосс, чем белому шуму.
+    """Published checkpoint loads and gives the sine a noticeably smaller loss than white noise.
 
-    Точная сверка переноса с оригиналом — `episynth.checks.moirai`.
+    Accurate translation with the original - `episynth.checks.moirai`.
     """
     model = MoiraiModule(small())
     load_uni2ts_checkpoint(model, os.path.join(CKPT, "model.safetensors"))

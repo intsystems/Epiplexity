@@ -1,32 +1,38 @@
 # episynth
 
-Инструменты эксперимента по эпиплексии синтетических временных рядов: генераторы рядов,
-окна задачи прогноза, перенос модели Moirai и обучение с логом лосса каждого окна.
+Tools for studying epiplexity in synthetic time series. The package provides
+generators, forecasting windows, a Moirai port, and training with per-window loss logs.
 
-## Слои
+## Layers
 
-- `episynth.generators` — ряды по сидам.
-- `episynth.windows` — окна задачи: контекст случайной длины, горизонт, патчи, деквантование;
-  поток батчей по возрастающим сидам с генерацией в фоновом потоке.
-- `episynth.model` — перенос Moirai 1.x из uni2ts с загрузкой опубликованных чекпойнтов;
-  смесь распределений с лог-плотностью в натах.
-- `episynth.corpus` — корпуса: генерация рядов по сидам в файл процессами и чтение корпуса как
-  генератора, чтобы обучение не упиралось в CPU.
-- `episynth.training` — прогон обучения: лосс каждого окна до шага по нему, постоянный шаг
-  после разогрева, EMA весов, чекпойнты на долях прогона, отложенный набор, возобновление.
-- `episynth.train` — запуск прогона по файлу конфигурации: генератор, корпус или смесь,
-  таблица длин контекста, переопределения из командной строки.
-- `episynth.analysis` — площадь над финальным лоссом с ошибкой от отложенного набора, кривая
-  площади по префиксам, сводки качества по задачам (ранги, отношения к наиву), корреляции
-  Спирмена с бутстрепом по генераторам.
-- `episynth.evaluation` — оценка на GIFT-Eval: загрузка снимка `Salesforce/GiftEval` без
-  gluonts, тестовые окна как в бенчмарке, прогнозчики (сезонный наив, Moirai в нашем протоколе
-  и в протоколе тетради лидерборда), метрики по окнам с точным сведением в определениях
-  лидерборда и в масштабированном виде, лог-плотность правды.
-- `episynth.estimators` — плагинный интерфейс оценки эпиплексии: алгоритмы регистрируются по
-  имени и выбираются полем `estimator` в конфигурации `episynth.train`. Встроены `prequential`
-  (площадь над кривой лосса), `v_information` (польза контекста для прогноза) и скелет `requential`; пользователь добавляет свой алгоритм одним
-  модулем через `@register`.
+- `episynth.generators` generates series from seeds.
+- `episynth.windows` builds forecasting windows with a random context length, a
+  horizon, patches, and dequantization. A background thread streams batches in
+  ascending seed order.
+- `episynth.model` ports Moirai 1.x from uni2ts and loads published checkpoints.
+  Its mixture distribution reports log densities in nats.
+- `episynth.corpus` uses worker processes to write seeded series to a file. A
+  saved corpus can supply series through the generator interface to reduce CPU
+  load during training.
+- `episynth.training` runs training with pre-update per-window losses, a constant
+  learning rate after warmup, EMA weights, checkpoints at selected fractions of
+  the run, held-out evaluation, and resume support.
+- `episynth.train` launches a run from a configuration file. It accepts a generator,
+  corpus, or mixture, a context-length table, and command-line overrides.
+- `episynth.analysis` computes excess area above final loss, its held-out
+  uncertainty, the area curve over prefixes, comparison metrics by task (ranks and
+  ratios to the naive forecast), and Spearman correlations with generator-level
+  bootstrap intervals.
+- `episynth.evaluation` evaluates on GIFT-Eval. It loads a `Salesforce/GiftEval`
+  snapshot without GluonTS and builds the benchmark's test windows. It provides
+  seasonal-naive and Moirai forecasters (using either the local protocol or the
+  leaderboard notebook's protocol), per-window metrics and their exact aggregation
+  under the leaderboard and scaled definitions, and the log density of observed targets.
+- `episynth.estimators` provides the epiplexity estimator plugin interface. The
+  `estimator` field of an `episynth.train` configuration selects a registered
+  algorithm by name. Built-ins include `prequential` (excess loss area),
+  `v_information` (predictive value of context), and the `requential` stub. Add
+  another estimator in one module using `@register`.
 
 ```python
 from episynth.generators import GENERATORS
@@ -40,18 +46,20 @@ cfg = TrainConfig(n_windows=4_800_000, batch_size=256, device="cuda")
 Trainer(model, GENERATORS["kernelsynth"](device="cuda"), spec, cfg, "runs/kernelsynth").run()
 ```
 
-Что пишется в каталог прогона и в каких единицах — в докстринге `episynth.training`.
-Обучающие и отложенные сиды проверяются на непересечение, включая компоненты смеси.
-При возобновлении проверяются источник данных, форма окна, модель и настройки обучения;
-для prequential можно менять `device`, `compile`, `eval_batch_size`, `stream_workers`,
-`log_every` и `fused_adam`. Старые чекпойнты без описания источника нельзя безопасно
-возобновить: для нового обучения нужен отдельный каталог. Их веса по-прежнему можно
-использовать для оценки. Финальный чекпойнт и отложенная оценка создаются всегда;
-повторный запуск восстанавливает незавершённую финальную оценку.
+The `episynth.training` docstring lists the files in a run directory and their
+units. Training and held-out seed ranges must be disjoint, including within
+mixture components. When resuming, the trainer checks the data source, window
+shape, model, and training settings. For prequential runs, `device`, `compile`,
+`eval_batch_size`, `stream_workers`, `log_every`, and `fused_adam` can change.
+Legacy checkpoints with missing source metadata require a new directory for
+training. Their weights can still be evaluated. Every run produces a final
+checkpoint and a held-out evaluation. A resumed run completes any interrupted
+final evaluation.
 
-То же по файлу конфигурации, с корпусом вместо генерации на лету. Корпус генератора — массив
-`(n, 1024)` float32 с манифестом, строка `i` есть ряд с сидом `first_seed + i`, поэтому прогон на
-корпусе даёт те же окна, что прогон на лету по тем же сидам:
+The same workflow can use configuration files and a saved corpus. The corpus is
+a float32 array of shape `(n, 1024)` with a manifest. Row `i` holds the series
+for seed `first_seed + i`, so a corpus-backed run produces the same windows as
+on-the-fly generation with the same seeds.
 
 ```bash
 python -m episynth.corpus --generator kernelsynth --first-seed 0 --n 2000000 --out corpora/kernelsynth/train
@@ -59,34 +67,35 @@ python -m episynth.corpus --generator kernelsynth --first-seed 1000000000 --n 10
 python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth --set train.lr=3e-4
 ```
 
-Файл конфигурации — разделы `data`, `spec`, `model`, `train`, путь `context_table` и имя
-алгоритма оценки `estimator`; формат и правила в докстринге `episynth.train`. Равная смесь
-генераторов или корпусов (`Mixture`, раздел `data.mixture`) служит для подбора шага обучения,
-общего для всех генераторов.
+The configuration defines `data`, `spec`, `model`, and `train` sections, a
+`context_table` path, and the `estimator` name. See the `episynth.train` docstring
+for the format and rules. An equally weighted mixture of generators or corpora
+(`Mixture`, configured under `data.mixture`) helps choose a common learning rate.
 
-Поле `estimator` выбирает алгоритм оценки эпиплексии из реестра `episynth.estimators` (по
-умолчанию `prequential`). Прогон пишет обычные артефакты `Trainer`, а результат оценки — в
-`estimator_result.json`:
+The `estimator` field defaults to `prequential`. A run writes standard `Trainer`
+artifacts and stores the estimate in `estimator_result.json`.
 
 ```bash
 python -m episynth.train --config configs/kernelsynth.json --out runs/kernelsynth \
     --set estimator=prequential --set train.lr=3e-4
 ```
 
-Плагинный интерфейс описан в `episynth.estimators`: встроены `prequential` (площадь над кривой
-лосса, финальный лосс берётся с отложенного набора `heldout_ema_1.f32` через
-`episynth.analysis.run_area`), `v_information` и скелет `requential`. Свой алгоритм добавляется одним модулем:
-класс, реализующий `EpiplexityEstimator`, помечается `@register("имя")`; выбирается по имени в
-`--set estimator=имя`.
+The `episynth.estimators` docstrings describe the plugin interface. The prequential
+estimator measures the excess area and reads the final held-out loss from
+`heldout_ema_1.f32` through `episynth.analysis.run_area`. To add an estimator,
+implement `EpiplexityEstimator` in a module and decorate the class with
+`@register("name")`. Select it with `--set estimator=name`.
 
 ## V-information
 
-`estimator=v_information` обучает два Moirai с одинаковыми начальными весами и бюджетом:
-с контекстом и без него. Параметры конструктора передаются через `estimator_config`:
-`variant` (`ema` по умолчанию или `raw`), `test_first_seed` (2 000 000 000),
-`test_windows` (100 000, не меньше двух). Существующий `train.heldout_*` задаёт validation;
-train, validation и test должны быть непересекающимися и покрываться источником данных,
-включая исходные сиды компонентов смеси. Поддерживаются непрерывные компоненты плотности.
+`estimator=v_information` trains two Moirai models, with and without context,
+using the same initial weights and budget. The `estimator_config` constructor
+settings are `variant` (`ema` by default, or `raw`), `test_first_seed`
+(2,000,000,000), and `test_windows` (100,000 by default, with a minimum of two).
+The existing `train.heldout_*` fields define validation. Training, validation,
+and test ranges must be disjoint and covered by the source, including the
+underlying mixture component seeds. The estimator supports continuous density
+components.
 
 ```bash
 python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_cpu
@@ -97,31 +106,36 @@ python -m episynth.estimators.run --estimator v_information --generator waveform
     --estimator-config '{"test_first_seed":2000,"test_windows":32}'
 ```
 
-Среднее и масштаб вычисляются дополнительным проходом только по точкам горизонта train,
-потоково в float64. Обе модели используют эту фиксированную нормировку; `log_prob` и NLL
-остаются в исходных единицах ряда. `MoiraiConfig.fixed_scaling=(loc, scale)` требует
-`scaling=True`, конечных констант и положительного масштаба. `ignore_context=True` задаёт
-контекстно-независимый режим внутри модели; оба режима сохраняются с конфигурацией.
+An additional streaming pass computes the mean and scale in float64 using only
+the training targets. Both models use this fixed normalization. `log_prob` and
+NLL remain in the original series units. `MoiraiConfig.fixed_scaling=(loc, scale)`
+requires `scaling=True`, finite constants, and a positive scale.
+`ignore_context=True` enables context-free prediction. Both settings are saved
+with the model configuration.
 
-Чекпойнты выбранного `variant` сравниваются на validation в `train.eval_precision`.
-Условный предиктор выбирается среди условных чекпойнтов и лучшего baseline; при равенстве
-предпочитается baseline, затем более ранний шаг. Только после фиксации выбора читается test.
-Обе роли оцениваются на идентичных целях, включая деквантование. Сумма NLL по горизонту
-использует текущую факторизацию Moirai в произведение плотностей точек.
+Validation compares checkpoints for the chosen `variant` at
+`train.eval_precision`. The conditional predictor is selected from conditional
+checkpoints and the best baseline. Ties favor the baseline, then the earlier
+step. The estimator reads test windows only after model selection. It scores
+both predictors on identical targets, including dequantization. Horizon NLL
+uses Moirai's current factorization as a product of pointwise densities.
 
-Результат содержит `unconditional_entropy_bits_per_window`,
-`conditional_entropy_bits_per_window`, их разность `v_information_bits_per_window`,
-парную `standard_error_bits_per_window`, `n_test_windows` и метаданные. Отрицательные
-оценки сохраняются; ошибка отражает test-выборку при фиксированных моделях, а не разброс
-обучения. Это оценка при ограниченном бюджете оптимизации, без утверждения о достижении
-инфимума семейства или PAC-гарантии. Полей разложения стоимости кода у неё нет.
+The result includes `unconditional_entropy_bits_per_window`,
+`conditional_entropy_bits_per_window`, their difference
+`v_information_bits_per_window`, the paired `standard_error_bits_per_window`,
+`n_test_windows`, and metadata. Negative estimates are retained. The standard
+error reflects test-sample uncertainty conditional on the fitted models.
+The estimate uses a finite optimization budget and supplies neither an infimum
+over the predictor family nor a PAC guarantee. It reports predictive losses
+without decomposing code length.
 
-Каталоги `unconditional/` и `conditional/` содержат обычные артефакты Trainer.
-`v_information.json` хранит нормировку, конфигурации, сплиты и выбранные чекпойнты;
-`test_unconditional.f32` и `test_conditional.f32` — NLL в натах в порядке test-сидов,
-`pvi_bits.f64` — их оконные разности в битах. Повторный запуск проверяет совместимость
-исходных весов и настроек и возобновляет незавершённые ветви. Пересчёт готового результата
-читает только сохранённые файлы и проверяет их полноту и согласованность:
+The `unconditional/` and `conditional/` directories contain standard Trainer
+artifacts. `v_information.json` stores normalization, configurations, splits,
+and selected checkpoints. `test_unconditional.f32` and `test_conditional.f32`
+hold NLL in nats in test-seed order, and `pvi_bits.f64` holds the paired
+differences in bits per window. Resuming checks initialization and settings
+before continuing incomplete branches. A completed estimate can be recomputed
+from the saved files after checking that they are complete and consistent.
 
 ```python
 from episynth.estimators.v_information import VInformationEstimator
@@ -129,81 +143,90 @@ result = VInformationEstimator().from_run_dir("runs/v_information_cpu")
 print(result["v_information_bits_per_window"])
 ```
 
-Оценка чекпойнта прогона на краткосрочной части GIFT-Eval (снимок датасета — `huggingface_hub.snapshot_download("Salesforce/GiftEval", repo_type="dataset")`):
+To evaluate a checkpoint on the short-horizon GIFT-Eval tasks, download a dataset
+snapshot with `huggingface_hub.snapshot_download("Salesforce/GiftEval", repo_type="dataset")`.
 
 ```bash
-python -m episynth.evaluation.run --data <снимок> --out eval/kernelsynth --model moirai \
+python -m episynth.evaluation.run --data <snapshot> --out eval/kernelsynth --model moirai \
     --checkpoint runs/kernelsynth/ckpt_1.pt --patch-size 32 --device cuda
 ```
 
-Конфигурация модели берётся из собственного `.pt` чекпойнта. Если передан
-`--config-json`, он должен ей соответствовать. Файл `evaluation.json` фиксирует модель,
-чекпойнт и настройки оценки: готовые строки `summary.csv` используются повторно только
-при совпадении этих настроек. Для другого эксперимента или старой сводки без этого
-файла нужен отдельный каталог вывода.
+The native `.pt` checkpoint supplies the model configuration. A supplied
+`--config-json` must match it. `evaluation.json` records the model, checkpoint,
+and evaluation settings, and existing `summary.csv` rows are reused only when
+these settings match. Use a new output directory for a different experiment
+or if the existing summary predates `evaluation.json`.
 
-Сводка всегда содержит один и тот же набор колонок. Метрики с нулевым знаменателем
-или без подходящих наблюдений записываются как `NaN`: например, MASE для постоянной
-истории или метрики при полностью отсутствующих метках. Счётчики окон и точек
-позволяют отличить эти случаи; неопределённая метрика не прерывает оценку.
+The summary always has the same columns. A metric with a zero denominator or no
+eligible observations is recorded as `NaN`. Examples include MASE with a constant
+history and metrics whose targets are all missing. Window and point counts make
+these cases distinguishable, and evaluation can continue.
 
-Проверка обучения: прогон на генераторе `ou` (AR(1) с приором на коэффициент) и сравнение его
-лосса с точным байесовским лоссом тех же окон, посчитанным квадратурой по приору
-(`python -m episynth.checks.ou_bayes --run runs/ou`); обученная модель должна подойти к нему сверху.
+For a training check, run the `ou` generator (an AR(1) model with a coefficient
+prior) and compare the learned loss with the exact Bayesian loss on the same
+windows, obtained by quadrature over the prior
+(`python -m episynth.checks.ou_bayes --run runs/ou`). The trained model is expected
+to approach the reference from above.
 
-Проверки конвейера: сверка переноса модели с uni2ts на одних входах
-(`python -m episynth.checks.moirai --checkpoint <каталог> --uni2ts-python <интерпретатор с uni2ts 2.0.0>`),
-сверка данных, окон и формул с опубликованным сезонным наивом
-(`python -m episynth.checks.gift_eval_naive --data <снимок> --published <results/Seasonal_Naive/all_results.csv>`),
-сравнение прогона с опубликованной таблицей модели (`python -m episynth.checks.gift_eval_published`).
+Pipeline checks include comparing the port with uni2ts on identical inputs
+(`python -m episynth.checks.moirai --checkpoint <directory> --uni2ts-python <interpreter-with-uni2ts-2.0.0>`),
+checking data, windows, and metric formulas against the published seasonal-naive
+baseline (`python -m episynth.checks.gift_eval_naive --data <snapshot> --published <results/Seasonal_Naive/all_results.csv>`),
+and comparing a run with the model's published table
+(`python -m episynth.checks.gift_eval_published`).
 
-## Генераторы
+## Generators
 
-`episynth.generators` — одиннадцать генераторов одномерных рядов из Mix, Don't Pick
-(Nagpal и др., 2026, arXiv:2606.09912): KernelSynth, ETS, Waveform, SDE, StepFunction, TSI,
-ARIMA, fBm, GARCH, Chaotic, TimeSynth. Генеративный процесс каждого повторяет оригинал, а
-вычисление переписано пакетом по рядам без сторонних библиотек оригинала (`fbm`, `timesynth`).
+`episynth.generators` includes eleven univariate time-series generators from
+Mix, Don't Pick (Nagpal et al., 2026, arXiv:2606.09912). They are KernelSynth,
+ETS, Waveform, SDE, StepFunction, TSI, ARIMA, fBm, GARCH, Chaotic, and TimeSynth.
+The package follows the original generative processes with batch implementations
+that work across series without the original `fbm` and `timesynth` dependencies.
 
-У ARIMA по умолчанию включён `coefficient_mode="legacy"`, сохраняющий опубликованные
-ряды и унаследованную ошибку порядка коэффициентов полинома: все 100 кандидатов
-отклоняются и выбирается запасной вектор из `U(-0.3, 0.3)`. Для нового эксперимента
-исправленный отбор по корням лагового полинома включается явно:
-`ARIMA(length=1024, coefficient_mode="corrected")` или
-`--set data.generator_args.coefficient_mode='"corrected"'` в CLI обучения.
-Это другое распределение данных; режим записывается в метаданные, а части корпуса
-с разными режимами не объединяются. Основной и `exact` режимы используют один и
-тот же выбранный отбор; только `legacy` воспроизводит исходный генератор.
+ARIMA defaults to `coefficient_mode="legacy"`, which reproduces the published
+series and the inherited polynomial-coefficient ordering bug. All 100 candidates
+are rejected and a fallback vector is drawn from `U(-0.3, 0.3)`. To select
+coefficients using the roots of the intended lag polynomial, explicitly set
+`ARIMA(length=1024, coefficient_mode="corrected")` or pass
+`--set data.generator_args.coefficient_mode='"corrected"'` to the training CLI.
+This changes the data distribution. The mode is written to metadata, and
+corpora with different modes cannot be combined. Default and `exact` generation
+both use the selected coefficient rule. Reproducing the original generator
+requires the `legacy` rule.
 
 ```python
 import numpy as np
 from episynth.generators import GENERATORS
 
 gen = GENERATORS["sde"](length=1024)
-x = gen.generate(np.arange(1000))          # (1000, 1024) float32, по ряду на сид
-y = gen.generate([5, 6], exact=True)       # ряды оригинала для тех же сидов
-corpus = gen.reproduce(random_seed=42, n=100)  # корпус оригинала с сидом 42
+x = gen.generate(np.arange(1000))          # (1000, 1024) float32, one series per seed
+y = gen.generate([5, 6], exact=True)       # Original series for these seeds
+corpus = gen.reproduce(random_seed=42, n=100)  # Original corpus with seed 42
 ```
 
-Ряд зависит только от сида и длины: любой набор сидов в любом порядке даёт те же ряды.
-Режим `exact` повторяет оригинал вплоть до порядка обращений к генератору случайных чисел и
-нужен для проверок; у большинства генераторов основной режим с ним совпадает до бита. Что
-именно и как считает каждый генератор — в докстринге его класса.
+A series depends only on its seed and length, regardless of seed order or
+batch membership. The `exact` mode follows the original down to the order of
+random number calls and serves as a validation reference. For most generators,
+the default mode matches it bit for bit. See each class docstring for its
+generative process.
 
-## Проверки
+## Checks
 
-Против клона оригинала. Оригинал считается отдельным интерпретатором с его версиями
-зависимостей (numpy 1.26.4, scipy 1.11.4, scikit-learn 1.7.1, fbm, timesynth): под numpy 2
-генератор TimeSynth оригинала падает в пошаговых циклах и молча подменяет ряды запасными.
+To compare against the original code, use a separate interpreter with the original
+dependency versions (NumPy 1.26.4, SciPy 1.11.4, scikit-learn 1.7.1, fbm, and
+timesynth). With NumPy 2, the original TimeSynth fails in its per-step loops and
+silently substitutes fallback series.
 
 ```bash
 uv venv .venv-ref && uv pip install --python .venv-ref/bin/python \
     numpy==1.26.4 scipy==1.11.4 scikit-learn==1.7.1 fbm==0.3.0 tqdm git+https://github.com/TimeSynth/TimeSynth.git
-python -m episynth.checks.generators --original <клон mix-dont-pick> \
+python -m episynth.checks.generators --original <mix-dont-pick-checkout> \
     --original-python .venv-ref/bin/python --out checks_out
 ```
 
-На каждый генератор пишется JSON: доля рядов, совпавших с оригиналом до бита; p-значения
-Колмогорова–Смирнова по статистикам ряда между корпусом оригинала и корпусом основного
-режима; скорость обоих. У KernelSynth совпадение до бита есть только при той же сборке
-numpy, что у оригинала: его режим воспроизведения строит вектор собственным разложением.
-Инварианты без оригинала: `pytest`.
+Each generator produces a JSON report with the fraction of bit-for-bit matches,
+Kolmogorov–Smirnov p-values comparing per-series statistics between the original
+and default-mode corpora, and the speed of both implementations. KernelSynth
+matches bit for bit only with the original NumPy build, because reproduction
+mode constructs samples using an eigendecomposition. Run `pytest` to check
+invariants without the original code.

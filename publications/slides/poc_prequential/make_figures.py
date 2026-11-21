@@ -46,8 +46,8 @@ x = np.linspace(1, 100, 400)
 floor = 1.1
 y = floor + 2.7 * np.exp(-(x - 1) / 24) - 0.60 * np.exp(-(((x - 76) / 12) ** 2))
 fig, ax = plt.subplots(figsize=(10, 3.4))
-ax.plot(x, y, color="#124B68", lw=2.6, label="Лосс до обновления весов")
-ax.axhline(floor, color="#BD6A23", lw=2, ls="--", label="Финальный held-out лосс")
+ax.plot(x, y, color="#124B68", lw=2.6, label="Loss before the weight update")
+ax.axhline(floor, color="#BD6A23", lw=2, ls="--", label="Final held-out loss")
 ax.fill_between(
     x,
     floor,
@@ -56,7 +56,7 @@ ax.fill_between(
     interpolate=True,
     color="#40AD9D",
     alpha=0.38,
-    label="Положительный вклад",
+    label="Positive contribution",
 )
 ax.fill_between(
     x,
@@ -66,9 +66,9 @@ ax.fill_between(
     interpolate=True,
     color="#D76972",
     alpha=0.5,
-    label="Отрицательный вклад",
+    label="Negative contribution",
 )
-ax.set(xlabel="Обучающие окна", ylabel="NLL на окно, наты", xlim=(1, 100), ylim=(0.35, 4.25))
+ax.set(xlabel="Training windows", ylabel="NLL per window (nats)", xlim=(1, 100), ylim=(0.35, 4.25))
 ax.xaxis.label.set_size(15)
 ax.yaxis.label.set_size(15)
 ax.set_yticks([])
@@ -100,12 +100,12 @@ for ax, series in zip(axs, ["1", "2"], strict=True):
     ax.axhline(1, color="#BD6A23", lw=1.3, ls="--")
     corr = next(r for r in corrs if r["series"] == series)
     ax.set_title(
-        ("≈ 2 млн" if series == "1" else "≈ 40 млн")
-        + f" окон; Spearman ρ = {float(corr['rho']):.2f}",
+        ("≈ 2 million" if series == "1" else "≈ 40 million")
+        + f" windows · Spearman ρ = {float(corr['rho']):.2f}",
         fontsize=12,
     )
-    ax.set_xlabel("Знаковая площадь A, млн нат", fontsize=14)
-    ax.set_ylabel("CRPS к сезонному наиву (меньше лучше)", fontsize=9)
+    ax.set_xlabel("Signed area A (million nats)", fontsize=14)
+    ax.set_ylabel("CRPS / seasonal naive (lower is better)", fontsize=9)
     ax.margins(x=0.16, y=0.22)
 fig.tight_layout()
 fig.savefig(OUT / "large_series_context.pdf")

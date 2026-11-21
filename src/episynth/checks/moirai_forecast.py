@@ -1,11 +1,11 @@
-r"""Сверка прогнозов Moirai в протоколе тетради GIFT-Eval с `MoiraiForecast` из uni2ts на окнах датасета.
+r"""Verification of Moirai forecasts in the protocol of the GIFT-Eval notebook with `MoiraiForecast` from uni2ts on the windows of the dataset.
 
-    python -m episynth.checks.moirai_forecast --data <снимок GiftEval> --checkpoint <каталог чекпойнта> \\
-        --uni2ts-python <интерпретатор с uni2ts> [--dataset us_births/D] [--n-windows 4]
+    python -m episynth.checks.moirai_forecast --data <GiftEval image> --checkpoint <checkpoint directory>
+        --uni2ts-python <interpreter with uni2ts> [-dataset us_births/D] [-n-windows 4]
 
-Берёт первые окна датасета, считает медианы прогнозов нашим прогнозчиком и оригиналом
-(отдельным интерпретатором) и печатает MAE обоих против правды и среднюю разность медиан.
-Разность должна быть на уровне шума сэмплирования.
+Takes the first windows of the dataset, considers the forecast medians our forecaster and the
+original (a separate interpreter), and prints the MAE of both against the truth and the average
+median difference. The difference should be at the level of sampling noise.
 """
 
 import argparse
@@ -25,7 +25,7 @@ _HELPER = Path(__file__).with_name("_uni2ts_predict.py")
 
 
 def main() -> None:
-    """Разбор аргументов, оба прогноза и печать сравнения."""
+    """Argument analysis, both forecasts and comparison seal."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
@@ -55,8 +55,8 @@ def main() -> None:
     for i, x in enumerate(inst):
         valid = np.isfinite(x.label)
         print(
-            f"окно {i}: MAE наш {np.abs(ours[i] - x.label)[valid].mean():.4g}, uni2ts {np.abs(theirs[i] - x.label)[valid].mean():.4g}; "
-            f"средняя разность медиан {np.abs(ours[i] - theirs[i]).mean():.4g}, масштаб правды {np.abs(x.label[valid]).mean():.4g}"
+            f"Window {i}: our MAE {np.abs(ours[i] - x.label)[valid].mean():.4g}, uni2ts {np.abs(theirs[i] - x.label)[valid].mean():.4g}; "
+            f"mean difference between medians {np.abs(ours[i] - theirs[i]).mean():.4g}, ground-truth scale {np.abs(x.label[valid]).mean():.4g}"
         )
 
 

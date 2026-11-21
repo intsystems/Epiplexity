@@ -1,17 +1,18 @@
-"""Контракт генератора одномерных синтетических рядов.
+"""Interface for fixed-length univariate synthetic time-series generators.
 
-Каждый генератор пакета повторяет генеративный процесс одноимённого генератора из
-Mix, Don't Pick (Nagpal и др., 2026, arXiv:2606.09912; код
-github.com/birla-ai-labs/mix-dont-pick, Apache-2.0) и работает в двух режимах.
+Each generator follows the generative process of its counterpart in
+Mix, Don't Pick (Nagpal et al., 2026, arXiv:2606.09912,
+github.com/birla-ai-labs/mix-dont-pick, Apache-2.0).
 
-Основной режим считает ряды пакетом: циклы по времени векторизованы по рядам, сторонние
-библиотеки оригинала не нужны, а там, где оригинал делит один сид между выбором параметров
-и шумом, потоки случайных чисел разведены. Режим воспроизведения (`exact`) повторяет
-оригинал вплоть до порядка обращений к генератору случайных чисел и даёт те же ряды при
-тех же сидах; он медленнее и предназначен для проверок, а не для обучения.
+The default mode batches across series, vectorizes time recurrences, and
+runs without the original external libraries. Where the original shares
+one seed for parameter selection and noise, the default mode separates
+those random streams. Reproduction mode (`exact`) preserves the original
+order of random draws and returns the original series for the same seed.
+Use this slower mode for checks.
 
-Ряд зависит только от своего сида и длины: генерация любого подмножества сидов в любом
-порядке и любыми пакетами даёт те же ряды.
+Each series depends only on its own seed and length, so the subset, order,
+and batching of seeds do not change the generated series.
 """
 
 from abc import ABC, abstractmethod
@@ -22,29 +23,29 @@ import numpy as np
 
 
 def original_seeds(random_seed: int, n: int) -> np.ndarray:
-    """Сиды рядов, которые оригинал выдаёт корпусу из `n` рядов при сиде корпуса `random_seed`.
+    """Recreate the per-series seeds for a corpus of `n` series with seed `random_seed`.
 
-    Оригинал разыгрывает их как `default_rng(random_seed).integers(0, 2**31, n)`; у TSI и
-    TimeSynth своя схема, см. их `reproduce`.
+    The original samples these with `default_rng(random_seed).integers(0, 2**31, n)`.
+    See the `reproduce` methods of TSI and TimeSynth for their own seed schemes.
 
     Args:
-        random_seed: Сид корпуса.
-        n: Число рядов.
+        random_seed: Corpus seed.
+        n: Number of series.
 
     Returns:
-        np.ndarray: Целочисленные сиды `(n,)`.
+        np.ndarray: Integer seeds of shape `(n,)`.
     """
     return np.random.default_rng(random_seed).integers(0, 2**31, size=n)
 
 
 class Generator(ABC):
-    """Генератор одномерных синтетических рядов фиксированной длины.
+    """Generator of one-dimensional synthetic series of fixed length.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
 
     Attributes:
-        name: Имя генератора в реестре.
+        name: Generator's name on the registry.
     """
 
     name: ClassVar[str]
@@ -53,18 +54,19 @@ class Generator(ABC):
         self.length = length
 
     def generate(self, seeds: Sequence[int] | np.ndarray, exact: bool = False) -> np.ndarray:
-        """Строит ряды `(n, length)` float32 по списку сидов, по ряду на сид.
+        """Generate one float32 series per seed.
 
-        При `exact=True` ряд совпадает с рядом оригинала для того же сида: до бита там, где
-        оригинал считает в numpy тем же порядком операций, иначе до ошибки округления.
-        Численно вырожденные ряды (не конечные значения) заменяются так же, как в оригинале.
+        With `exact=True`, match the reference implementation for the same seed.
+        The result is bitwise-identical when NumPy evaluates operations in the
+        same order and agrees up to rounding otherwise. Nonfinite series are
+        replaced according to the original implementation's fallback.
 
         Args:
-            seeds: Сиды рядов, неотрицательные целые до `2**31`.
-            exact: Воспроизводить оригинал вместо основного режима.
+            seeds: Series seeds, nonnegative integers below `2**31`.
+            exact: Use the original algorithm's reproduction mode.
 
         Returns:
-            np.ndarray: Ряды `(n, length)` float32.
+            np.ndarray: Float32 series of shape `(n, length)`.
         """
         seeds_arr = np.asarray(seeds, dtype=np.int64).reshape(-1)
         if exact:
@@ -73,23 +75,24 @@ class Generator(ABC):
         return self._batch(seeds_arr).astype(np.float32, copy=False)
 
     def reproduce(self, random_seed: int, n: int) -> np.ndarray:
-        """Корпус `(n, length)` float32, равный корпусу оригинала при сиде корпуса `random_seed`.
+        """Reproduce the original float32 corpus for `random_seed`.
 
-        Повторяет `generate_series(n)` оригинала: схему сидов рядов и режим `exact`.
+        Follow the original `generate_series(n)` by reproducing its per-series
+        seed scheme and generating in `exact` mode.
 
         Args:
-            random_seed: Сид корпуса.
-            n: Число рядов.
+            random_seed: Corpus seed.
+            n: Number of series.
 
         Returns:
-            np.ndarray: Ряды `(n, length)` float32.
+            np.ndarray: Float32 series of shape `(n, length)`.
         """
         return self.generate(original_seeds(random_seed, n), exact=True)
 
     @abstractmethod
     def _batch(self, seeds: np.ndarray) -> np.ndarray:
-        """Ряды `(n, length)` float64 основного режима для массива сидов."""
+        """`(n, length)` float64 series of the main mode for the array of seats."""
 
     def _exact(self, seed: int) -> np.ndarray:
-        """Ряд `(length,)` float64 режима воспроизведения; по умолчанию основной режим и есть он."""
+        """The `(length,)` float64 series of reproduction modes; by default, the main mode is it."""
         return self._batch(np.array([seed], dtype=np.int64))[0]

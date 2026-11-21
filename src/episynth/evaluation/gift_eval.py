@@ -1,11 +1,11 @@
-"""Данные GIFT-Eval (Aksu и др., 2024, arXiv:2410.10393): датасеты, горизонты, тестовые окна.
+"""GIFT-Eval data (Aksu et al., 2024, arXiv:2410.10393): datasets, horizons, test windows.
 
-Повторяет `gift_eval.data.Dataset` из github.com/SalesforceAIResearch/gift-eval (Apache-2.0) без
-gluonts и `datasets`: снимок репозитория `Salesforce/GiftEval` читается напрямую из arrow-файлов.
-Горизонт задаётся частотой и термом, число тестовых окон — десятой долей самого короткого ряда
-датасета, но не больше 20 (у M4 одно окно); окна идут подряд с шагом в горизонт до конца ряда,
-история окна — весь ряд до него. Многомерные датасеты разворачиваются в одномерные ряды с
-суффиксом `_dim<k>`. Сезонность по частоте — как `gluonts.time_feature.get_seasonality`.
+Repeat. `gift_eval.data.Dataset` from github.com/SalesforceAIResearch/gift-eval (Apache-2.0) free of
+gluonts and `datasets`: image of the repository `Salesforce/GiftEval` It reads directly from arrow
+files. The horizon is given by frequency and thermometer, the number of test windows is the tenth
+part of the shortest row of a dataset, but no more than that. 20 ooh M4 One window; the windows go
+in succession increments into the horizon to the end of the row, the history of the window to the
+whole row. `_dim<k>`Seasonality in frequency, like `gluonts.time_feature.get_seasonality`.
 """
 
 import json
@@ -29,7 +29,7 @@ SHORT_CONFIGS: tuple[str, ...] = tuple(
     "jena_weather/10T jena_weather/H jena_weather/D bitbrains_fast_storage/5T bitbrains_fast_storage/H "
     "bitbrains_rnd/5T bitbrains_rnd/H bizitobs_application bizitobs_service bizitobs_l2c/5T bizitobs_l2c/H".split()
 )
-"""Имена датасетов краткосрочной части бенчмарка (терм short), 55 штук."""
+"""Names of datasets of the short-term part of the benchmark (term short), 55 pieces."""
 
 _PRETTY = {
     "saugeenday": "saugeen",
@@ -50,21 +50,21 @@ _MAX_WINDOWS = 20
 
 
 def parse_freq(freq: str) -> tuple[str, int]:
-    """Базовая частота из {S, T, H, D, W, M, Q, A, B} и множитель, например `"15T"` даёт `("T", 15)`."""
+    """The base frequency of the {S, T, H, D, W, M, Q, A, B} and the multiplier, for example, `"15T"` gives `("T", 15)`."""
     m = re.fullmatch(r"(\d*)([A-Za-z]+)(?:-\w+)?", freq)
     assert m, freq
     return _BASE_ALIASES[m.group(2)], int(m.group(1) or 1)
 
 
 def seasonality(freq: str) -> int:
-    """Сезонность частоты по правилу gluonts: базовая сезонность, делённая на множитель, иначе 1."""
+    """Frequency season according to the gluonts rule: base seasonality divided by a multiplier, otherwise 1."""
     base, n = parse_freq(freq)
     q, r = divmod(_SEASONALITY.get(base, 1), n)
     return q if r == 0 else 1
 
 
 def config_name(name: str, freq: str, term: str) -> str:
-    """Имя конфигурации в таблицах лидерборда вида `saugeen/D/short`: частота без якоря (`A-DEC` даёт `A`)."""
+    """The configuration name in the leaderboard tables of the form `saugeen/D/short`: frequency without anchor (`A-DEC` gives `A`)."""
     key = name.split("/")[0].lower()
     key = _PRETTY.get(key, key)
     base, n = parse_freq(name.split("/")[1] if "/" in name else freq)
@@ -73,13 +73,13 @@ def config_name(name: str, freq: str, term: str) -> str:
 
 @dataclass
 class TestInstance:
-    """Одно тестовое окно: история до начала окна и правда.
+    """One test window: the story before the window and the truth.
 
     Attributes:
-        item_id: Имя ряда, у многомерных датасетов с суффиксом `_dim<k>`.
-        window: Номер окна в ряде от 0.
-        history: Весь ряд до окна `(T,)` float32, с возможными NaN.
-        label: Правда `(h,)` float32, с возможными NaN.
+        item_id: The name of the series, in multidimensional datasets with the suffix `_dim<k>`.
+        window: The window number is in a row from 0.
+        history: All row to the `(T,)` float32 window, with possible NaN.
+        label: True `(h,)` float32, with possible NaN.
     """
 
     item_id: str
@@ -89,20 +89,20 @@ class TestInstance:
 
 
 class GiftDataset:
-    """Датасет GIFT-Eval из локального снимка репозитория `Salesforce/GiftEval`.
+    """Dataset GIFT-Eval from the local image repository `Salesforce/GiftEval`.
 
     Args:
-        root: Каталог снимка.
-        name: Имя датасета, как в `SHORT_CONFIGS`, например `"electricity/15T"`.
-        term: Терм из {"short", "medium", "long"}.
+        root: Dataset snapshot directory.
+        name: The name of the dataset, as in `SHORT_CONFIGS`, for example `"electricity/15T"`.
+        term: Therm from {"short", "medium", "long"}.
 
     Attributes:
-        freq: Строка частоты датасета.
-        target_dim: Число переменных исходного ряда.
-        prediction_length: Горизонт.
-        windows: Число тестовых окон на ряд.
-        season: Сезонность по частоте.
-        config: Имя конфигурации в таблицах лидерборда.
+        freq: Frequency line of the dataset.
+        target_dim: The number of variables in the reference series.
+        prediction_length: Horizon.
+        windows: Number of test windows per row.
+        season: Seasonal frequency.
+        config: The configuration name in the leaderboard tables.
     """
 
     def __init__(self, root: str | Path, name: str, term: str = "short") -> None:
@@ -122,7 +122,7 @@ class GiftDataset:
     @staticmethod
     def _read_table(path: Path) -> pa.Table:
         files = sorted(path.glob("data-*.arrow"))
-        assert files, f"нет arrow-файлов в {path}"
+        assert files, f"No Arrow files in {path}"
         tables = []
         for f in files:
             with pa.memory_map(str(f)) as source:
@@ -131,7 +131,7 @@ class GiftDataset:
 
     @cached_property
     def series(self) -> list[tuple[str, np.ndarray]]:
-        """Одномерные ряды датасета с именами."""
+        """One-dimensional series of datasets with names."""
         out = []
         ids = self._table.column("item_id").to_pylist()
         targets = self._table.column("target")
@@ -146,7 +146,7 @@ class GiftDataset:
 
     @cached_property
     def windows(self) -> int:
-        """Число тестовых окон на ряд."""
+        """Number of test windows per row."""
         if "m4" in self.name:
             return 1
         targets = self._table.column("target")
@@ -158,7 +158,7 @@ class GiftDataset:
         return min(max(1, w), _MAX_WINDOWS)
 
     def test_instances(self) -> Iterator[TestInstance]:
-        """Тестовые окна всех рядов по порядку рядов и окон."""
+        """Test windows of all rows in order of rows and windows."""
         h, w = self.prediction_length, self.windows
         for item_id, y in self.series:
             for k in range(w):
@@ -166,27 +166,28 @@ class GiftDataset:
                 yield TestInstance(item_id, k, y[:cut], y[cut : cut + h])
 
     def __len__(self) -> int:
-        """Число тестовых окон датасета."""
+        """Number of test windows on the dataset."""
         return len(self.series) * self.windows
 
 
 def context_length_distribution(
     root: str | Path, cap: int = 512, names: tuple[str, ...] = SHORT_CONFIGS, term: str = "short"
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Распределение длин доступной истории по тестовым окнам, обрезанных сверху на `cap`.
+    """Distribution of the lengths of the available history over test windows cropped on top of the `cap`.
 
-    Конфигурации взвешены равновероятно, окна внутри конфигурации тоже, так что веса длин
-    повторяют вклад задач в сводную метрику. NaN в истории не учитываются как её отсутствие:
-    длина берётся по числу точек до окна.
+    The configurations are weighted equally, the windows within the configuration are weighted
+    equally, so that the length weights repeat the contribution of tasks to the composite metric.
+    NaN in history is not counted as its absence: length is taken from the number of points to the
+    window.
 
     Args:
-        root: Каталог снимка.
-        cap: Верхняя граница длины.
-        names: Имена датасетов.
-        term: Терм.
+        root: Dataset snapshot directory.
+        cap: The upper limit of length.
+        names: Dataset names.
+        term: Term.
 
     Returns:
-        tuple[np.ndarray, np.ndarray]: Длины `(k,)` по возрастанию и их вероятности `(k,)`.
+        tuple[np.ndarray, np.ndarray]: Ascending lengths of `(k,)` and their probabilities `(k,)`.
     """
     counts: dict[int, float] = {}
     for name in names:
@@ -201,6 +202,6 @@ def context_length_distribution(
 
 
 def dataset_properties(root: str | Path) -> dict[str, dict]:
-    """Домены и число переменных датасетов из `dataset_properties.json`, если файл лежит в снимке; иначе пусто."""
+    """Domains and the number of variable datasets from `dataset_properties.json`, if the file is in the image; otherwise empty."""
     path = Path(root) / "dataset_properties.json"
     return json.loads(path.read_text()) if path.exists() else {}

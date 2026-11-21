@@ -1,103 +1,123 @@
-# Результаты прогонов episynth (серии 19–20 октября 2026)
+# episynth run results (October 19–20, 2026)
 
-*English summary.* Saved outputs of the two training series behind the time-series track
-(prequential epiplexity of 11 synthetic generators vs. Moirai-Small quality on GIFT-Eval short):
-per-run configs, per-step training curves, held-out losses at every checkpoint, GIFT-Eval
-per-task summaries, analysis tables and figures. Per-window loss vectors (160 MB per run) are
-attached to the GitHub release `results-2026-10-19`; checkpoints and per-window GIFT-Eval
-metrics are kept in object storage and available on request.
+This archive contains the two training series for the time-series track. They
+compare the prequential epiplexity of 11 synthetic generators with Moirai-Small
+performance on short-horizon GIFT-Eval tasks. The archive includes run configs,
+per-step training curves, held-out losses by checkpoint, GIFT-Eval task summaries,
+analysis tables, and figures. Per-window loss vectors (up to 160 MB per run) are
+attached to the GitHub release `results-2026-10-19`. Checkpoints and per-window
+GIFT-Eval metrics are available on request from object storage.
 
-Две серии одного протокола: на каждом из 11 генераторов из «Mix, Don't Pick» с нуля обучается
-Moirai-Small (три компоненты смеси, патч 32, контекст до 512 по таблице длин GIFT-Eval, горизонт
-64, деквантование 10⁻³), лосс каждого окна пишется до шага по нему, площадь над финальным лоссом
-(prequential-эпиплексия) сопоставляется с качеством на 55 краткосрочных задачах GIFT-Eval.
-Оптимизатор AdamW с группами параметров uni2ts, шаг 10⁻³ после разогрева 200 шагов, EMA весов с
-постоянной времени 2 % шагов, bf16 с `torch.compile`, отложенный набор 100 тыс. окон с сидов от
-10⁹, батч 1024.
+Both series follow the same protocol. Moirai-Small trains from scratch on each
+of the eleven Mix, Don't Pick generators. It uses three mixture components,
+patch size 32, a context of up to 512 points from the GIFT-Eval length table,
+horizon 64, and dequantization of 10⁻³. The trainer logs each window's loss before
+updating on its batch. We compare excess loss above the final loss (prequential
+epiplexity) with performance on 55 short-horizon GIFT-Eval tasks. Training uses
+AdamW with uni2ts parameter groups, learning rate 10⁻³ after 200 warmup steps,
+an EMA time constant of 2% of the steps, bf16 with `torch.compile`, 100,000
+held-out windows starting at seed 10⁹, and a batch size of 1,024.
 
-| серия | каталог | окон на генератор | шагов | ряды | карты |
+| Series | Directory | Windows per generator | Steps | Series source | GPUs |
 |---|---|---|---|---|---|
-| 1 | `series1_2026-10-19/` | 1 999 872 | 1 953 | корпуса по 2 млн рядов, построенные заранее | RTX 4090 |
-| 2 | `series2_2026-10-19/` | 39 999 488 | 39 062 | на лету пулом процессов; KernelSynth корпусом на A100 (float64) | RTX 4090, A100 |
+| 1 | `series1_2026-10-19/` | 1,999,872 | 1,953 | Precomputed corpora of 2 million series | RTX 4090 |
+| 2 | `series2_2026-10-19/` | 39,999,488 | 39,062 | Process pool on demand, except a precomputed KernelSynth corpus on A100 (float64) | RTX 4090, A100 |
 
-Сиды окон в обеих сериях одни и те же, поэтому первые 2 млн окон серии 2 совпадают с серией 1.
+Both series use the same window seeds. Series 1 matches the first 2 million
+windows of series 2.
 
-## Что лежит
+## Archive contents
 
-```
-series<k>_<дата>/
-  runs/<prefix><генератор>/
-    run.json          конфигурация прогона целиком (данные, окна, модель, обучение, таблица контекстов)
-    config.json       то же, что видит Trainer
-    steps.csv         лог каждого 50-го шага: step, windows_seen, nats_per_point, lr, grad_norm, seconds
-    train_curve.csv   кривая обучения по шагам: step, windows_seen, nats_per_point — среднее лосса
-                      1024 окон шага, нат на точку (лосс окна / 64), окна до шага по ним
-    heldout.jsonl     по чекпойнтам (доли 0.01…1): лосс на отложенном наборе для текущих (raw)
-                      и EMA весов в точности обучения и в fp32; nats_per_window, nats_per_point
-  eval/<prefix><генератор>/summary.csv   GIFT-Eval short, 55 задач, EMA-веса финального чекпойнта
-  eval/seasonal_naive/summary.csv        сезонный наив на тех же окнах
+```text
+series<k>_<date>/
+  runs/<prefix><generator>/
+    run.json          Full run config (data, windows, model, training, context table)
+    config.json       Configuration received by Trainer
+    steps.csv         Every 50th step: step, windows_seen, nats_per_point, lr, grad_norm, seconds
+    train_curve.csv   Each step: step, windows_seen, nats_per_point. The loss is the
+                      pre-update mean over 1,024 windows, in nats per point (window loss / 64).
+    heldout.jsonl     Checkpoint fractions 0.01…1: held-out loss for raw and EMA weights
+                      at training precision and fp32, in nats_per_window and nats_per_point.
+  eval/<prefix><generator>/summary.csv   GIFT-Eval short, 55 tasks, final checkpoint's EMA weights
+  eval/seasonal_naive/summary.csv        Seasonal-naive forecast on the same windows
   analysis/
-    epiplexity_variants.md          корреляции Спирмена 15 вариантов оценки с качеством (все 11; без Chaotic, StepFunction)
-    epiplexity_variants_subsets.md  то же для подмножеств без Chaotic, Waveform
-    figures/                        рисунки серии
-    timesfm3_reference.json         (серия 2) TimesFM-3 с лидерборда к нашему наиву, сверка наива по задачам
-  gzip_baseline.json  (серия 1) gzip-сжимаемость рядов каждого генератора, байт на точку
-scripts/              скрипты анализа, см. ниже
-reference/gift_eval_leaderboard/   опубликованные all_results.csv TimesFM-3 и Seasonal_Naive из
-                                   репозитория SalesforceAIResearch/gift-eval (коммит 4d5ab3f)
+    epiplexity_variants.md          Spearman correlations for 15 estimators (all 11 generators
+                                   and the subset without Chaotic and StepFunction)
+    epiplexity_variants_subsets.md  Same analysis without Chaotic and Waveform
+    figures/                      Figures for the series
+    timesfm3_reference.json       Series 2: leaderboard TimesFM-3 relative to our seasonal-naive
+                                 baseline, with task-by-task alignment checks
+  gzip_baseline.json  Series 1: gzip compressibility per generator, in bytes per point
+scripts/              Analysis scripts documented below
+reference/gift_eval_leaderboard/   Published all_results.csv files for TimesFM-3 and Seasonal_Naive
+                                   from SalesforceAIResearch/gift-eval (commit 4d5ab3f)
 ```
 
-Префикс прогонов: `series_` в серии 1, `s2_` в серии 2; `s2_waveform_seed1` — Waveform со вторым
-сидом инициализации (разброс по сиду). Колонки `summary.csv` описаны в
-`episynth.evaluation.metrics.aggregate`: `scaled_crps` (CRPS по траекториям, масштабированный
-ошибкой сезонного наива на истории), `MASE[0.5]`, `mean_weighted_sum_quantile_loss` (CRPS в
-определении лидерборда), покрытия и ширины интервалов, `nll_per_point`.
+Run prefixes are `series_` in series 1 and `s2_` in series 2.
+`s2_waveform_seed1` uses a second initialization seed to measure seed
+sensitivity. `episynth.evaluation.metrics.aggregate` documents the columns
+of `summary.csv`, including `scaled_crps` (sample-path CRPS scaled by the
+historical seasonal-naive error), `MASE[0.5]`,
+`mean_weighted_sum_quantile_loss` (leaderboard CRPS), interval coverage and
+width, and `nll_per_point`.
 
-Единицы: лосс в натах в исходных единицах ряда с деквантованием 10⁻³; отрицательные значения у
-почти детерминированных генераторов (Chaotic, TSI, fBm) — это следствие деквантования, не ошибка.
-Площадь $A = \sum_i \ell_i - N L_{\mathrm{fin}}$ считается `episynth.analysis.run_area` по
-`window_loss.f32` и `heldout_ema_1.f32`.
+Loss is in nats in the original series units with dequantization of 10⁻³.
+Dequantization explains negative values for nearly deterministic generators
+(Chaotic, TSI, and fBm). `episynth.analysis.run_area` computes
+$A = \sum_i \ell_i - N L_{\mathrm{fin}}$ from `window_loss.f32` and
+`heldout_ema_1.f32`.
 
-## Большие файлы
+## Large files
 
-- Релиз GitHub `results-2026-10-19`: `series1_2026-10-19_window_losses.tar` (все прогоны серии 1)
-  и `series2_2026-10-19_<генератор>_window_losses.tar` (по прогону). В каждом `window_loss.f32`
-  (лосс каждого окна, float32 без заголовка, по номеру окна) и `heldout_<вариант>_<доля>.f32`
-  (лоссы окон отложенного набора на чекпойнтах; в серии 1 только доля 1). Распаковываются
-  поверх каталога серии:
+- GitHub release `results-2026-10-19` contains `series1_2026-10-19_window_losses.tar`
+  (all series 1 runs) and `series2_2026-10-19_<generator>_window_losses.tar`
+  (one run per archive). Each contains `window_loss.f32` (headerless float32
+  losses in window order) and `heldout_<variant>_<fraction>.f32` (held-out
+  window losses at checkpoints, final checkpoint only in series 1). Extract
+  the files over the series directory, for example
   `tar -xf series2_2026-10-19_ets_window_losses.tar -C series2_2026-10-19/`.
-- Чекпойнты (`ckpt_<доля>.pt`, `last.pt`), пооконные метрики GIFT-Eval и корпус KernelSynth на
-  40 млн рядов (164 ГБ) — в объектном хранилище у Данилы Черноусова, по запросу.
+- Checkpoints (`ckpt_<fraction>.pt` and `last.pt`), per-window GIFT-Eval
+  metrics, and the 40-million-series KernelSynth corpus (164 GB) are
+  available on request from Danila Chernousov's object storage.
 
-## Скрипты анализа
+## Analysis scripts
 
-Запускаются с установленным пакетом (или `PYTHONPATH=src`), нужны `matplotlib`, `scipy`,
-`pandas`. Каталог серии — тот, где лежат `runs/` и `eval/`; для площадей нужны распакованные
-`window_loss.f32` и `heldout_*.f32`. Префикс прогонов задаётся переменной `SERIES_PREFIX`
-(по умолчанию `series_`).
+Install the package or set `PYTHONPATH=src`, and install `matplotlib`,
+`scipy`, and `pandas`. The series directory contains `runs/` and `eval/`.
+Area calculations also require the extracted `window_loss.f32` and
+`heldout_*.f32` files. The `SERIES_PREFIX` environment variable sets the
+run prefix and defaults to `series_`.
 
-- `series_analysis.py <серия> [gzip_baseline.json]` — сводная таблица: площади, финальные лоссы,
-  качество, корреляции.
-- `epiplexity_variants.py <серия> <out.md>` — 15 вариантов оценки против пяти мер качества;
-  `variants_subset.py` — то же с исключением генераторов из `EXCLUDE=chaotic,waveform`.
-- `corr_vs_windows.py <серия> <рисунки>` — корреляция оценок по чекпойнтам с итоговым качеством.
-- `series_figures2.py <серия> <рисунки>` — метрика к наиву против площади, кривые обучения с
-  закрашенной площадью; `series_figures3.py` — три определения оси x;
-  `series_figures4.py <серия> <рисунки> <reference/gift_eval_leaderboard>` — с прямыми
-  регрессии и горизонталью TimesFM-3.
-- `timesfm_reference.py <серия> <reference/gift_eval_leaderboard> [prefix]` — сверка наива с
-  лидербордом по задачам и отношения TimesFM-3 к наиву.
-- `gzip_baseline.py <корпуса> [n]`, `verify_corpora.py <корпуса> [n]` — по корпусам на машине
-  прогонов; `bundle_results.py <серия> <prefix> <куда>` — сборка этого пакета.
+- `series_analysis.py <series> [gzip_baseline.json]` summarizes areas, final
+  losses, forecast accuracy, and correlations.
+- `epiplexity_variants.py <series> <out.md>` compares 15 estimators against
+  five performance measures. `variants_subset.py` performs the same analysis
+  with exclusions from `EXCLUDE=chaotic,waveform`.
+- `corr_vs_windows.py <series> <figures>` correlates checkpoint estimates
+  with final forecast performance.
+- `series_figures2.py <series> <figures>` plots ratios to the naive baseline
+  versus area and shades excess area on the training curves.
+  `series_figures3.py` compares three x-axis definitions.
+  `series_figures4.py <series> <figures> <reference/gift_eval_leaderboard>`
+  adds regression lines and the TimesFM-3 reference.
+- `timesfm_reference.py <series> <reference/gift_eval_leaderboard> [prefix]`
+  checks agreement with the leaderboard's seasonal-naive results by task and
+  computes TimesFM-3 ratios to that baseline.
+- `gzip_baseline.py <corpora> [n]` and `verify_corpora.py <corpora> [n]`
+  operate on corpora on the training machine. `bundle_results.py <series>
+  <prefix> <destination>` assembles this archive.
 
-## Отступления от протокола, учтённые в данных
+## Protocol deviations recorded in the data
 
-- Серия 2, KernelSynth: прогон упал на первом чекпойнте из-за ошибки сбора отложенного набора и
-  возобновлён из `last.pt` шага 390; траектория та же по построению. Запись чекпойнта 0.01 в
-  `heldout.jsonl` восстановлена по сохранённому `ckpt_0.01.pt`.
-- Серия 2, TimeSynth: генератор переписан пакетом по рядам (совпадение с построчной версией до
-  бита закреплено тестом) после того, как построчная версия давала 1 шаг/с.
-- Серия 2, KernelSynth: ряды построены корпусом на GPU (float64 Холецкий), отличие от CPU-пути
-  только в округлении разложения.
-- Серия 2, Waveform: геометрическое среднее CRPS к наиву 1,373 из-за одного окна bitbrains_rnd
-  с взорвавшейся траекторией; у `s2_waveform_seed1` 0,972. Медиана и ранг устойчивы.
+- Series 2, KernelSynth. The run failed at the first checkpoint due to an error
+  collecting the held-out set. It resumed from `last.pt` at step 390, preserving
+  the training trajectory by construction. The 0.01 entry in `heldout.jsonl`
+  was recovered from `ckpt_0.01.pt`.
+- Series 2, TimeSynth. We rewrote the generator to batch across series after
+  the per-series version ran at one step per second. A test verifies bit-for-bit
+  agreement with the per-series implementation.
+- Series 2, KernelSynth. The corpus was built on GPU using float64 Cholesky
+  decomposition. The CPU path differs only in the decomposition's rounding.
+- Series 2, Waveform. The geometric-mean CRPS ratio is 1.373 because one
+  `bitbrains_rnd` forecast diverged. For `s2_waveform_seed1` the ratio is
+  0.972. The median and rank are robust.

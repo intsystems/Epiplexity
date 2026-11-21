@@ -1,7 +1,7 @@
-"""Сводка серии: площади, финальные лоссы, качество относительно наива и по рангам, корреляции Спирмена.
+"""Summary of the series: squares, final losses, quality relatively naive and by rank, correlation Spearman.
 
-Запуск: python series_analysis.py <каталог результатов> [gzip_baseline.json]
-Ожидает runs/series_<g>/ и eval/series_<g>/summary.csv, eval/seasonal_naive/summary.csv.
+Run: python series_analysis.py <result directory> [gzip_baseline.json] Expects runs/series_<g>/ and
+eval/series_<g>/summary.csv, eval/seasonal_naive/summary.csv.
 """
 
 import json
@@ -21,7 +21,7 @@ areas = {g: run_area(root / "runs" / f"{PREFIX}{g}", "ema") for g in gens}
 areas_raw = {g: run_area(root / "runs" / f"{PREFIX}{g}", "raw") for g in gens}
 quality = {m: quality_table(evals, naive, metric=m) for m in ("scaled_crps", "MASE[0.5]", "mean_weighted_sum_quantile_loss", "nll_per_point")} if evals else {}
 
-print(f"{'генератор':14} {'A_ema, млн':>11} {'±':>6} {'A_raw, млн':>11} {'L_fin ema':>10} {'L_fin raw':>10} {'ранг CRPS':>10} {'CRPS/наив':>10} {'MASE/наив':>10} {'gzip q16':>9}")
+print(f"{'generator':14} {'A_ema, million':>11} {'±':>6} {'A_raw, million':>11} {'L_fin ema':>10} {'L_fin raw':>10} {'rank CRPS':>10} {'CRPS / naive':>10} {'MASE / naive':>10} {'gzip q16':>9}")
 for g in gens:
     a, r = areas[g], areas_raw[g]
     q = quality.get("scaled_crps", {}).get(g, {})
@@ -39,7 +39,7 @@ if evals and len(evals) >= 4:
     }
     if gz:
         predictors["gzip_q16"] = {g: gz[g]["q16_bytes_per_point"] for g in evals if g in gz}
-    for name, target in (("средний ранг по CRPS (меньше лучше)", rank), ("геом. среднее CRPS/наив", ratio)):
-        print(f"\nСпирмен с «{name}», n={len(target)}:")
+    for name, target in (("CRPS middle rank (less than better)", rank), ("geomean CRPS/naive", ratio)):
+        print(f"\n Spearman with{name}», n={len(target)}:")
         for p, v in correlation_table(predictors, target).items():
             print(f"  {p:10} rho {v['rho']:+.3f}  [{v['lo']:+.3f}, {v['hi']:+.3f}]")

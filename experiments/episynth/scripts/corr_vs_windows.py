@@ -1,8 +1,10 @@
-"""Корреляция оценок эпиплексии с итоговым качеством как функция числа окон по чекпойнтам.
+"""Relate checkpoint epiplexity estimates to final forecast performance.
 
-Для доли прогона f: A(f) = Σ_{i≤fN} ℓ_i − fN·L_ema(f), падение(f) = L_start − L_ema(f), L_ema(f) — отложенный лосс EMA
-на чекпойнте f. Цель — CRPS к наиву финальной модели (геометрическое среднее по задачам).
-Запуск: python corr_vs_windows.py <результаты> <каталог рисунков>
+For run fraction f, A(f) = Σ_{i≤fN} ℓ_i − fN·L_ema(f) and the loss drop is
+L_start − L_ema(f), where L_ema(f) is the held-out EMA loss at checkpoint f.
+The target is final CRPS relative to seasonal naive, aggregated geometrically across tasks.
+
+Usage: python corr_vs_windows.py <series directory> <figure directory>
 """
 
 import json
@@ -41,14 +43,14 @@ for g in GENS:
     data[g] = rows
 fractions = sorted(data[GENS[0]])
 
-samples = {"все 11": GENS, "без Chaotic и StepFunction": [g for g in GENS if g not in ("chaotic", "stepfunction")]}
-targets = {"CRPS/наив": qc, "MASE/наив": qm}
+samples = {"All 11": GENS, "Without Chaotic and StepFunction": [g for g in GENS if g not in ("chaotic", "stepfunction")]}
+targets = {"CRPS / naive": qc, "MASE / naive": qm}
 fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), sharex=True, sharey=True)
 for col, (sname, keep) in enumerate(samples.items()):
     for row, (tname, q) in enumerate(targets.items()):
         ax = axes[row, col]
         y = np.array([q[g]["geo_mean_ratio"] for g in keep])
-        for est, color, label in (("A", "C0", "площадь $A$"), ("drop", "C1", "падение $L_{start} - L(n)$"), ("L", "C2", "сам лосс $L(n)$")):
+        for est, color, label in (("A", "C0", "Area $A$"), ("drop", "C1", "Loss drop $L_{start} - L(n)$"), ("L", "C2", "Loss $L(n)$")):
             rhos, los, his, ns = [], [], [], []
             for f in fractions:
                 x = np.array([data[g][f][est] for g in keep])
@@ -59,12 +61,12 @@ for col, (sname, keep) in enumerate(samples.items()):
         ax.axhline(0, color="gray", lw=0.8)
         ax.axhline(-0.6, color="gray", lw=0.6, ls=":")
         ax.set_xscale("log")
-        ax.set_title(f"{sname}, цель {tname} финальной модели", fontsize=10)
+        ax.set_title(f"{sname}: final {tname}", fontsize=10)
         ax.grid(alpha=0.3)
         if row == 1:
-            ax.set_xlabel("окон обучения, млн")
+            ax.set_xlabel("Training windows (millions)")
         if col == 0:
-            ax.set_ylabel("ρ Спирмена с качеством")
+            ax.set_ylabel("Spearman ρ with forecast error")
 axes[0, 0].legend(fontsize=8, frameon=False, loc="lower left")
 axes[0, 0].set_ylim(-1.05, 1.05)
 fig.tight_layout()
@@ -79,4 +81,4 @@ for sname, keep in samples.items():
         for est in ("A", "drop", "L"):
             x = np.array([data[g][f][est] for g in keep]); rho, lo, hi = spearman_ci(x, y, n_boot=1000)
             vals.append(f"{est} {rho:+.2f} [{lo:+.2f},{hi:+.2f}]")
-        print(f"  n={n / 1e6:.2f} млн: " + "; ".join(vals))
+        print(f"  n={n / 1e6:.2f} M: " + "; ".join(vals))

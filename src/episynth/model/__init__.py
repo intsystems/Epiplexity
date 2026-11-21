@@ -1,4 +1,4 @@
-"""Модели прогноза с лог-плотностью в натах."""
+"""Forecast models with log-density in nats."""
 
 from .moirai import Mixture, MoiraiConfig, MoiraiModule, load_uni2ts_checkpoint
 

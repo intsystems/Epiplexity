@@ -1,4 +1,4 @@
-"""Разложение тренд–сезонность–нерегулярность в восьми схемах сочетания."""
+"""The decomposition of trend-season-irregularity in eight combination schemes."""
 
 import numpy as np
 from scipy.signal import lfilter
@@ -12,17 +12,18 @@ _MODELS = list(range(1, 9))
 
 
 class TSI(Generator):
-    """Сумма или произведение тренда, сезонности и нерегулярной компоненты по одной из восьми схем.
+    """Combine trend, seasonality, and an irregular component in one of eight ways.
 
-    Тренд линейный, нелинейный или нулевой; сезонность синусоидальная, ступенчатая,
-    треугольная, импульсная или нулевая с периодом до :math:`L/8`; нерегулярность — AR(1)-шум,
-    нормированная накопленная сумма или белый шум. Период разыгрывается от длины ряда.
-    Оригинал тянет все ряды из одного генератора случайных чисел подряд и не зависит от сида
-    ряда, поэтому его корпус воспроизводится только целиком через `reproduce`; основной режим
-    даёт каждому ряду свой генератор от сида.
+    The trend is linear, nonlinear, or zero. Seasonality is sinusoidal, stepped,
+    triangular, pulsed, or zero, with a period up to :math:`L/8` sampled from
+    the series length. The irregular component is AR(1) noise, a normalized
+    cumulative sum, or white noise. The original draws all series sequentially
+    from one RNG, independently of any per-series seed. `reproduce` therefore
+    recreates the whole corpus. The default mode gives each series its own
+    RNG initialized from its seed.
 
     Args:
-        length: Длина ряда.
+        length: Series length.
     """
 
     name = "tsi"
@@ -101,14 +102,14 @@ class TSI(Generator):
         return out
 
     def reproduce(self, random_seed: int, n: int) -> np.ndarray:
-        """Корпус `(n, length)` float32 оригинала: все ряды подряд из одного генератора от `random_seed`.
+        """The housing `(n, length)` float32 original: all rows in a row from one generator from `random_seed`.
 
         Args:
-            random_seed: Сид корпуса.
-            n: Число рядов.
+            random_seed: Corpus seed.
+            n: Number of rows.
 
         Returns:
-            np.ndarray: Ряды `(n, length)` float32.
+            np.ndarray: `(n, length)` float32 series.
         """
         rng = np.random.default_rng(random_seed)
         return np.stack([self._one(rng) for _ in range(n)]).astype(np.float32)

@@ -13,11 +13,11 @@
 
 .. class:: center
 
-    :Название исследуемой задачи: Epiplexity and transfer in synthetic time-series pretraining
-    :Тип научной работы: CoIS, BMM
-    :Авторы: Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy
-    :Научный руководитель: уточняется
-    :Научный консультант(при наличии): уточняется
+    :Research topic: Epiplexity and transfer in synthetic time-series pretraining
+    :Research category: CoIS, BMM
+    :Authors: Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy
+    :Research supervisor: To be confirmed
+    :Research adviser (if applicable): To be confirmed
 
 Abstract
 ========

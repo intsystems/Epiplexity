@@ -1,4 +1,4 @@
-"""Оценка: метрики по окнам, сведение, наив, прогнозчик Moirai, загрузка GIFT-Eval при наличии снимка."""
+"""Evaluation: window metrics, mixing, naive, Moirai forecaster, download GIFT-Eval if you have a picture."""
 
 import argparse
 import csv
@@ -29,7 +29,7 @@ DATA = os.environ.get("GIFT_EVAL_DIR")
 
 
 def test_seasonality_and_config_names():
-    """Сезонность по правилу gluonts и имена конфигураций как в лидерборде."""
+    """Seasonality according to the rule of gluonts and configuration names as in the leaderboard."""
     assert seasonality("15T") == 96 and seasonality("H") == 24 and seasonality("D") == 1 and seasonality("7T") == 1
     assert config_name("m4_yearly", "A-DEC", "short") == "m4_yearly/A/short"
     assert config_name("saugeenday/D", "D", "short") == "saugeen/D/short"
@@ -37,7 +37,7 @@ def test_seasonality_and_config_names():
 
 
 def test_crps_and_seasonal_error_closed_forms():
-    """CRPS по одному сэмплу равен модулю ошибки, по двум — средней ошибке минус четверть их разности."""
+    """CRPS one sample is equal to the error module, two - the average error minus a quarter of their difference."""
     y = np.array([1.0, -2.0])
     assert np.allclose(crps_from_samples(np.array([[0.5, 0.0]]), y), [0.5, 2.0])
     two = np.array([[0.0, 0.0], [2.0, 1.0]])
@@ -49,7 +49,7 @@ def test_crps_and_seasonal_error_closed_forms():
 
 
 def test_window_stats_and_aggregate_handle_nan_and_zero_seasonal_error():
-    """NaN в правде не считаются, окна с нулевой сезонной ошибкой выпадают из масштабированных метрик."""
+    """NaN doesn't really count, zero-season error windows fall out of scaled metrics."""
     rng = np.random.default_rng(0)
     samples = rng.standard_normal((50, 4)) + 1.0
     label = np.array([1.0, np.nan, 2.0, 0.0])
@@ -139,7 +139,7 @@ def test_cli_constant_then_ordinary_arrow_data_keep_csv_columns(tmp_path, monkey
 
 
 def test_seasonal_naive_forecast():
-    """Повтор последнего сезона, короткая история даёт последнее значение, NaN заполняются вперёд."""
+    """A repeat of the last season, a short story gives the last value, the NaN is filled forward."""
     fc = SeasonalNaive(2).predict([np.array([1.0, 2.0, 3.0, 4.0]), np.array([5.0]), np.array([1.0, np.nan, 3.0, np.nan])], 3)
     assert fc.samples.shape == (1, 3, 3)
     assert fc.samples[0, 0].tolist() == [3.0, 4.0, 3.0] and fc.samples[0, 1].tolist() == [5.0] * 3
@@ -147,7 +147,7 @@ def test_seasonal_naive_forecast():
 
 
 def test_moirai_forecaster_both_protocols():
-    """Прогнозчик даёт сэмплы и лог-плотность нужной формы при NaN и коротких историях в обоих протоколах."""
+    """The prognosticator provides samples and log density of the desired shape for NaN and short histories in both protocols."""
     model = build_model(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(16,), components=("student_t", "normal_fixed")), 0)
     hist = [np.sin(np.arange(300) / 5.0), np.array([1.0, 2.0, np.nan, 4.0, 5.0]), np.full(40, np.nan)]
     labels = [np.ones(10), np.array([1.0, np.nan] * 5), np.ones(10)]
@@ -196,7 +196,7 @@ def test_notebook_horizon_remains_dynamic(small_forecast_model):
 
 @pytest.fixture
 def native_checkpoint(tmp_path, monkeypatch):
-    """Маленькая native-модель с нестандартными настройками и сохраняемым буфером."""
+    """A small native model with non-standard settings and a saved buffer."""
     class BufferedMoirai(MoiraiModule):
         def __init__(self, config):
             super().__init__(config)
@@ -364,9 +364,9 @@ def test_existing_summary_requires_matching_manifest(tmp_path, monkeypatch, mani
     assert _output_snapshot(out) == before
 
 
-@pytest.mark.skipif(DATA is None, reason="GIFT_EVAL_DIR не задан")
+@pytest.mark.skipif(DATA is None, reason="GIFT_EVAL_DIR is unset")
 def test_gift_dataset_windows():
-    """Снимок читается, число окон и горизонт как у gift_eval.data.Dataset."""
+    """The picture reads, the number of windows and horizon is like the gift_eval.data.Dataset."""
     ds = GiftDataset(DATA, "m4_hourly")
     assert ds.windows == 1 and ds.prediction_length == 48 and ds.season == 24 and len(ds.series) == 414
     inst = next(ds.test_instances())

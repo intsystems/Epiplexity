@@ -1,4 +1,4 @@
-"""Хаотические системы: координата аттрактора Лоренца и уравнение Макки–Гласса."""
+"""Chaotic systems: the coordinate of the Lorentz attractor and the McKee-Glass equation."""
 
 import numpy as np
 
@@ -8,16 +8,15 @@ _BURN_IN = 2000
 
 
 class Chaotic(Generator):
-    """Координата системы Лоренца (RK4) или решение уравнения Макки–Гласса (Эйлер), поровну.
+    """The coordinate of the Lorentz system (RK4) or the solution of the McKee-Glass equation (Eyler) is equal.
 
-    Параметры систем, шаг интегрирования и начальные условия случайные; первые 2000 точек
-    отбрасываются как переходный процесс. Шума наблюдения нет: ряды детерминированы при
-    известных параметрах и начальных условиях. Интегрирование идёт пакетом по рядам
-    поэлементно теми же операциями, что у оригинала, поэтому основной режим совпадает с
-    режимом воспроизведения до бита.
+    The system parameters, the integration step and the initial conditions are random; the first
+    2000 points are discarded as a transient. No observational noise: the series are determined
+    under known parameters and initial conditions. Integrating into rows is piecemeal with the same
+    operations as the original, so the main mode coincides with the reproduction mode to the bit.
 
     Args:
-        length: Длина ряда.
+        length: The length of the row.
     """
 
     name = "chaotic"
@@ -52,7 +51,7 @@ class Chaotic(Generator):
 
     @staticmethod
     def _lorenz(sigma, rho, beta, dt, n_steps, x0) -> np.ndarray:
-        """RK4 для системы Лоренца; параметры могут быть массивами по рядам."""
+        """RK4 for the Lorentz system; parameters can be arrays in rows."""
         x, y, z = (np.array(v, dtype=float) for v in x0)
         traj = np.empty((n_steps,) + np.shape(x) + (3,))
         for i in range(n_steps):

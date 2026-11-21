@@ -1,65 +1,69 @@
-# Проверка требований к episynth — 21 октября 2026
+# episynth requirements audit (October 21, 2026)
 
-> ???????????? ???????? ?? 21 ???????. ? 13 ?????? ???????? ?????????? ?????????
-> ? [?????????](technical_report/README.md), ???????????? ? ?????? ?????????????
-> ? [??????](article/README.md). ????? ? ??????? ???? ????????? ? ???? ????????.
+> Historical audit dated October 21. Current materials are in the
+> [technical report](technical_report/README.md) and the
+> [research article](article/README.md).
 
-Проверены полный список требований Technical Meeting 2 из переписки и актуальный
-`main` после добавления техотчёта (`876f611`). Дополнительно отключена автоматическая
-публикация документации и исправлены пути к изображениям блог-поста. Презентации
-не изменялись по просьбе пользователя. Эта проверка не заменяет выступление,
-проверку научных результатов или проверку всех требований финальной сдачи.
+This audit checked the full Technical Meeting 2 (TM2) requirements from the
+project correspondence against `main` after the technical report was added
+(`876f611`). It also recorded the switch to manual documentation deployment
+and the correction of blog image paths. At the user's request, the audit
+left the presentations as they were. It covered engineering readiness for
+TM2. The talk, scientific results, and full final submission required
+separate verification.
 
-| Требование | Результат и подтверждение |
+| Requirement | Result and evidence |
 |---|---|
-| Репозиторий в `intsystems`, поддержка тестов и публикации документации | `intsystems/Epiplexity`; GitHub Actions запускает pytest, Ruff и сборку Sphinx. |
-| Автодеплой GitHub Pages выключен | Сборка остаётся автоматической на push/PR к `main`, но загрузка Pages-артефакта и job `deploy` разрешены только при `github.event_name == 'workflow_dispatch'`. Публикация: **Actions → docs → Run workflow**, ветка `main`. |
-| Название проекта | Дистрибуция, импорт и основная документация называются `episynth`. `Epiplexity` остаётся названием репозитория. В отдельно добавленной исследовательской заявке `research_notes/information_bottleneck_epiplexity/proposal.tex` ещё встречается старое имя; этот документ здесь не редактировался. |
-| Codestyle / линтер | Ruff настроен в `pyproject.toml`, проверяет библиотеку, тесты, демо-ноутбук и конфигурацию Sphinx; запускается в CI. |
-| Движок документации | Sphinx с autodoc, Napoleon, viewcode, MathJax и Read-the-Docs theme. |
-| Библиотека тестов | pytest и pytest-cov; тесты выполняются в GitHub Actions. |
-| Архитектура и взаимодействие классов | Описаны в [architecture.rst](../doc/source/architecture.rst) и [description.md](description.md): генераторы → окна → модель → обучение → оценщик → анализ/GIFT-Eval. |
-| Публичные функции и методы с аннотациями | У 149 проверенных публичных классов, функций и методов есть docstrings и записи в сгенерированном API. У функций и методов проверены аннотации параметров и результата, включая `*args`/`**kwargs`, где они есть. Проверка относится к определениям в публичных модулях, без приватных помощников. |
-| Используемые и интегрируемые библиотеки | Зависимости объявлены в `pyproject.toml`, версии закреплены в `uv.lock`, назначение библиотек и внешних интеграций описано в [stack.rst](../doc/source/stack.rst). |
-| Структура документации установлена | `doc/source/index.rst` объединяет установку, демо, архитектуру, стек, расширение, эксперименты и API по модулям. |
-| Документация запускается локально / standalone | Сборка `uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build`; HTML можно открыть из файлов или обслуживать статическим сервером. Инструкции находятся в [installation.rst](../doc/source/installation.rst). |
-| Документация опубликована онлайн | [GitHub Pages](https://intsystems.github.io/Epiplexity/). Успешная публикация исходной версии `5148f88` подтверждена [GitHub Actions](https://github.com/intsystems/Epiplexity/actions/runs/39625074099/job/119314439960). Прямой HTTP-доступ из облачной среды ограничен прокси. |
-| Для демо есть автоматически созданная страница | [API оценщиков](https://intsystems.github.io/Epiplexity/api/estimators.html) содержит сигнатуры, параметры, результаты и ссылки на исходники `PrequentialEstimator.run` и `from_run_dir`. |
-| Демо выполняется и содержит готовые графики | [demo_estimators.ipynb](../experiments/demos/demo_estimators.ipynb) выполнен в новом пустом рабочем каталоге: все 6 кодовых ячеек прошли. PNG с двумя графиками встроен в ноутбук; исходный код ячеек не изменён. |
-| PoC встроен в запланированную архитектуру | Prequential работает через `EpiplexityEstimator`, реестр `build/register`, общий `Trainer` и `analysis.run_area`. Добавление нового оценщика описано в [extending.rst](../doc/source/extending.rst). Для TM2 требуется хотя бы один базовый алгоритм; реализация всех будущих оценщиков не требуется этой выдержкой. |
-| Блог-пост: структура и планируемые картинки | [Черновик](blogpost/epiplexity.md) содержит разделы и двенадцать иллюстраций. Относительные ссылки работают в репозитории; [README](blogpost/README.md) объясняет preview и экспорт для отдельного сайта. |
-| Техотчёт: структура и планируемые картинки | [Техотчёт](technical_report/main.pdf) уже содержит 7 страниц с методологией, реализацией, результатами, рисунками, обсуждением и приложениями. [Исходники и воспроизведение](technical_report/README.md) находятся в репозитории. Старый `paper/main.tex` не является актуальным техотчётом. |
-| Презентация TM2 до 15 минут, показ PoC и автодока | Слайды находятся в `publications/slides/`; прежняя проверка выявила несоответствие части слайдов текущему time-series PoC. Здесь они не менялись и готовность выступления/его длительность не подтверждена. Ноутбук, автодок и техотчёт доступны для показа. |
+| Repository in `intsystems`, tests, and publication of documentation | GitHub Actions in `intsystems/Epiplexity` runs pytest, Ruff, and the Sphinx build. |
+| Disable automatic GitHub Pages deployment | Pushes and pull requests to `main` still build the docs. Uploading the Pages artifact and running the `deploy` job require `github.event_name == 'workflow_dispatch'`. Publish from **Actions → docs → Run workflow** on `main`. |
+| Project name | The distribution, import, and main documentation use `episynth`. `Epiplexity` is the repository name. The separate proposal `research_notes/information_bottleneck_epiplexity/proposal.tex` still used the old name at the time of this audit. |
+| Code style and linter | CI runs Ruff with the configuration in `pyproject.toml`. It checks the library, tests, demo notebook, and Sphinx configuration. |
+| Documentation engine | Sphinx uses autodoc, Napoleon, viewcode, MathJax, and the Read the Docs theme. |
+| Test library | GitHub Actions runs pytest and pytest-cov. |
+| Architecture and class interactions | [architecture.rst](../doc/source/architecture.rst) and [description.md](description.md) trace generators → windows → model → training → estimator → analysis and GIFT-Eval. |
+| Annotated public functions and methods | All 149 audited public definitions had docstrings and generated API entries. The audit verified parameter and return annotations on functions and methods, including `*args` and `**kwargs` where present. It covered public definitions in public modules. |
+| Dependencies and integrations | `pyproject.toml` declares dependencies, `uv.lock` pins versions, and [stack.rst](../doc/source/stack.rst) describes their roles and the external integrations. |
+| Documentation structure | `doc/source/index.rst` links installation, the demo, architecture, the development stack, extension instructions, experiments, and the module API. |
+| Build and view documentation locally | Build with `uv run --no-sync sphinx-build -b html -W --keep-going doc/source doc/_build`. Open the HTML directly or serve it with a static server. See [installation.rst](../doc/source/installation.rst). |
+| Online documentation | [GitHub Pages](https://intsystems.github.io/Epiplexity/) hosts the docs. [GitHub Actions](https://github.com/intsystems/Epiplexity/actions/runs/39625074099/job/119314439960) confirmed deployment of `5148f88`. The cloud environment's proxy restricted direct HTTP access. |
+| Automatically generated documentation for the demo | The [estimator API](https://intsystems.github.io/Epiplexity/api/estimators.html) documents signatures, parameters, results, and source links for `PrequentialEstimator.run` and `from_run_dir`. |
+| Executable demo with saved plots | All six code cells in [demo_estimators.ipynb](../experiments/demos/demo_estimators.ipynb) ran in a new empty working directory. The embedded PNG contains both plots. The audit ran the existing code cells. |
+| Proof of concept integrated into the planned architecture | The prequential estimator uses `EpiplexityEstimator`, the `build`/`register` registry, the shared `Trainer`, and `analysis.run_area`. [extending.rst](../doc/source/extending.rst) explains adding an estimator. TM2 requires at least one base algorithm. |
+| Blog structure and planned figures | The [draft](blogpost/epiplexity.md) has sections and twelve illustrations. Relative links work in the repository. The [README](blogpost/README.md) explains preview and export for the separate site. |
+| Technical report structure and planned figures | At the time of the audit, the [technical report](technical_report/main.pdf) had seven pages covering methodology, implementation, results, figures, discussion, and appendices. The repository also contains [source and reproduction instructions](technical_report/README.md). `paper/main.tex` is an older manuscript. |
+| TM2 presentation of up to 15 minutes with the proof of concept and autodoc | Slides are under `publications/slides/`. An earlier review found that some slides diverged from the current time-series proof of concept. This audit left them as they were and could not verify talk readiness or duration. The notebook, generated API, and technical report were ready to show. |
 
-## Проверка демо
+## Demo verification
 
-CPU-прогон: waveform, модель из 60 994 параметров, 64 обучающих окна, 32 held-out
-окна, fp32. Проверены конечность лоссов и оценки, размеры файлов потерь,
-создание чекпойнта и равенство `model_part_bits + data_part_bits = total_bits`.
-Получено: model part ≈ 788.284 бит, data part ≈ 5499.059 бит, всего ≈ 6287.343 бит.
-Сохранены график лосса по окнам с held-out уровнем и столбцы model/data part.
-Этот маленький прогон показывает работу интерфейса, а не научную сходимость
-оценки или результаты большой серии экспериментов.
+The CPU demo uses Waveform, a model with 60,994 parameters, 64 training
+windows, 32 held-out windows, and fp32. The audit verified finite losses
+and estimates, the sizes of the loss files, checkpoint creation, and
+`model_part_bits + data_part_bits = total_bits`. The model part was about
+788.284 bits, the data part 5499.059 bits, and the total 6287.343 bits.
+The saved figures show per-window loss with a held-out baseline and the
+model and data parts. The run demonstrates the interface. Estimator
+convergence and large-run results require separate experiments.
 
-## Что ещё не завершено к финальной сдаче
+## Remaining work for final submission
 
-- **Будущие алгоритмы:** prequential реализован; `RequentialEstimator.run` пока вызывает
-  `NotImplementedError`. Байесовские оценщики и прокси из первоначальных планов
-  остаются будущими направлениями. Требование описать планируемый API не означает,
-  что все эти алгоритмы уже реализованы. Это не блокирует PoC для TM2.
-- **Покрытие:** последняя полная локальная проверка базовой версии `5148f88` дала
-  72 passed, 2 skipped и 76% покрытия `episynth`. В первоначальном плане команды
-  указан целевой уровень выше 90%; он пока не достигнут и не проверяется порогом CI.
-  Этот старый план помечен как исторический; порог не указан в присланных требованиях TM2.
-- **Внешние проверки:** два теста с опубликованными весами Moirai и данными
-  GIFT-Eval пропущены без `MOIRAI_SMALL_DIR` / `GIFT_EVAL_DIR`. Большие GPU-серии
-  и сверки с оригинальными реализациями здесь заново не запускались.
-- **Colab:** локальное выполнение ноутбука подтверждено, запуск из чистой Colab-сессии
-  в этой проверке не выполнялся. Такой запуск отдельно указан в первоначальном плане.
-- **Планы и статья:** старые планы и `paper/main.tex` сохраняются как исторические
-  материалы. Актуальная статья по временным рядам уже готова в
-  `technical_report/main.pdf`; её README описывает пересчёт анализа и сборку.
+- **Future algorithms.** Prequential is implemented. `RequentialEstimator.run`
+  raises `NotImplementedError`. Bayesian estimators and proxies from the
+  original plan remain research directions. The planned API can be documented
+  before those algorithms are implemented, and TM2 can use the working estimator.
+- **Coverage.** The last complete local check of `5148f88` reported 72 passed,
+  2 skipped, and 76% coverage for `episynth`. The original team plan set a
+  goal above 90%. The audit had yet to meet this historical goal, which had
+  no CI threshold and was absent from the TM2 requirements provided.
+- **External checks.** Two tests were skipped without `MOIRAI_SMALL_DIR`
+  and `GIFT_EVAL_DIR` for published Moirai weights and GIFT-Eval data.
+  The audit used existing GPU results and original-implementation comparisons.
+- **Colab.** The audit confirmed local notebook execution. The original plan
+  separately called for a run in a fresh Colab session, which had yet to happen.
+- **Plans and manuscript.** The repository retains the earlier plans and
+  `paper/main.tex` for historical reference. At the time of the audit, the
+  time-series manuscript was available in `technical_report/main.pdf`.
+  Its README showed how to rerun the analysis and build it.
 
-Инженерная часть TM2, документация, блог-пост и техотчёт подготовлены.
-Презентация и проведение выступления остаются отдельной проверкой.
-Полная готовность к финальной сдаче пока не подтверждена.
+The engineering work, documentation, blog post, and technical report were
+ready for TM2. Verification of the presentation, the live talk, and the
+complete final submission remained open.

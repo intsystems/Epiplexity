@@ -1,4 +1,4 @@
-"""Гауссовские процессы с составными ядрами (KernelSynth)."""
+"""Gaussian processes with compound nuclei (KernelSynth)"""
 
 import numpy as np
 from sklearn.gaussian_process.kernels import (
@@ -40,34 +40,38 @@ _JITTERS = (1e-12, 1e-10, 1e-8, 1e-6, 1e-4)
 
 
 class KernelSynth(Generator):
-    r"""Гауссовский процесс с ядром из 1–5 базовых (сумма с вероятностью 0,8, иначе произведение) и случайным средним.
+    r"""Gaussian process with a composition of base kernels and a random mean.
 
-    Банк из 41 ядра на сетке :math:`[0, 1]`: 21 периодическое с периодами в точках ряда и 20
-    непериодических (линейные, RBF, рациональные квадратичные, Матерна, белый шум,
-    константа). Среднее с вероятностью 0,5 нулевое, иначе линейное, квадратичное,
-    синусоидальное, логарифмическое или случайное блуждание. Периоды заданы в точках,
-    поэтому при другой длине меняется число периодов на ряд.
+    Choose one to five kernels, combining them by addition with probability 0.8
+    or by multiplication otherwise. The bank has 41 kernels on a grid over
+    :math:`[0, 1]`. Of these, 21 are periodic with periods in series points and
+    20 are nonperiodic (linear, RBF, rational quadratic, Matérn, white noise, or
+    constant). The mean is zero with probability 0.5, and otherwise linear,
+    quadratic, sinusoidal, logarithmic, or a random walk. The number of cycles
+    per series changes with series length because periods are in points.
 
-    Матрицы базовых ядер считаются один раз (41 матриц :math:`L \times L`, 344 МБ при
-    :math:`L = 1024`), ковариация ряда собирается из них поэлементно. Гауссовский вектор
-    строится разложением Холецкого пакетом по `chunk` рядов с лестницей добавок к
-    диагонали от :math:`10^{-12}` до :math:`10^{-4}` средней дисперсии (добавка есть белый шум той же
-    величины; :math:`10^{-6}` уже заметно меняет автокорреляцию разностей гладких рядов), при
-    неудаче — собственным разложением, как у оригинала. Оригинал берёт один сид и для
-    состава ядра, и для гауссовского вектора, так что первые числа вектора связаны с выбором
-    ядра; в основном режиме потоки разведены через `SeedSequence`, в режиме воспроизведения
-    сохранён оригинал с `multivariate_normal(method="eigh")`. Собственное разложение зависит
-    от сборки LAPACK, поэтому режим воспроизведения совпадает с оригиналом до бита только при
-    той же сборке numpy; при другой сборке ряды те же по распределению, но другие.
+    The base matrices are computed once (41 matrices of shape :math:`L \times L`,
+    344 MB at :math:`L=1024`). Each series covariance is composed elementwise.
+    Sampling uses batched Cholesky factorization for `chunk` series, with
+    diagonal jitter from :math:`10^{-12}` to :math:`10^{-4}` times the mean
+    variance. This corresponds to white noise of the same variance.
+    Even :math:`10^{-6}` visibly changes the autocorrelation of differences
+    of smooth series. If Cholesky fails, an eigendecomposition is used as in
+    the original. The original uses one seed for both kernel composition and
+    the Gaussian vector, so the first vector draws are linked to the kernel.
+    The default mode separates the streams with `SeedSequence`. Reproduction
+    uses the original `multivariate_normal(method="eigh")`. Eigendecomposition
+    depends on LAPACK, so reproduction matches bit for bit only with the same
+    NumPy build. With another build the distribution is the same.
 
     Args:
-        length: Длина ряда.
-        max_kernels: Наибольшее число базовых ядер в составе.
-        chunk: Сколько рядов раскладывается за один вызов.
-        device: Устройство torch для разложения; `None` — numpy на CPU.
+        length: Series length.
+        max_kernels: Maximum number of base kernels in a composition.
+        chunk: Number of series factored in one batch.
+        device: PyTorch device for factorization. `None` uses NumPy on CPU.
 
     Attributes:
-        stats: Сколько рядов построено на каждой ступени добавки и сколько ушло в собственное разложение.
+        stats: Counts at each jitter level and the eigendecomposition fallback count.
     """
 
     name = "kernelsynth"
@@ -89,13 +93,13 @@ class KernelSynth(Generator):
         self.stats = {"series": 0, **{f"jitter_{j:g}": 0 for j in _JITTERS}, "eigh": 0}
 
     def __getstate__(self) -> dict:
-        """Состояние без тензора банка ядер на устройстве: он строится заново после десериализации."""
+        """The condition without the kernel bank tensor on the device: it is rebuilt after deserialization."""
         state = dict(self.__dict__)
         state["_mats_dev"] = None
         return state
 
     def __setstate__(self, state: dict) -> None:
-        """Восстанавливает генератор и при заданном устройстве заново кладёт банк ядер на него."""
+        """Restores the generator and, with a given device, puts the bank of cores on it again."""
         self.__dict__.update(state)
         if self.device is not None:
             import torch
@@ -118,7 +122,7 @@ class KernelSynth(Generator):
         return np.cumsum(rng.normal(0, rng.uniform(0.01, 0.1), size=self.length))
 
     def _plan(self, rng: np.random.Generator):
-        """Индексы базовых ядер, операции (True — сумма) и среднее, тем же порядком вызовов, что у оригинала."""
+        """Indices of base cores, operations (True – sum) and average, the same order of calls as the original."""
         k = rng.integers(1, self.max_kernels + 1)
         idx = rng.choice(len(self._bank), k, replace=True)
         ops = [bool(rng.random() < 0.8) for _ in range(k - 1)]

@@ -1,6 +1,6 @@
-"""Собирает лёгкий пакет результатов серии: конфиги, лог шагов, отложенные лоссы по чекпойнтам, кривая обучения по шагам (среднее лосса на точку по 1024 окнам шага), сводки GIFT-Eval.
+"""Bundle run configs, step logs, held-out checkpoint losses, and GIFT-Eval summaries. The training curve records mean loss per point over 1,024 windows per step.
 
-Запуск: python bundle_results.py <каталог результатов> <префикс прогонов> <каталог пакета>
+Usage: python bundle_results.py <series directory> <run prefix> <output directory>
 """
 
 import shutil
@@ -24,7 +24,7 @@ for run in sorted((root / "runs").glob(f"{prefix}*")):
         f.write("step,windows_seen,nats_per_point\n")
         for i, v in enumerate(per_step, 1):
             f.write(f"{i},{i * B},{v:.6g}\n")
-    print(run.name, len(losses), "окон,", len(per_step), "шагов, лосс первого/последнего шага", f"{per_step[0]:.3f}/{per_step[-1]:.3f}")
+    print(run.name, len(losses), "window", len(per_step), "Loss of the first/last step.", f"{per_step[0]:.3f}/{per_step[-1]:.3f}")
 for ev in sorted((root / "eval").glob(f"{prefix}*")) + [root / "eval" / "seasonal_naive"]:
     dst = out / "eval" / ev.name
     dst.mkdir(parents=True, exist_ok=True)

@@ -1,10 +1,10 @@
-"""Сравнение `summary.csv` нашего прогона с опубликованной таблицей модели в GIFT-Eval.
+"""Comparison of the `summary.csv` of our run with the published model table in GIFT-Eval.
 
     python -m episynth.checks.gift_eval_published --summary <summary.csv> --published <all_results.csv>
 
-Печатает по конфигурациям опубликованное и наше значение MASE, sMAPE, ND и CRPS лидерборда
-(`mean_weighted_sum_quantile_loss`) и относительное расхождение; у сэмплирующих моделей
-ожидается расхождение на уровне шума сэмплирования.
+Prints by configuration published and our value MASE, sMAPE, ND and CRPS leaderboard
+(`mean_weighted_sum_quantile_loss`) and relative discrepancy; sampling models are expected to
+diverge in the level of sampling noise.
 """
 
 import argparse
@@ -20,7 +20,7 @@ _COLS = {
 
 
 def main() -> None:
-    """Разбор аргументов и печать сравнения."""
+    """Analysis of arguments and printing of comparison."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--summary", type=Path, required=True)
     parser.add_argument("--published", type=Path, required=True)
@@ -32,7 +32,7 @@ def main() -> None:
     for r in ours:
         pub = published.get(r["config"])
         if pub is None:
-            print(f"{r['config']:40s} нет в опубликованных")
+            print(f"{r['config']:40s} is absent from the published results")
             continue
         parts = []
         for k, col in _COLS.items():

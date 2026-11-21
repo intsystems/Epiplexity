@@ -1,11 +1,10 @@
-r"""Контракт оценщика эпиплексии (плагин).
+r"""Protocol for epiplexity estimator plugins.
 
-Оценщик — это протокол, который из модели, генератора рядов, формы задачи и параметров прогона
-получает полный прогон обучения и возвращает JSON-совместимый результат. Поля и единицы
-зависят от метода: разложение кода у prequential, снижение predictive loss у V-information.
-Разные алгоритмы (prequential, requential и пользовательские)
-реализуют один и тот же :meth:`EpiplexityEstimator.run` и регистрируются в реестре по имени, поэтому пользователь
-выбирает алгоритм по имени и добавляет новый, не трогая остальные модули библиотеки.
+An estimator receives a model, series generator, task shape, and run
+settings. Its JSON-compatible result uses method-specific fields. The
+prequential estimator decomposes code length, and V-information measures
+predictive loss reduction. Built-in and custom estimators implement
+:meth:`EpiplexityEstimator.run` and register under a name used to select them.
 """
 
 from __future__ import annotations
@@ -22,16 +21,16 @@ from ..windows import WindowSpec
 
 @runtime_checkable
 class EpiplexityEstimator(Protocol):
-    """Контракт алгоритма оценки эпиплексии.
+    """A contract for an epiplexity evaluation algorithm.
 
-    Каждый оценщик — это класс с атрибутом `name` (ключ в реестре) и методом :meth:`run`,
-    который выполняет прогон обучения и пишет результат в `out_dir`.
+    Each estimator is a class with the `name` attribute (key in the registry) and the method
+    :meth:`run`, which performs a run of training and writes the result in `out_dir`.
 
     Args:
-        name: Имя алгоритма, под которым он зарегистрирован в реестре.
+        name: The name of the algorithm under which it is registered in the registry.
 
     Attributes:
-        name: Ключ алгоритма в реестре; используется для выбора через CLI и `build`.
+        name: An algorithm key in the registry; used for selection via CLI and `build`.
     """
 
     name: str
@@ -44,18 +43,18 @@ class EpiplexityEstimator(Protocol):
         config: TrainConfig,
         out_dir: str | Path,
     ) -> Mapping[str, Any]:
-        """Выполняет прогон обучения и возвращает оценку эпиплексии.
+        """Performs a run of training and returns an epiplexity assessment.
 
         Args:
-            model: Модель-наблюдатель; инициализирована извне (например, через build_model).
-            generator: Генератор синтетических рядов.
-            spec: Форма задачи прогноза.
-            config: Параметры прогона.
-            out_dir: Каталог, куда пишутся артефакты прогона и результат.
+            model: Observer model; initialized externally (e.g. via build_model).
+            generator: Synthetic series generator.
+            spec: Form of the forecast problem.
+            config: Parameters run.
+            out_dir: Catalog, where the artifacts of the run and the result are written.
 
         Returns:
-            JSON-совместимый словарь. Prequential возвращает ``model_part_bits``,
-            ``data_part_bits`` и ``total_bits``; V-information — predictive entropies,
-            их разность в битах на окно и метаданные протокола.
+            JSON-compatible dictionary. Prequential returns ``model_part_bits``, ``data_part_bits``
+            and ``total_bits``; V-information predictive entropies, their bit difference per window
+            and protocol metadata.
         """
         ...

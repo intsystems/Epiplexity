@@ -1,4 +1,4 @@
-"""Смеси сигналов в духе библиотеки TimeSynth без самой библиотеки."""
+"""Signal mixes in the spirit of the TimeSynth library without the library itself."""
 
 import numpy as np
 
@@ -12,21 +12,21 @@ _NOISE_BANK = [("gaussian", s, None) for s in (0.02, 0.05, 0.1, 0.2, 0.3)] + [
 
 
 class TimeSynth(Generator):
-    """Сумма или произведение 1–3 сигналов TimeSynth (синус, CAR, NARMA, псевдопериодический, AR) с шумом.
+    """The sum or product of 1-3 signals of TimeSynth (sinus, CAR, NARMA, pseudoperiodic, AR) with noise.
 
-    Сигналы и их параметры разыгрываются как в генераторе TimeSynth из Mix, Don't Pick,
-    сами сигналы и шум (белый или красный) реализованы здесь по коду библиотеки TimeSynth
-    (github.com/TimeSynth/TimeSynth, MIT), так что зависимость от неё и от `jitcdde` не
-    нужна. Периоды разыгрываются от длины ряда. С вероятностью `irregular_prob` сетка
-    времени нерегулярная (прореживание и сдвиги), ряд затем интерполируется на регулярную.
-    Оригинал тянет шум из глобального генератора numpy, засеянного сидом ряда, а сид ряда
-    есть сид корпуса плюс номер ряда; `irregular_prob` у него разыгрывается от сида корпуса.
-    Здесь тот же поток воспроизводится отдельным `RandomState`, и основной режим совпадает с
-    режимом воспроизведения при равных `irregular_prob`.
+    Signals and their parameters are played out as in a generator. TimeSynth From Mix, Don't Pick,
+    the signals themselves and the noise (white or red) are implemented here using library code.
+    TimeSynth (github.com/TimeSynth/TimeSynth, MIT), so depending on her and on her `jitcdde`
+    Periods play out from the length of the row, with probability. `irregular_prob` The time grid is
+    irregular (thinning and shifting), the row is then interpolated to the regular one. The original
+    draws the noise from the global numpy generator seeded with the row seed, and the row seat is
+    the case seat plus the row number. `irregular_prob` It plays out from the hull seed. Here, the
+    same flow is reproduced separately. `RandomState`, and the main mode coincides with the
+    reproduction mode at equal `irregular_prob`.
 
     Args:
-        length: Длина ряда.
-        irregular_prob: Вероятность нерегулярной сетки времени.
+        length: The length of the row.
+        irregular_prob: Probability of an irregular time grid.
     """
 
     name = "timesynth"
@@ -36,12 +36,12 @@ class TimeSynth(Generator):
         self.irregular_prob = irregular_prob
 
     def _batch(self, seeds: np.ndarray) -> np.ndarray:
-        """Те же ряды, что `_one`, но рекурсии CAR, AR, NARMA и красного шума считаются пакетом по рядам.
+        """The same rows as the `_one`, but the recursions of CAR, AR, NARMA and red noise are considered a packet over rows.
 
-        Первый проход по рядам делает все обращения к генераторам случайных чисел в порядке
-        оригинала и запоминает параметры; рекурсии по времени идут векторно по рядам (шумы
-        рекурсий берутся заранее одним вектором, поток `RandomState` от этого не меняется);
-        второй проход собирает ряд из компонент в исходном порядке операций.
+        The first pass through the rows makes all calls to random number generators in the original
+        order and remembers the parameters; recursions in time go vectorly along the rows (recursion
+        noises are taken in advance by one vector, the `RandomState` flux does not change from
+        this); the second pass collects a series of components in the original order of operations.
         """
         plans = [self._plan(int(seed), self.irregular_prob) for seed in seeds]
         rec: dict[int, list] = {}
@@ -59,7 +59,7 @@ class TimeSynth(Generator):
         return out
 
     def _plan(self, seed: int, irregular_prob: float) -> dict:
-        """Все розыгрыши одного ряда в порядке `_one`; векторные сигналы считаются сразу, рекурсии откладываются."""
+        """All drawings of the same series are in the order of `_one`; vector signals are counted immediately, recursions are postponed."""
         L = self.length
         legacy = np.random.RandomState(seed)
         rng = np.random.default_rng(seed)
@@ -126,7 +126,7 @@ class TimeSynth(Generator):
 
     @staticmethod
     def _dt_matrix(items: list, L: int) -> np.ndarray:
-        """Шаги времени `(B, L-1)` рядов с дополнением нулями до общей длины."""
+        """Time steps of `(B, L-1)` series with addition of zeros to total length."""
         dt = np.zeros((len(items), L - 1))
         for b, times in enumerate(items):
             d = np.diff(times)
@@ -134,7 +134,7 @@ class TimeSynth(Generator):
         return dt
 
     def _solve_car(self, items: list) -> None:
-        """CAR: `prev = ar^dt * prev + sigma * sqrt(1 - ar^dt) * noise` векторно по рядам."""
+        """CAR: `prev = ar^dt * prev + sigma * sqrt(1 - ar^dt) * noise` vectorly in rows."""
         if not items:
             return
         L = self.length
@@ -158,7 +158,7 @@ class TimeSynth(Generator):
             plan["signals"][j]["values"] = out[b, : len(plan["times"])]
 
     def _solve_red(self, plans: list) -> None:
-        """Красный шум: `prev = tau/(tau+dt) * (dt * w + prev)` векторно по рядам."""
+        """Red noise: `prev = tau/(tau+dt) * (dt * w + prev)` vectorly in rows."""
         if not plans:
             return
         L = self.length
@@ -179,7 +179,7 @@ class TimeSynth(Generator):
             plan["noise"]["values"] = out[b, : len(plan["times"])]
 
     def _solve_ar(self, items: list) -> None:
-        """AR(p), p = 1..3: сумма слагаемых в порядке оригинала, затем шум; векторно по рядам одного p."""
+        """AR(p), p = 1..3: sum of terms in the order of the original, then noise; vector over rows of one p."""
         for p in (1, 2, 3):
             group = [(plan, j) for plan, j in items if len(plan["signals"][j]["phi_rev"]) == p]
             if not group:
@@ -201,7 +201,7 @@ class TimeSynth(Generator):
                 plan["signals"][j]["values"] = out[b]
 
     def _solve_narma(self, items: list) -> None:
-        """NARMA порядка n: рекурсия оригинала с тем же срезом `values[t-n:n]` (ненулевым только при t < 2n)."""
+        """NARMA of order n: recursion of the original with the same `values[t-n:n]` slice (non-zero only at t < 2n)."""
         T = self.length
         for n in range(5, 15):
             group = [(plan, j) for plan, j in items if plan["signals"][j]["order"] == n]
@@ -225,7 +225,7 @@ class TimeSynth(Generator):
                 plan["signals"][j]["values"] = values[b, n:]
 
     def _assemble(self, plan: dict) -> np.ndarray:
-        """Сборка ряда из компонент и шума в порядке операций `_one`."""
+        """Assembling a series of components and noise in order of operations `_one`."""
         L = self.length
         times = plan["times"]
         combined = None
@@ -247,14 +247,14 @@ class TimeSynth(Generator):
         return self._one(seed, self.irregular_prob)
 
     def reproduce(self, random_seed: int, n: int) -> np.ndarray:
-        """Корпус `(n, length)` float32 оригинала: сиды рядов `random_seed + i`, вероятность нерегулярной сетки от `random_seed`.
+        """The housing `(n, length)` float32 original: row seats `random_seed + i`, the probability of irregular grid from `random_seed`.
 
         Args:
-            random_seed: Сид корпуса.
-            n: Число рядов.
+            random_seed: Corpus seed.
+            n: Number of rows.
 
         Returns:
-            np.ndarray: Ряды `(n, length)` float32.
+            np.ndarray: `(n, length)` float32 series.
         """
         prob = float(np.random.default_rng(random_seed).uniform(0.1, 0.3))
         return np.stack([self._one(random_seed + i, prob) for i in range(n)]).astype(np.float32)

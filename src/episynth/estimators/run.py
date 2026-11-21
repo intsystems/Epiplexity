@@ -1,18 +1,17 @@
-r"""Запуск оценщика эпиплексии из командной строки.
+r"""Running an epiplexity evaluator from the command line.
 
-    python -m episynth.estimators.run --estimator <name> --generator <имя> \\
-        [--config-json runs/<прогон>/config.json] [--out <каталог>] [--n-windows N] \\
+    python -m episynth.estimators.run --estimator <name> --generator <name>
+        [--config-json runs/<run>/config.json] [--out <catalog>] [-n-windows N] \
         [--batch-size B] [--device cuda] ...
 
-По умолчанию модель строится через :func:`episynth.training.build_model` из конфигурации
-`config.json` (поля `model` и `train`). Если `--config-json` не задан, используются аргументы
-`--n-windows`/`--batch-size` (обязательные) и значения `TrainConfig` по умолчанию.
+By default, the model is built using :func:`episynth.training.build_model` from the `config.json`
+configuration (`model` and `train` fields). If `--config-json` is not specified, the
+`--n-windows`/`--batch-size` arguments (mandatory) and the default `TrainConfig` values are used.
 
-`--estimator-config` — JSON-объект параметров конструктора, например
-`{"variant": "raw", "test_windows": 1000}` для V-information.
-Результат сохраняется в `estimator_result.json`.
+`--estimator-config` is a JSON parameter object, such as `{"variant": "raw", "test_windows": 1000}`
+for V-information. The result is stored in `estimator_result.json`.
 
-Имена доступных алгоритмов — :func:`episynth.estimators.available`.
+The names of the available algorithms are :func:`episynth.estimators.available`.
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ from .registry import available, build
 
 
 def _build_from_config_json(path: Path) -> tuple[TrainConfig, WindowSpec, MoiraiConfig]:
-    """Восстанавливает конфигурации из `config.json`, записанного `Trainer.run`."""
+    """Restores configurations from `config.json` recorded by `Trainer.run`."""
     data = json.loads(path.read_text())
     return (
         TrainConfig(**data["train"]),
@@ -39,7 +38,7 @@ def _build_from_config_json(path: Path) -> tuple[TrainConfig, WindowSpec, Moirai
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Точка входа CLI: запускает выбранный оценщик."""
+    """CLI entry point: Launches the selected estimator."""
     parser = argparse.ArgumentParser(description="Run an epiplexity estimator.")
     parser.add_argument("--estimator", required=True, choices=available(), help="Estimator name.")
     parser.add_argument("--generator", required=True, help="Series generator name.")

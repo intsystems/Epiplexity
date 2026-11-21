@@ -1,12 +1,13 @@
-r"""Сверка переноса Moirai с оригиналом uni2ts на одном чекпойнте и одних входах.
+r"""Verification of the Moirai port with the original uni2ts on one checkpoint and one input.
 
-    python -m episynth.checks.moirai --checkpoint <каталог с model.safetensors и config.json> \\
-        --uni2ts-python <интерпретатор с uni2ts 2.0.0> [--out result.json]
+    python -m episynth.checks.moirai --checkpoint <catalogue with model.safetensors and config.json>
+        --uni2ts-python <interpreter with uni2ts 2.0.0> [-out result.json]
 
-Строит окна из трёх генераторов для размеров патча 8, 32 и 64, считает оригинал отдельным
-интерпретатором (`_uni2ts_forward.py`) и перенос в текущем, сравнивает нормировку, логиты весов,
-параметры компонент и лог-плотность. Печатает наибольшие абсолютные расхождения; у лог-плотности
-ожидается уровень ошибки округления float32 (разные ядра внимания в разных версиях torch).
+Builds windows of three generators for patch sizes 8, 32 and 64, considers the original as a
+separate interpreter (`_uni2ts_forward.py`) and transfer in the current, compares rationing, weight
+logs, component parameters and log density. Prints the greatest absolute discrepancies; the log
+density is expected rounding error level float32 (different attention cores in different versions of
+torch).
 """
 
 import argparse
@@ -27,7 +28,7 @@ _HELPER = Path(__file__).with_name("_uni2ts_forward.py")
 
 
 def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict[str, float]:
-    """Наибольшие расхождения переноса и оригинала для одного размера патча."""
+    """The greatest difference between the port and the original for the same patch size."""
     spec = WindowSpec(patch_size=patch_size, context_lengths=(200, 512), dequantize_width=0.0)
     rows, seeds = [], np.arange(n)
     for name in ("sde", "waveform", "ets"):
@@ -69,7 +70,7 @@ def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict
 
 
 def main() -> None:
-    """Разбор аргументов, сверка по размерам патча, печать и запись итога."""
+    """Analysis of arguments, reconciliation of the size of the patch, printing and recording the result."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--uni2ts-python", required=True)

@@ -1,10 +1,10 @@
-"""Корпус оригинального генератора Mix, Don't Pick, посчитанный отдельным интерпретатором.
+"""The body of the original Mix generator, Don't Pick, counted by a separate interpreter.
 
-    python _original_corpus.py <клон> <имя> <длина> <сид> <n> <out.npy>
+    python _original_corpus.py <clone> <name> <length> <side> <n> <out.npy>
 
-Печатает в stdout время генерации в секундах. Запускается интерпретатором с версиями
-зависимостей оригинала (numpy 1.26): под numpy 2 часть кода оригинала падает и молча
-подменяется запасными рядами.
+Prints in stdout the generation time in seconds. Runs the interpreter with versions of the
+dependencies of the original (numpy 1.26): under the numpy 2, part of the original code falls and
+silently replaced by spare rows.
 """
 
 import importlib
@@ -31,7 +31,7 @@ MODULES = {
 
 
 def main(repo: Path, name: str, length: int, seed: int, n: int, out: Path) -> None:
-    """Считает корпус оригинала, сохраняет его в `out` и печатает время генерации."""
+    """Counts the body of the original, saves it to `out` and prints the generation time."""
     pkg = types.ModuleType("mdpgen")
     pkg.__path__ = [str(repo / "generators")]
     sys.modules["mdpgen"] = pkg

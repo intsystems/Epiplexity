@@ -1,16 +1,21 @@
-r"""Окна задачи прогноза из рядов генератора: контекст случайной длины, фиксированный горизонт, патчи.
+r"""Build forecasting windows with sampled context lengths, a fixed horizon, and patches.
 
-Из ряда длины :math:`L` берётся одно окно: контекст длины :math:`c` из заданного распределения и горизонт
-:math:`h` сразу за ним, начало окна равномерно среди допустимых. Окно деквантуется: ко всем его точкам
-добавляется равномерный шум ширины `dequantize_width` в единицах стандартного отклонения контекста
-(с тем же слагаемым под корнем, что у нормировки модели), чтобы лог-плотность была ограничена
-снизу одинаково для всех генераторов. Точки раскладываются по патчам размера :math:`P` в
-:math:`(c_{\max} + h) / P` токенов: контекст выровнен по правому краю, токены левее начала контекста
-помечены как заполнение (`sample_id = 0`), частично заполненный первый токен контекста остаётся
-в последовательности с маской наблюдений. Розыгрыш окна зависит только от сида ряда и отделён от
-потока генератора: равномерные числа для длины контекста, начала окна и шума деквантования
-берутся из хеша splitmix64 от сида, номера потока и позиции, поэтому сборка окон векторизована
-по батчу и не зависит от его состава.
+Each length-:math:`L` series supplies one window. Draw the context length
+:math:`c` from the configured distribution and pick the start uniformly
+among positions that fit the context and following horizon :math:`h`.
+Add uniform dequantization noise of width `dequantize_width` in units of
+the context standard deviation, using the same variance offset as the
+model scaler. This gives all generators the same resolution for scoring.
+
+Place points in patches of size :math:`P`, giving
+:math:`(c_{\max} + h)/P` tokens. Right-align the context. Tokens before it
+are padding (`sample_id = 0`). Keep a partially filled first context
+token and mark its observed positions with a mask.
+
+The window draw depends only on the series seed and is independent of the
+generator's random stream. A splitmix64 hash of the seed, stream index,
+and position supplies the uniform values for context length, start, and
+noise, so batching does not change any window.
 """
 
 import collections
@@ -33,7 +38,7 @@ _GOLDEN = np.uint64(0x9E3779B97F4A7C15)
 
 
 def _splitmix64(x: np.ndarray) -> np.ndarray:
-    """Финализатор splitmix64 поэлементно над uint64 с переполнением по модулю :math:`2^{64}`."""
+    """The splitmix64 finalizer is elementally over the uint64 with a :math:`2^{64}` overflow."""
     z = x + _GOLDEN
     z = (z ^ (z >> np.uint64(30))) * np.uint64(0xBF58476D1CE4E5B9)
     z = (z ^ (z >> np.uint64(27))) * np.uint64(0x94D049BB133111EB)
@@ -41,15 +46,15 @@ def _splitmix64(x: np.ndarray) -> np.ndarray:
 
 
 def window_uniforms(seeds: np.ndarray, n: int, stream: int) -> np.ndarray:
-    """Равномерные числа из :math:`[0, 1)` формы `(B, n)`, определяемые сидом, номером потока и позицией.
+    """Uniform numbers from :math:`[0, 1)` form `(B, n)`, defined by the seat, flow number and position.
 
     Args:
-        seeds: Сиды рядов `(B,)`.
-        n: Чисел на сид.
-        stream: Номер потока: разные величины окна берут разные потоки.
+        seeds: Series seeds of shape `(B,)`.
+        n: Numbers on the seed.
+        stream: Flow Number: Different window sizes take on different streams.
 
     Returns:
-        np.ndarray: float64 `(B, n)`, 53 бита точности.
+        np.ndarray: float64 `(B, n)`, 53 bit accuracy.
     """
     key = _splitmix64(np.asarray(seeds, dtype=np.uint64) ^ _WINDOW_SALT) + np.uint64((stream * int(_GOLDEN)) % 2**64)
     h = _splitmix64(key[:, None] + np.arange(n, dtype=np.uint64)[None, :])
@@ -57,16 +62,16 @@ def window_uniforms(seeds: np.ndarray, n: int, stream: int) -> np.ndarray:
 
 
 class WindowSpec(BaseModel):
-    """Форма задачи прогноза.
+    """Shape of a forecasting task.
 
     Attributes:
-        series_length: Длина ряда генератора.
-        context_max: Наибольшая длина контекста; кратна размеру патча.
-        horizon: Длина горизонта; кратна размеру патча.
-        patch_size: Размер патча.
-        context_lengths: Допустимые длины контекста, не больше `context_max`.
-        context_probs: Вероятности длин контекста; `None` — равновероятно.
-        dequantize_width: Ширина равномерного шума деквантования в единицах масштаба контекста; 0 — без шума.
+        series_length: Length of each generated series.
+        context_max: Maximum context length, divisible by the patch size.
+        horizon: Forecast horizon, divisible by the patch size.
+        patch_size: Number of points per patch.
+        context_lengths: Allowed context lengths, each at most `context_max`.
+        context_probs: Context-length probabilities. `None` uses equal probabilities.
+        dequantize_width: Uniform noise width in units of context scale. Zero disables noise.
     """
 
     series_length: int = 1024
@@ -101,28 +106,28 @@ class WindowSpec(BaseModel):
 
     @property
     def n_tokens(self) -> int:
-        """Число токенов окна, включая заполнение слева."""
+        """The number of window tokens, including filling on the left."""
         return (self.context_max + self.horizon) // self.patch_size
 
     @property
     def n_context_tokens(self) -> int:
-        """Число токенов контекста при наибольшей длине."""
+        """The number of context tokens at the longest length."""
         return self.context_max // self.patch_size
 
 
 @dataclass
 class WindowBatch:
-    """Батч окон в раскладке модели.
+    """Forecasting windows in the model's input layout.
 
     Attributes:
-        target: Значения патчей `(B, S, P)` float32, нули на ненаблюдаемых позициях.
-        observed_mask: Булева маска наблюдаемых значений `(B, S, P)`.
-        sample_id: Номер ряда `(B, S)` int64: 1 у токенов окна, 0 у заполнения.
-        time_id: Индекс токена `(B, S)` int64.
-        variate_id: Нули `(B, S)` int64.
-        prediction_mask: Булева маска токенов горизонта `(B, S)`.
-        seeds: Сиды рядов `(B,)` int64.
-        context_length: Длины контекста `(B,)` int64.
+        target: Float32 patch values of shape `(B, S, P)`, zero at unobserved positions.
+        observed_mask: Boolean mask of observed values, shape `(B, S, P)`.
+        sample_id: Int64 series IDs of shape `(B, S)`, one for window tokens and zero for padding.
+        time_id: Int64 token positions of shape `(B, S)`.
+        variate_id: Int64 zeros of shape `(B, S)` for univariate series.
+        prediction_mask: Boolean mask of horizon tokens, shape `(B, S)`.
+        seeds: Int64 series seeds of shape `(B,)`.
+        context_length: Int64 context lengths of shape `(B,)`.
     """
 
     target: torch.Tensor
@@ -135,37 +140,37 @@ class WindowBatch:
     context_length: torch.Tensor
 
     def to(self, device: str | torch.device, non_blocking: bool = False) -> "WindowBatch":
-        """Та же раскладка на другом устройстве."""
+        """Same layout on another device."""
         return WindowBatch(
             **{k: v.to(device, non_blocking=non_blocking) for k, v in self.__dict__.items()},
         )
 
     def model_inputs(self) -> dict[str, torch.Tensor]:
-        """Аргументы `MoiraiModule.forward` кроме размера патча."""
+        """`MoiraiModule.forward` arguments other than patch size."""
         return {
             k: getattr(self, k)
             for k in ("target", "observed_mask", "sample_id", "time_id", "variate_id", "prediction_mask")
         }
 
     def __len__(self) -> int:
-        """Число окон в батче."""
+        """Number of windows in the batch."""
         return self.target.shape[0]
 
     def slice(self, start: int, stop: int) -> "WindowBatch":
-        """Подбатч окон с номерами из `[start, stop)`."""
+        """Return a window sub-batch at indices `[start, stop)`."""
         return WindowBatch(**{k: v[start:stop] for k, v in self.__dict__.items()})
 
 
 def make_windows(series: np.ndarray, seeds: Sequence[int] | np.ndarray, spec: WindowSpec) -> WindowBatch:
-    """Батч окон из рядов `(B, L)` по сидам `(B,)`: по одному окну на ряд.
+    """Build one window per series from `(B, L)` values and `(B,)` seeds.
 
     Args:
-        series: Ряды `(B, series_length)`.
-        seeds: Сиды рядов; задают розыгрыш окна.
-        spec: Форма задачи.
+        series: `(B, series_length)` rows.
+        seeds: Series seeds that determine the window draw.
+        spec: The shape of the task.
 
     Returns:
-        WindowBatch: Окна на CPU.
+        WindowBatch: Windows on the CPU.
     """
     seeds = np.array(seeds, dtype=np.int64).reshape(-1)
     B, P, S, h = len(seeds), spec.patch_size, spec.n_tokens, spec.horizon
@@ -212,7 +217,7 @@ def make_windows(series: np.ndarray, seeds: Sequence[int] | np.ndarray, spec: Wi
 
 
 def window_batch(generator: Generator, seeds: Sequence[int] | np.ndarray, spec: WindowSpec) -> WindowBatch:
-    """Батч окон прямо из генератора по сидам."""
+    """Generate a batch of series by seed and build their windows."""
     return make_windows(generator.generate(seeds), seeds, spec)
 
 
@@ -220,35 +225,35 @@ _worker_state: dict = {}
 
 
 def _init_stream_worker(generator: Generator, spec: WindowSpec) -> None:
-    """Запоминает генератор и форму задачи в процессе-работнике потока."""
+    """Remembers the generator and the form of the task in the process-worker flow."""
     _worker_state["generator"] = generator
     _worker_state["spec"] = spec
 
 
 def _stream_task(seeds: np.ndarray) -> WindowBatch:
-    """Батч окон по сидам в процессе-работнике."""
+    """Generate a batch of windows in a worker process."""
     return window_batch(_worker_state["generator"], seeds, _worker_state["spec"])
 
 
 class WindowStream:
-    """Поток батчей окон по возрастающим сидам с генерацией в фоновом потоке или в процессах.
+    """The flow of batch windows over increasing seed with generation in the background stream or in processes.
 
-    Батч с номером :math:`k` строится из сидов `first_seed + k * batch_size + [0, batch_size)`, поэтому
-    поток детерминирован, не зависит от числа работников и возобновляется с любого батча через
-    `first_batch`. При `workers > 0` батчи считаются пулом процессов (запуск `spawn`, по одному
-    потоку BLAS в работнике, генератор передаётся копированием); число незавершённых заданий
-    ограничено `workers + prefetch`, порядок батчей сохраняется.
+    Batch number :math:`k` is built from `first_seed + k * batch_size + [0, batch_size)`, so the
+    flow is determined, does not depend on the number of employees and resumes from any batch
+    through `first_batch`. With `workers > 0`, batches are considered a pool of processes (start
+    `spawn`, one thread BLAS in the employee, the generator is transmitted by copy); the number of
+    unfinished tasks is limited to `workers + prefetch`, the batch order is preserved.
 
     Args:
-        generator: Генератор рядов; при `workers > 0` должен сериализоваться `pickle`.
-        spec: Форма задачи.
-        batch_size: Окон в батче.
-        first_seed: Сид первого окна первого батча.
-        n_batches: Сколько батчей выдать; `None` — без конца.
-        first_batch: Номер батча, с которого начать.
-        prefetch: Сколько батчей готовить впрок.
-        workers: Число процессов; 0 — один фоновый поток.
-        seed_limit: Верхняя граница сидов (не включая); последний батч может быть короче.
+        generator: Series generator; `workers > 0` must serialize `pickle`.
+        spec: The shape of the task.
+        batch_size: The windows are in the batch.
+        first_seed: Seed of the first window in the first batch.
+        n_batches: How many batches to give out; `None` - without end.
+        first_batch: The batch number to start with.
+        prefetch: How many batches to prepare for the future.
+        workers: Number of processes; 0 is one background stream.
+        seed_limit: The upper limit of the seed (not including); the last batch may be shorter.
     """
 
     def __init__(
@@ -274,17 +279,17 @@ class WindowStream:
         self.seed_limit = seed_limit
 
     def seeds_of(self, batch_index: int) -> np.ndarray:
-        """Сиды окон батча с данным номером."""
+        """Return the seeds for the given batch index."""
         start = self.first_seed + batch_index * self.batch_size
         stop = start + self.batch_size if self.seed_limit is None else min(start + self.batch_size, self.seed_limit)
         return np.arange(start, stop, dtype=np.int64)
 
     def __iter__(self) -> Iterator[WindowBatch]:
-        """Батчи окон по порядку номеров, начиная с `first_batch`."""
+        """Yield batches in index order starting at `first_batch`."""
         return self._iter_pool() if self.workers > 0 else self._iter_thread()
 
     def _iter_pool(self) -> Iterator[WindowBatch]:
-        """Батчи из пула процессов с ограниченным числом заданий в полёте."""
+        """Batches from a pool of processes with a limited number of missions in flight."""
         saved = {var: os.environ.get(var) for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")}
         for var in saved:
             os.environ[var] = "1"
@@ -311,7 +316,7 @@ class WindowStream:
             pool.join()
 
     def _iter_thread(self) -> Iterator[WindowBatch]:
-        """Батчи из одного фонового потока; закрытие ждёт до секунды, не прерывая текущую генерацию."""
+        """Batches from a single background stream; closing waits up to a second without interrupting current generation."""
         q: queue.Queue = queue.Queue(maxsize=self.prefetch)
         stop = threading.Event()
 
@@ -325,7 +330,7 @@ class WindowStream:
             return False
 
         def worker() -> None:
-            """Кладёт батчи в очередь по порядку, в конце `None`, при ошибке само исключение."""
+            """Puts batchi in the queue in order, at the end of `None`, if the error is the exception itself."""
             k = self.first_batch
             try:
                 while not stop.is_set() and (self.n_batches is None or k < self.n_batches):
@@ -353,17 +358,17 @@ class WindowStream:
 
 
 def collect_windows(generator: Generator, spec: WindowSpec, seeds: np.ndarray, workers: int = 0, batch_size: int = 4096) -> WindowBatch:
-    """Один батч окон по подряд идущим сидам, собранный потоком с `workers` процессами.
+    """Collect consecutive seeded windows into one batch using `workers` processes.
 
     Args:
-        generator: Генератор рядов.
-        spec: Форма задачи.
-        seeds: Подряд идущие сиды; первый задаёт начало, число — размер.
-        workers: Число процессов; 0 — фоновый поток.
-        batch_size: Окон в батче потока.
+        generator: Row generator.
+        spec: The shape of the task.
+        seeds: Seeds are ordered; the first is the beginning, the number is the size.
+        workers: Number of processes; 0 is a background stream.
+        batch_size: The windows are in the flow batch.
 
     Returns:
-        WindowBatch: Окна на CPU в порядке сидов.
+        WindowBatch: The windows on the CPU are in order of seed.
     """
     seeds = np.asarray(seeds, dtype=np.int64)
     n = len(seeds)

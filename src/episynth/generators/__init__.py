@@ -1,4 +1,4 @@
-"""Генераторы синтетических рядов: реестр по именам и общий контракт."""
+"""Synthetic series generators: register by name and general contract."""
 
 from .arima import ARIMA
 from .base import Generator, original_seeds
@@ -19,6 +19,6 @@ GENERATORS: dict[str, type[Generator]] = {
     cls.name: cls
     for cls in (KernelSynth, ETS, Waveform, SDE, StepFunction, TSI, ARIMA, FBM, GARCH, Chaotic, TimeSynth, OU)
 }
-"""Классы генераторов по имени; одиннадцать имён совпадают с реестром Mix, Don't Pick, `ou` — эталон с известным байесовским прогнозом."""
+"""Generator classes by name; eleven names coincide with the register Mix, Don't Pick, `ou` - the benchmark with the well-known Bayesian forecast."""
 
 __all__ = ["GENERATORS", "Generator", "Mixture", "original_seeds"]

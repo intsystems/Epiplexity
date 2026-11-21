@@ -1,4 +1,4 @@
-"""Фрактальное броуновское движение и фрактальный гауссовский шум."""
+"""Fractal Brownian motion and fractal Gaussian noise."""
 
 import numpy as np
 
@@ -10,7 +10,7 @@ def _autocovariance(k: np.ndarray, hurst: float) -> np.ndarray:
 
 
 def _hosking(gn: np.ndarray, hurst: float) -> np.ndarray:
-    """Метод Хоскинга, запасной путь пакета fbm при отрицательных собственных числах."""
+    """Hosking's method, the backup path of the fbm packet at negative eigenvalues."""
     n = len(gn)
     cov = _autocovariance(np.arange(n, dtype=float), hurst)
     fgn = np.zeros(n)
@@ -35,18 +35,19 @@ def _hosking(gn: np.ndarray, hurst: float) -> np.ndarray:
 
 
 class FBM(Generator):
-    r"""Фрактальное броуновское движение или фрактальный гауссовский шум с :math:`H \sim U(0{,}1;\,0{,}9)`.
+    r"""Fractional Brownian motion or fractional Gaussian noise with :math:`H \sim U(0.1, 0.9)`.
 
-    Приращения строятся методом Дэвиса–Харта (вложение в циркулянт и БПФ) на единичном
-    отрезке, как в пакете `fbm` 0.3.0, и умножаются на логравномерный масштаб из
-    :math:`[0{,}1;\,5]`; с вероятностью 0,5 возвращается накопленная сумма (движение), иначе сами
-    приращения (шум). Масштаб приращений :math:`(1/L)^H` зависит от длины ряда. Оригинал берёт
-    шум из глобального генератора numpy, засеянного сидом ряда; здесь тот же поток
-    воспроизводится отдельным `RandomState`, поэтому основной режим совпадает с режимом
-    воспроизведения, а БПФ считается пакетом по рядам.
+    The Davies–Harte method (circulant embedding and FFT) builds increments on
+    the unit interval as in `fbm` 0.3.0. A log-uniform factor in :math:`[0.1, 5]`
+    scales the increments. With probability 0.5 the generator returns their
+    cumulative sum (motion), and otherwise returns the increments (noise).
+    The increment scale :math:`(1/L)^H` depends on series length. The original
+    uses NumPy's global RNG seeded by the series seed. A separate `RandomState`
+    reproduces this stream, so the default and reproduction modes agree, and
+    the FFT runs in batches across series.
 
     Args:
-        length: Длина ряда.
+        length: Series length.
     """
 
     name = "fbm"

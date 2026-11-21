@@ -1,17 +1,18 @@
-r"""Анализ прогонов: площадь над финальным лоссом с её ошибкой, сводки качества, ранговые корреляции.
+r"""Analyze training runs, summarize forecasts, and compute rank correlations.
 
-Площадь прогона :math:`A = \sum_{i=1}^{N} \ell_i - N L_{\mathrm{fin}}` в натах: :math:`\ell_i` — лосс :math:`i`-го
-окна до шага по нему (`window_loss.f32`), :math:`L_{\mathrm{fin}}` — средний лосс окна на отложенном
-наборе у последнего чекпойнта для выбранного варианта весов (`heldout_<вариант>_1.f32`, точность
-обучения). Ошибка площади от конечного отложенного набора равна :math:`N`, умноженному на стандартную
-ошибку :math:`L_{\mathrm{fin}}` по окнам набора; обучающие лоссы входят в площадь как есть, это
-свойство прогона, а не оценка. Кривая площади по префиксам :math:`A(n) = \sum_{i \le n} \ell_i - n L_{\mathrm{fin}}`
-нужна для предсказания по началу обучения.
+The area in nats is :math:`A = \sum_{i=1}^{N} \ell_i - N L_{\mathrm{fin}}`.
+Here :math:`\ell_i` is the pre-update loss of window :math:`i` (`window_loss.f32`),
+and :math:`L_{\mathrm{fin}}` is the mean held-out loss of the final checkpoint
+for the selected weight variant (`heldout_<variant>_1.f32`, at training precision).
+The area's standard error is :math:`N` times the standard error of the held-out
+mean. The logged training losses are treated as fixed observations from this run.
+The prefix area :math:`A(n) = \sum_{i \le n} \ell_i - n L_{\mathrm{fin}}` supports
+prediction from early training.
 
-Сводки качества по задачам бенчмарка из `summary.csv` прогонов и сезонного наива: средний ранг
-среди моделей, среднее геометрическое, арифметическое и медиана отношений к наиву, доля задач
-лучше наива. Корреляция Спирмена предсказателя с качеством по генераторам с бутстреп-интервалом
-по генераторам.
+Benchmark summaries compare model `summary.csv` files with seasonal naive. They
+report mean model ranks, geometric and arithmetic mean ratios, median ratios,
+and the share of tasks beating the baseline. Spearman correlations across
+generators use a generator-level bootstrap interval.
 """
 
 import csv
@@ -27,17 +28,17 @@ from scipy.stats import rankdata, spearmanr
 
 @dataclass
 class RunArea:
-    """Площадь прогона и её составляющие.
+    """Excess loss area and its components.
 
     Attributes:
-        n_windows: Число обучающих окон :math:`N`.
-        sum_loss: Сумма лоссов окон до шага, нат.
-        l_fin: Финальный лосс, нат на окно.
-        l_fin_se: Стандартная ошибка финального лосса по окнам отложенного набора.
-        n_heldout: Размер отложенного набора.
-        area: Площадь :math:`A`, нат.
-        area_se: Ошибка площади от конечного отложенного набора, нат.
-        variant: Вариант весов финального лосса: `ema` или `raw`.
+        n_windows: Number of training windows :math:`N`.
+        sum_loss: Sum of pre-update window losses in nats.
+        l_fin: Final held-out loss in nats per window.
+        l_fin_se: Standard error of the final held-out mean.
+        n_heldout: Number of held-out windows.
+        area: Area :math:`A` in nats.
+        area_se: Standard error of the area due to the finite held-out set, in nats.
+        variant: Final weight variant, `ema` or `raw`.
     """
 
     n_windows: int
@@ -92,18 +93,18 @@ def _run_losses(run_dir: Path, variant: str) -> tuple[np.ndarray, np.ndarray]:
 
 
 def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
-    """Площадь прогона по его каталогу.
+    """Compute the excess area from a run directory.
 
     Trainer runs require configured loss counts and a final heldout.jsonl record.
     Historical directories with only loss files receive basic vector validation;
     without run metadata, completeness of those files cannot be established.
 
     Args:
-        run_dir: Каталог прогона с `window_loss.f32` и `heldout_<variant>_1.f32`.
-        variant: Вариант весов финального лосса: `ema` или `raw`.
+        run_dir: Run directory containing `window_loss.f32` and `heldout_<variant>_1.f32`.
+        variant: Final weight variant: `ema` or `raw`.
 
     Returns:
-        RunArea: Площадь и составляющие.
+        RunArea: Area and components.
     """
     losses, held = _run_losses(Path(run_dir), variant)
     n, m = len(losses), len(held)
@@ -113,7 +114,7 @@ def run_area(run_dir: str | Path, variant: str = "ema") -> RunArea:
 
 
 def area_curve(run_dir: str | Path, variant: str = "ema", points: int = 200) -> tuple[np.ndarray, np.ndarray]:
-    """Кривая площади по префиксам обучения: номера окон `(points,)` и :math:`A(n)`.
+    """Curve area by training prefixes: window numbers `(points,)` and :math:`A(n)`.
 
     Uses the same artifact and completion checks as :func:`run_area`.
     """
@@ -125,7 +126,7 @@ def area_curve(run_dir: str | Path, variant: str = "ema", points: int = 200) -> 
 
 
 def load_summary(path: str | Path) -> dict[str, dict[str, float]]:
-    """Метрики `summary.csv` по конфигурациям: `{config: {метрика: значение}}`."""
+    """Read `summary.csv` as a mapping from configurations to metric values."""
     out: dict[str, dict[str, float]] = {}
     with open(path) as f:
         for row in csv.DictReader(f):
@@ -134,17 +135,17 @@ def load_summary(path: str | Path) -> dict[str, dict[str, float]]:
 
 
 def quality_table(summaries: Mapping[str, str | Path], naive: str | Path, metric: str = "scaled_crps") -> dict[str, dict[str, float]]:
-    """Сводки качества моделей по задачам бенчмарка относительно друг друга и сезонного наива.
+    """Summary of the quality of models on benchmark problems relative to each other and seasonal naive.
 
     Args:
-        summaries: `summary.csv` прогонов по именам моделей.
-        naive: `summary.csv` сезонного наива.
-        metric: Колонка метрики; меньше — лучше.
+        summaries: `summary.csv` runs by model names.
+        naive: `summary.csv` seasonal naive.
+        metric: Metric column; less is better.
 
     Returns:
-        dict[str, dict[str, float]]: По моделям `mean_rank` (средний ранг среди моделей по задачам,
-        при равенстве средний), `geo_mean_ratio`, `mean_ratio`, `median_ratio` (отношения к наиву по
-        задачам), `share_better` (доля задач, где лучше наива), `n_configs`.
+        dict[str, dict[str, float]: `mean_rank` (average rank among the models by task, with
+        equality average), `geo_mean_ratio`, `mean_ratio`, `median_ratio` (relationships to naive by
+        task), `share_better` (share of tasks where naive is better), `n_configs`.
     """
     tables = {name: load_summary(p) for name, p in summaries.items()}
     base = load_summary(naive)
@@ -167,19 +168,19 @@ def quality_table(summaries: Mapping[str, str | Path], naive: str | Path, metric
 
 
 def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0, level: float = 0.95) -> tuple[float, float, float]:
-    """Ранговая корреляция Спирмена с бутстреп-интервалом по объектам (процентильный метод).
+    """Rank correlation of Spearman with the bootstrap interval by objects (percentile method).
 
     Args:
-        x: Предсказатель по объектам.
-        y: Качество по объектам.
-        n_boot: Число бутстреп-выборок.
-        seed: Сид бутстрепа.
-        level: Уровень интервала.
+        x: Object fortune teller.
+        y: Quality by facility.
+        n_boot: Number of bootstrap samples.
+        seed: Bootstrap seed.
+        level: Interval level.
 
     Returns:
-        tuple[float, float, float]: Корреляция и границы интервала. Неопределённые
-        значения (недостаточные, постоянные или неконечные входы) возвращаются как NaN.
-        Если ни одна бутстреп-выборка не определяет корреляцию, границы равны NaN.
+        tuple[float, float, float]: Correlation and interval boundaries. Undefined values
+        (inadequate, constant, or infinite inputs) return as NaN. If no bootstrap sample determines
+        correlation, the boundaries are NaN.
     """
     x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
     if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape:
@@ -205,16 +206,16 @@ def spearman_ci(x: np.ndarray, y: np.ndarray, n_boot: int = 10000, seed: int = 0
 
 
 def correlation_table(predictors: Mapping[str, Mapping[str, float]], quality: Mapping[str, float], **kwargs: int | float) -> dict[str, dict[str, float]]:
-    """Корреляции Спирмена каждого предсказателя с качеством по общим объектам.
+    """Correlations of the Spearman of each soothsayer with quality over common objects.
 
     Args:
-        predictors: Значения предсказателей по именам объектов.
-        quality: Качество по тем же именам объектов.
-        **kwargs: Параметры :func:`spearman_ci`: ``n_boot`` и ``seed`` (int),
-            ``level`` (float). Передаются без изменения.
+        predictors: Values of soothsayers by object names.
+        quality: Quality by the same object names.
+        **kwargs: Parameters :func:`spearman_ci`: ``n_boot`` and ``seed`` (int),
+            ``level`` (float) Transmitted unchanged.
 
     Returns:
-        Словарь по предсказателям с полями ``rho``, ``lo``, ``hi`` и ``n``.
+        Dictionary of predictors with fields ``rho``, ``lo``, ``hi`` and ``n``.
     """
     out = {}
     for name, pred in predictors.items():

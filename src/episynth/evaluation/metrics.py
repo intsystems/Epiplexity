@@ -1,13 +1,13 @@
-r"""Метрики прогноза по окнам и их сведение по датасету.
+r"""Metrics of forecast by windows and their reduction by dataset.
 
-По каждому окну сохраняются суммы по наблюдаемым точкам горизонта, из которых любая метрика
-датасета восстанавливается точно: в определениях GIFT-Eval (gluonts: среднее по всем точкам
-всех окон, взвешенные квантильные потери как отношение сумм) и в нашем масштабированном виде.
-Делитель масштабирования — сезонная ошибка ряда: средний модуль разности истории с лагом в
-сезонность (лаг 1, если сезонность не меньше длины истории), как `seasonal_error` в gluonts.
-Квантильная потеря уровня :math:`q` для прогноза :math:`\hat y`: :math:`2\,|(y - \hat y)(\mathbf{1}[\hat y \ge y] - q)|`.
-CRPS по сэмплам: :math:`\mathbb{E}|X - y| - \tfrac12 \mathbb{E}|X - X'|` с точной формулой по
-упорядоченным сэмплам.
+For each window, sums are stored at the observable points of the horizon, from which any dataset
+metric is restored precisely: in the definitions GIFT-Eval (gluonts: average at all points of all
+windows, weighted quantile losses as a ratio of sums) and in our scaled form. The zoom divider is a
+seasonal error of the series: the average module of the history difference with lag in seasonality
+(lag) 1if the seasonality is not less than the length of history, as `seasonal_error` Quantile level
+loss :math:`q` for the forecast :math:`\hat y`: :math:`2\,|(y - \hat y)(\mathbf{1}[\hat y \ge y] -
+q)|`. CRPS by sample: :math:`\mathbb{E}|X - y| - \tfrac12 \mathbb{E}|X - X'|` with an exact formula
+for ordered samples.
 """
 
 import math
@@ -27,7 +27,7 @@ AGGREGATE_FIELDS: tuple[str, ...] = (
 
 
 def seasonal_error(history: np.ndarray, season: int) -> tuple[float, float]:
-    """Средний модуль и средний квадрат сезонной разности истории; NaN в истории пропускаются."""
+    """The middle module and the middle square of the seasonal difference of history; NaN in history are skipped."""
     y = history.astype(np.float64)
     lag = season if season < len(y) else 1
     d = y[lag:] - y[:-lag]
@@ -38,7 +38,7 @@ def seasonal_error(history: np.ndarray, season: int) -> tuple[float, float]:
 
 
 def crps_from_samples(samples: np.ndarray, label: np.ndarray) -> np.ndarray:
-    """CRPS `(h,)` по сэмплам `(n, h)` для правды `(h,)`."""
+    """CRPS `(h,)` samples `(n, h)` for the truth of `(h,)`."""
     n = samples.shape[0]
     xs = np.sort(samples, axis=0)
     term1 = np.abs(xs - label[None]).mean(axis=0)
@@ -55,19 +55,19 @@ def window_stats(
     nll: np.ndarray | None = None,
     context_length: int | None = None,
 ) -> dict[str, float]:
-    """Суммы по наблюдаемым точкам одного окна, достаточные для всех метрик.
+    """The sums at the observed points of a single window are sufficient for all metrics.
 
     Args:
-        label: Правда `(h,)`, NaN не учитываются.
-        samples: Сэмплы прогноза `(n, h)`; медиана и квантили берутся по ним линейной интерполяцией.
-        history: История ряда до окна для сезонной ошибки.
-        season: Сезонность.
-        nll: Минус лог-плотность правды `(h,)` в натах; `None` — у модели нет плотности.
-        context_length: Сколько точек истории видела модель; `None` — не записывается.
+        label: `(h,)` and NaN are not counted.
+        samples: Samples of the forecast `(n, h)`; the median and quantiles are taken from them by linear interpolation.
+        history: A row story to a window for seasonal error.
+        season: Seasonal.
+        nll: Minus the truth log density of the `(h,)` in nats; `None` - the model has no density.
+        context_length: How many points of history did the model see; the `None` does not record.
 
     Returns:
-        dict[str, float]: Поля `n_valid`, `n_label`, `seasonal_error`, `seasonal_error_sq`, суммы
-        ошибок, квантильных потерь, CRPS, покрытий, ширин, интервального счёта и лог-плотности.
+        dict[str, float]: Fields `n_valid`, `n_label`, `seasonal_error`, `seasonal_error_sq`, error
+        sums, quantile losses, CRPS, coatings, widths, interval count and log density.
     """
     label = label.astype(np.float64)
     valid = np.isfinite(label)
@@ -112,24 +112,24 @@ def _divide(numerator: float, denominator: float) -> float:
 
 
 def aggregate(rows: list[dict[str, float]]) -> dict[str, float]:
-    """Метрики датасета по записям окон: определения GIFT-Eval и масштабированные наши.
+    """Dataset metrics by window records: definitions GIFT-Eval and scaled ours.
 
-    Поля GIFT-Eval повторяют колонки лидерборда (`MASE[0.5]`, `sMAPE[0.5]`, `ND[0.5]`, `MAE[0.5]`,
+    The fields of GIFT-Eval repeat the leaderboard columns (`MASE[0.5]`, `sMAPE[0.5]`, `ND[0.5]`, `MAE[0.5]`).
     `MSE[0.5]`, `MSE[mean]`, `RMSE[mean]`, `NRMSE[mean]`, `MSIS`, `mean_weighted_sum_quantile_loss`)
-    с их же исключениями: точки с нулевым знаменателем sMAPE и окна с нулевой сезонной ошибкой в
-    MASE и MSIS не входят ни в сумму, ни в счёт (так делает маскированная арифметика gluonts).
-    Наши поля считаются по окнам с положительной сезонной ошибкой (`n_excluded` — сколько окон
-    выпало): `scaled_crps`, `rmsse`, `coverage_<c>`, `scaled_width_<c>`, `nll_per_point`; MASE
-    совпадает с `MASE[0.5]`.
+    with their own exceptions: points with zero denominator sMAPE and windows with zero seasonal
+    error MASE and MSIS It's not in the sum or in the account (as the masked arithmetic of gluonts
+    does). Our fields are counted on the windows with a positive seasonal error.`n_excluded` - How
+    many windows fell out? `scaled_crps`, `rmsse`, `coverage_<c>`, `scaled_width_<c>`,
+    `nll_per_point`; MASE coincidental `MASE[0.5]`.
 
     All fields are present even when no observations remain. Metrics with a zero
     denominator or no eligible observations are NaN.
 
     Args:
-        rows: Записи `window_stats` всех окон датасета.
+        rows: `window_stats` records of all dataset windows.
 
     Returns:
-        dict[str, float]: Метрики датасета и счётчики `n_windows`, `n_points`, `n_excluded`.
+        dict[str, float]: Dataset metrics and counters `n_windows`, `n_points`, `n_excluded`.
     """
     n = sum(r["n_valid"] for r in rows)
     abs_err = np.array([r["sum_abs_err_median"] for r in rows])

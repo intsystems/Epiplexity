@@ -1,21 +1,24 @@
-r"""Перенос Moirai 1.x (Woo и др., 2024, arXiv:2402.02592) из uni2ts 2.0.0 (Salesforce, Apache-2.0).
+r"""Port of Moirai 1.x (Woo et al., 2024, arXiv:2402.02592) from uni2ts 2.0.0
+(Salesforce, Apache-2.0).
 
-Архитектура, инициализация и имена параметров повторяют `uni2ts.model.moirai.MoiraiModule`,
-поэтому опубликованные чекпойнты (`Salesforce/moirai-1.1-R-small` и другие) загружаются как есть
-(`load_uni2ts_checkpoint`). Отличия переноса:
+The port follows `uni2ts.model.moirai.MoiraiModule` for architecture,
+initialization, and parameter names. `load_uni2ts_checkpoint` can load
+published checkpoints such as `Salesforce/moirai-1.1-R-small` directly.
 
-- размер патча один на батч (целое число), а не на токен: упаковка рядов с разными патчами в
-  одну последовательность не поддерживается;
-- параметры распределения, лог-плотность и лосс считаются в float32 независимо от autocast;
-- смесь и её компоненты реализованы формулами (годится для `torch.compile`), сэмплирование
-  через `torch.distributions`;
-- без jaxtyping, einops и hydra.
+- Use one integer patch size for the whole batch. Packing mixed patch sizes
+  within a sequence is unsupported.
+- Distribution parameters, log densities, and losses are computed in float32,
+  regardless of autocast.
+- The mixture and its components use explicit formulas compatible with
+  `torch.compile`. Sampling uses `torch.distributions`.
+- The port has no dependency on jaxtyping, einops, or Hydra.
 
-Сохранённая ради чекпойнтов особенность оригинала: проекция логитов смеси для патча :math:`P`
-заполняет весами первые :math:`K P` строк матрицы ширины :math:`K P_{\max}`, а читается как
-:math:`(K, P_{\max})`, поэтому при нескольких размерах патчей и :math:`P < P_{\max}` логиты части компонент
-не зависят от представления и равны обучаемым смещениям. При одном размере патча в
-конфигурации (:math:`P_{\max} = P`) особенность исчезает.
+Checkpoint compatibility preserves a projection detail. For patch size
+:math:`P`, the mixture-logit projection fills the first :math:`KP` rows of
+the output of width :math:`KP_{\max}` and reshapes it to :math:`(K,P_{\max})`.
+With multiple patch sizes and :math:`P < P_{\max}`, some logits equal the
+learned biases independently of the input representation. With a single
+patch size, :math:`P=P_{\max}` and this no longer occurs.
 """
 
 import math
@@ -36,18 +39,18 @@ _LOG_2PI = math.log(2 * math.pi)
 
 
 class MoiraiConfig(BaseModel):
-    """Конфигурация модели.
+    """Model configuration.
 
     Attributes:
-        d_model: Ширина представлений; число голов внимания равно `d_model // 64`.
-        num_layers: Число слоёв трансформера.
-        patch_sizes: Поддерживаемые размеры патча; размер патча батча должен быть из этого набора.
-        max_seq_len: Наибольшее число токенов в последовательности (длина таблиц RoPE).
-        components: Компоненты смеси по порядку из {"student_t", "normal_fixed", "negative_binomial", "log_normal"}.
-        normal_fixed_scale: Стандартное отклонение компоненты "normal_fixed" в нормированных единицах.
-        scaling: Нормировать ли ряд по наблюдаемому контексту.
-        fixed_scaling: Фиксированные (сдвиг, масштаб) вместо статистик контекста.
-        ignore_context: Предсказывать только по постоянным признакам горизонта.
+        d_model: Model width. The number of attention heads is `d_model // 64`.
+        num_layers: Number of transformer layers.
+        patch_sizes: Supported patch sizes; the batch patch size should be from this set.
+        max_seq_len: The largest number of tokens in the sequence (the length of the RoPE tables).
+        components: The components of the mixture in order of {"student_t", "normal_fixed", "negative_binomial", "log_normal"}.
+        normal_fixed_scale: The standard deviation of the "normal_fixed" component in normalized units.
+        scaling: Normalize the series according to the observed context.
+        fixed_scaling: Fixed (shift, scale) instead of contextual statistics.
+        ignore_context: Predict from canonical horizon tokens without context.
     """
 
     d_model: int = 384
@@ -70,25 +73,25 @@ class MoiraiConfig(BaseModel):
 
 
 def small(patch_sizes: Sequence[int] = (8, 16, 32, 64, 128), components: Sequence[str] | None = None) -> MoiraiConfig:
-    """Конфигурация Moirai-Small (13,8 млн параметров при всех патчах и четырёх компонентах).
+    """Moirai-Small configuration (13,8 million parameters for all patches and four components).
 
     Args:
-        patch_sizes: Размеры патча.
-        components: Компоненты смеси; `None` — четыре компоненты оригинала.
+        patch_sizes: Patch sizes.
+        components: The components of the mixture; `None` are the four components of the original.
 
     Returns:
-        MoiraiConfig: Конфигурация.
+        MoiraiConfig: Config.
     """
     kwargs = {} if components is None else {"components": tuple(components)}
     return MoiraiConfig(patch_sizes=tuple(patch_sizes), **kwargs)
 
 
 class RMSNorm(nn.Module):
-    """Нормировка по среднеквадратичному значению с обучаемым масштабом.
+    """Root-mean-square normalization with a learned scale.
 
     Args:
-        dim: Нормируемая размерность.
-        eps: Слагаемое под корнем.
+        dim: Size of the normalized dimension.
+        eps: Constant added before taking the square root.
     """
 
     def __init__(self, dim: int, eps: float = 1e-5) -> None:
@@ -97,17 +100,17 @@ class RMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Нормирует последнюю ось `x` и умножает на масштаб."""
+        """Normalizes the last axis of `x` and multiplies by scale."""
         return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps) * self.weight
 
 
 class RotaryProjection(nn.Module):
-    """Поворотное позиционное кодирование (RoPE) первой половины размерности головы.
+    """Rotary positional embedding (RoPE) of the first half of the head dimension.
 
     Args:
-        width: Число поворачиваемых координат (чётное).
-        max_len: Наибольший индекс времени плюс один.
-        base: Основание геометрической сетки частот.
+        width: The number of rotating coordinates (even).
+        max_len: Highest time index plus one.
+        base: The basis of the geometric frequency grid.
     """
 
     def __init__(self, width: int, max_len: int, base: int = 10000) -> None:
@@ -124,7 +127,7 @@ class RotaryProjection(nn.Module):
         return torch.stack([-x2, x1], dim=-1).flatten(-2)
 
     def forward(self, x: torch.Tensor, time_id: torch.Tensor) -> torch.Tensor:
-        """Поворачивает первые `width` координат `x` `(B, H, S, hd)` по индексам времени `(B, S)`."""
+        """Rotates the first `width` coordinates `x` `(B, H, S, hd)` by time indices `(B, S)`."""
         cos = self.cos[time_id].unsqueeze(1).to(x.dtype)
         sin = self.sin[time_id].unsqueeze(1).to(x.dtype)
         head, tail = x[..., : self.width], x[..., self.width :]
@@ -132,10 +135,10 @@ class RotaryProjection(nn.Module):
 
 
 class BinaryAttentionBias(nn.Module):
-    """Смещение внимания по признаку «та же переменная или другая», своё на каждую голову.
+    """Displacement of attention on the basis of "same variable or another" on each head.
 
     Args:
-        num_heads: Число голов.
+        num_heads: Number of heads.
     """
 
     def __init__(self, num_heads: int) -> None:
@@ -143,19 +146,19 @@ class BinaryAttentionBias(nn.Module):
         self.emb = nn.Embedding(2, num_heads)
 
     def forward(self, variate_id: torch.Tensor) -> torch.Tensor:
-        """Смещение `(B, H, S, S)` по индексам переменных `(B, S)`."""
+        """`(B, H, S, S)` shifts over the `(B, S)` variable indices."""
         same = (variate_id.unsqueeze(-1) == variate_id.unsqueeze(-2)).unsqueeze(1)
         w = self.emb.weight.view(2, -1, 1, 1)
         return torch.where(same, w[1], w[0])
 
 
 class Attention(nn.Module):
-    """Многоголовое внимание с нормировкой запросов и ключей, RoPE по времени и смещением по переменной.
+    """Multi-headed attention with standardization of queries and keys, RoPE in time and offset by variable.
 
     Args:
-        d_model: Ширина представлений.
-        num_heads: Число голов.
-        rope: Общий для слоёв модуль RoPE.
+        d_model: Model width.
+        num_heads: Number of heads.
+        rope: Common for layers module RoPE.
     """
 
     def __init__(self, d_model: int, num_heads: int, rope: RotaryProjection) -> None:
@@ -175,7 +178,7 @@ class Attention(nn.Module):
         self, x: torch.Tensor, attn_mask: torch.Tensor,
         time_id: torch.Tensor, variate_id: torch.Tensor,
     ) -> torch.Tensor:
-        """Выход внимания `(B, S, d)` для `x` той же формы, булевой маски `(B, S, S)` и индексов `(B, S)`."""
+        """Attention `(B, S, d)` for `x` of the same shape, Boolean mask `(B, S, S)` and indexes `(B, S)`."""
         B, S, _ = x.shape
         q = self.q_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
         k = self.k_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
@@ -189,10 +192,10 @@ class Attention(nn.Module):
 
 
 class GatedFeedForward(nn.Module):
-    """Полносвязный блок с SiLU-гейтом (SwiGLU) без смещений.
+    """A feed-forward block with a SiLU gate (SwiGLU) without bias.
 
     Args:
-        d_model: Ширина входа и выхода.
+        d_model: Width of entry and exit.
     """
 
     def __init__(self, d_model: int) -> None:
@@ -203,17 +206,17 @@ class GatedFeedForward(nn.Module):
         self.fc2 = nn.Linear(hidden, d_model, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Выход блока той же формы, что `x`."""
+        """The output is the same shape as the `x`."""
         return self.fc2(F.silu(self.fc_gate(x)) * self.fc1(x))
 
 
 class EncoderLayer(nn.Module):
-    """Слой трансформера с нормировкой до внимания и до полносвязного блока.
+    """Transformer layer with normalization to attention and to a fully connected unit.
 
     Args:
-        d_model: Ширина представлений.
-        num_heads: Число голов.
-        rope: Общий модуль RoPE.
+        d_model: Model width.
+        num_heads: Number of heads.
+        rope: General module RoPE.
     """
 
     def __init__(self, d_model: int, num_heads: int, rope: RotaryProjection) -> None:
@@ -227,18 +230,18 @@ class EncoderLayer(nn.Module):
         self, x: torch.Tensor, attn_mask: torch.Tensor,
         time_id: torch.Tensor, variate_id: torch.Tensor,
     ) -> torch.Tensor:
-        """Выход слоя той же формы, что `x`."""
+        """The output layer is the same shape as the `x`."""
         x = x + self.self_attn(self.norm1(x), attn_mask, time_id, variate_id)
         return x + self.ffn(self.norm2(x))
 
 
 class Encoder(nn.Module):
-    """Стек слоёв трансформера с общим RoPE и финальной нормировкой.
+    """Transformer layer stack with common RoPE and final normalization.
 
     Args:
-        d_model: Ширина представлений.
-        num_layers: Число слоёв.
-        max_seq_len: Длина таблиц RoPE.
+        d_model: Model width.
+        num_layers: Number of layers.
+        max_seq_len: Table length RoPE.
     """
 
     def __init__(self, d_model: int, num_layers: int, max_seq_len: int) -> None:
@@ -252,18 +255,18 @@ class Encoder(nn.Module):
         self, x: torch.Tensor, attn_mask: torch.Tensor,
         time_id: torch.Tensor, variate_id: torch.Tensor,
     ) -> torch.Tensor:
-        """Представления `(B, S, d)` после всех слоёв."""
+        """Views of `(B, S, d)` after all layers."""
         for layer in self.layers:
             x = layer(x, attn_mask, time_id, variate_id)
         return self.norm(x)
 
 
 class MultiInSizeLinear(nn.Module):
-    """Линейный слой с отдельными весами на каждый размер патча, вход дополнен нулями до наибольшего.
+    """A linear layer with separate weights for each patch size, the input is supplemented with zeros to the largest.
 
     Args:
-        in_sizes: Размеры патча.
-        out_features: Ширина выхода.
+        in_sizes: Patch sizes.
+        out_features: Exit width.
     """
 
     def __init__(self, in_sizes: Sequence[int], out_features: int) -> None:
@@ -277,18 +280,18 @@ class MultiInSizeLinear(nn.Module):
             nn.init.uniform_(self.bias[idx], -1 / math.sqrt(size), 1 / math.sqrt(size))
 
     def forward(self, x: torch.Tensor, idx: int) -> torch.Tensor:
-        """Выход `(..., out_features)` для патчей `x` `(..., P_max)` с весами размера номер `idx`."""
+        """Output `(..., out_features)` for `x` `(..., P_max)` patches with `idx` size scales."""
         size = self.in_sizes[idx]
         return F.linear(x[..., :size], self.weight[idx, :, :size], self.bias[idx])
 
 
 class MultiOutSizeLinear(nn.Module):
-    """Линейный слой с отдельными весами на каждый размер патча, выход читается как `(P_max, dim)`.
+    """A linear layer with separate weights for each patch size, the output reads as `(P_max, dim)`.
 
     Args:
-        in_features: Ширина входа.
-        patch_sizes: Размеры патча.
-        dim: Число параметров на точку патча.
+        in_features: Width of entrance.
+        patch_sizes: Patch sizes.
+        dim: Number of parameters per patch point.
     """
 
     def __init__(self, in_features: int, patch_sizes: Sequence[int], dim: int) -> None:
@@ -308,10 +311,10 @@ class MultiOutSizeLinear(nn.Module):
             nn.init.zeros_(self.bias[idx, rows:])
 
     def forward(self, x: torch.Tensor, idx: int) -> torch.Tensor:
-        """Параметры `(..., P_max, dim)` для представлений `x` `(..., in_features)`.
+        """`(..., P_max, dim)` settings for `x` `(..., in_features)` representations.
 
-        Веса за пределами первых `dim * P` строк обнулены, смещение действует целиком, как в
-        оригинале: у строк без весов остаётся обучаемая константа.
+        The weights outside the first `dim * P` lines are zeroed, the offset acts entirely as in the
+        original: the lines without weights remain a trainable constant.
         """
         rows = self.dim * self.patch_sizes[idx]
         out = F.pad(F.linear(x, self.weight[idx, :rows]), (0, self.weight.shape[1] - rows)) + self.bias[idx]
@@ -319,12 +322,12 @@ class MultiOutSizeLinear(nn.Module):
 
 
 class ParamProj(nn.Module):
-    """Проекция представлений в параметры смеси: логиты весов и параметры компонент.
+    """Projection of representations into the parameters of the mixture: logics of weights and parameters of components.
 
     Args:
-        d_model: Ширина представлений.
-        patch_sizes: Размеры патча.
-        components: Имена компонент смеси.
+        d_model: Model width.
+        patch_sizes: Patch sizes.
+        components: The names of the components of the mixture.
     """
 
     def __init__(self, d_model: int, patch_sizes: Sequence[int], components: Sequence[str]) -> None:
@@ -343,7 +346,7 @@ class ParamProj(nn.Module):
         )
 
     def forward(self, h: torch.Tensor, idx: int) -> tuple[torch.Tensor, list[dict[str, torch.Tensor]]]:
-        """Логиты весов `(B, S, P_max, K)` и список словарей параметров компонент `(B, S, P_max)`, всё float32."""
+        """`(B, S, P_max, K)` scale logs and a list of parameter dictionaries of `(B, S, P_max)` components, all float32."""
         logits = self.proj["weights_logits"](h, idx).float()
         params = []
         for name, proj in zip(self.components, self.proj["components"], strict=True):
@@ -364,22 +367,22 @@ def _constrain(name: str, raw: dict[str, torch.Tensor]) -> dict[str, torch.Tenso
 
 
 class Mixture:
-    r"""Смесь распределений на каждую точку патча в исходных единицах ряда.
+    r"""A mixture of distributions for each patch point in the original units of the series.
 
-    Компоненты заданы в нормированных единицах :math:`z = (y - \mathrm{loc}) / \mathrm{scale}`, где
-    `loc` и `scale` получены по наблюдаемому контексту. Лог-плотность в исходных единицах равна
-    лог-плотности смеси в :math:`z` минус :math:`\log \mathrm{scale}`. Компоненты с ограниченным носителем
-    (отрицательное биномиальное на :math:`z \ge 0`, логнормальное на :math:`z > 0`) вне носителя дают нулевую
-    плотность. Отрицательное биномиальное вычисляется на нецелых :math:`z` через гамма-функцию, как в
-    оригинале: на вещественной оси это не плотность, и смесь с ним не нормирована.
+    Components are given in normalized units :math:`z = (y - \mathrm{loc}) / \mathrm{scale}`where
+    `loc` and `scale` The log density in the starting units is equal to the log density of the
+    mixture in :math:`z` minus :math:`\log \mathrm{scale}`Limited carrier components (negative
+    binomial on :math):`z \ge 0`, lognormal on :math:`z > 0`) Outside the carrier is zero density.
+    Negative binomial is calculated on non-integral :math:`z` through the gamma function, as in the
+    original: on the real axis it is not density, and the mixture with it is not normalized.
 
     Args:
-        logits: Логиты весов `(B, S, O, K)`.
-        params: Параметры компонент по порядку, каждый тензор `(B, S, O)`.
-        names: Имена компонент.
-        normal_fixed_scale: Стандартное отклонение компоненты "normal_fixed".
-        loc: Сдвиг нормировки `(B, S, 1)`.
-        scale: Масштаб нормировки `(B, S, 1)`.
+        logits: `(B, S, O, K)` scale logs.
+        params: The parameters of the components are in order, each tensor `(B, S, O)`.
+        names: Component names.
+        normal_fixed_scale: Standard deviation of the "normal_fixed" component.
+        loc: Shift of `(B, S, 1)` normalization.
+        scale: The scale of the normalization of `(B, S, 1)`.
     """
 
     def __init__(
@@ -430,9 +433,9 @@ class Mixture:
         return torch.where(valid, lp, torch.full_like(lp, float("-inf")))
 
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
-        """Лог-плотность `(B, S, O)` значений `value` `(B, S, P)` в исходных единицах, в натах.
+        """Log density `(B, S, O)` values `value` `(B, S, P)` in the initial units, in nats.
 
-        При `P < O` значения дополняются нулями до ширины `O`; осмысленны первые `P` столбцов.
+        With `P < O`, values are supplemented with zeros up to the width of `O`; the first `P` columns are meaningful.
         """
         width = self.logits.shape[-2]
         if value.shape[-1] < width:
@@ -444,7 +447,7 @@ class Mixture:
         return torch.logsumexp(log_w + comp, dim=-1) - torch.log(self.scale)
 
     def sample(self, n: int) -> torch.Tensor:
-        """Сэмплы `(n, B, S, O)` в исходных единицах."""
+        """Samples of `(n, B, S, O)` in initial units."""
         with torch.no_grad():
             dists = []
             for name, p in zip(self.names, self.params, strict=True):
@@ -464,24 +467,25 @@ class Mixture:
 
 
 class _PoissonGamma:
-    """Отрицательное биномиальное как пуассоновская смесь гамма-распределений, только сэмплирование."""
+    """Negative binomial as a Poissonian mixture of gamma distributions, only sampling."""
 
     def __init__(self, gamma) -> None:
         self.gamma = gamma
 
     def sample(self, shape) -> torch.Tensor:
-        """Целочисленные сэмплы формы `shape + batch`."""
+        """Integer samples of the form `shape + batch`."""
         return torch.poisson(self.gamma.sample(shape))
 
 
 class PackedStdScaler(nn.Module):
-    """Нормировка ряда по среднему и несмещённому стандартному отклонению наблюдаемого контекста.
+    """Scale each series using the mean and unbiased standard deviation of observed context.
 
-    Статистики считаются в float64 по токенам с теми же `sample_id` и `variate_id`; у токенов
-    заполнения (`sample_id == 0`) сдвиг 0 и масштаб 1.
+    Statistics use float64 and share only tokens with the same `sample_id`
+    and `variate_id`. Padding tokens (`sample_id == 0`) have location zero
+    and scale one.
 
     Args:
-        minimum_scale: Слагаемое к дисперсии под корнем.
+        minimum_scale: Variance offset inside the square root.
     """
 
     def __init__(self, minimum_scale: float = 1e-5) -> None:
@@ -492,7 +496,7 @@ class PackedStdScaler(nn.Module):
         self, target: torch.Tensor, observed_mask: torch.Tensor,
         sample_id: torch.Tensor, variate_id: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Сдвиг и масштаб `(B, S, 1)` float32 для `target` `(B, S, P)`, маски `(B, S, P)` и индексов `(B, S)`."""
+        """Shift and scale `(B, S, 1)` float32 for `target` `(B, S, P)`, masks `(B, S, P)` and indexes `(B, S)`."""
         x = target.double()
         same = (sample_id.unsqueeze(-1) == sample_id.unsqueeze(-2)) & (variate_id.unsqueeze(-1) == variate_id.unsqueeze(-2))
         same = same.to(x.dtype)
@@ -511,13 +515,13 @@ class PackedStdScaler(nn.Module):
 
 
 class MoiraiModule(nn.Module):
-    """Модель Moirai: патчи ряда в представления, трансформер, смесь распределений на точки патча.
+    """Moirai model: series patches in views, transformer, mix of distributions on patch points.
 
     Args:
-        config: Конфигурация.
+        config: Config.
 
     Attributes:
-        config: Конфигурация модели.
+        config: Model configuration.
     """
 
     def __init__(self, config: MoiraiConfig) -> None:
@@ -539,20 +543,20 @@ class MoiraiModule(nn.Module):
         prediction_mask: torch.Tensor,
         patch_size: int,
     ) -> Mixture:
-        """Предсказательная смесь для всех токенов батча.
+        """Predictive mix for all batch tokens.
 
         Args:
-            target: Значения патчей `(B, S, P_max)`; у прогнозных и ненаблюдаемых позиций любые,
-                включая NaN. Скрытые значения не передаются в модель, исходный тензор не меняется.
-            observed_mask: Булева маска наблюдаемых значений `(B, S, P_max)`.
-            sample_id: Номер ряда токена `(B, S)`, 0 — заполнение вне внимания и нормировки.
-            time_id: Индекс времени токена `(B, S)`, меньше `max_seq_len`.
-            variate_id: Индекс переменной токена `(B, S)`.
-            prediction_mask: Булева маска прогнозных токенов `(B, S)`.
-            patch_size: Размер патча батча из `config.patch_sizes`.
+            target: Values of `(B, S, P_max)` patches; for predictive and unobservable positions, any,
+                including NaNHidden values are not transmitted to the model, the original tensor does not change.
+            observed_mask: Boolean mask of observed values of `(B, S, P_max)`.
+            sample_id: The number of the token series `(B, S)`, 0 is filling outside of attention and normalization.
+            time_id: The time index of the `(B, S)` token is less than `max_seq_len`.
+            variate_id: The index of variable token `(B, S)`.
+            prediction_mask: Boolean mask of forecast tokens `(B, S)`.
+            patch_size: The size of the patch batch from the `config.patch_sizes`.
 
         Returns:
-            Mixture: Смесь с параметрами `(B, S, P_max, ...)` в исходных единицах ряда.
+            Mixture: Mixture with `(B, S, P_max, ...)` parameters in the original units of the series.
         """
         idx = self.config.patch_sizes.index(patch_size)
         if self.config.ignore_context:
@@ -589,11 +593,11 @@ class MoiraiModule(nn.Module):
 
 
 def load_uni2ts_checkpoint(module: MoiraiModule, path: str) -> None:
-    """Загружает веса из `model.safetensors` чекпойнта uni2ts в модуль той же конфигурации.
+    """It loads weights from the `model.safetensors` checkpoint uni2ts into a module of the same configuration.
 
     Args:
-        module: Модель с теми же размерами патчей и компонентами, что у чекпойнта.
-        path: Путь к файлу safetensors.
+        module: A model with the same patch sizes and components as a checkpoint.
+        path: The path to the safetensors file.
     """
     from safetensors.torch import load_file
 

@@ -1,8 +1,8 @@
-r"""Реестр оценщиков эпиплексии.
+r"""Register of Epiplexity Estimators.
 
-Оценщики регистрируются по имени декоратором :func:`register` и создаются фабрикой
-:func:`build`. Пользователь добавляет свой алгоритм одним модулем: определяет класс, реализующий
-:class:`~episynth.estimators.base.EpiplexityEstimator`, и помечает его ``@register("name")``.
+The estimators are registered by name by the decorator :func:`register` and created by the factory
+:func:`build`. The user adds his algorithm with one module: determines the class that implements
+:class:`~episynth.estimators.base.EpiplexityEstimator`, and marks it with ``@register("name")``.
 """
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ _REGISTRY: dict[str, type[EpiplexityEstimator]] = {}
 
 
 def register(name: str) -> Callable[[type[EpiplexityEstimator]], type[EpiplexityEstimator]]:
-    """Регистрирует класс оценщика под `name`.
+    """Registers an estimator class under `name`.
 
     Args:
-        name: Ключ, по которому алгоритм будет доступен через :func:`build` и CLI.
+        name: The key to access the algorithm is :func:`build` and CLI.
 
     Returns:
-        Декоратор, возвращающий класс без изменений.
+        Decorator, returning the class unchanged.
     """
 
     def _decorator(cls: type[EpiplexityEstimator]) -> type[EpiplexityEstimator]:
@@ -35,17 +35,17 @@ def register(name: str) -> Callable[[type[EpiplexityEstimator]], type[Epiplexity
 
 
 def build(name: str, **config: object) -> EpiplexityEstimator:
-    """Создаёт оценщик по имени.
+    """Creates an estimator by name.
 
     Args:
-        name: Ключ в реестре.
-        config: Аргументы конструктора алгоритма (``**config``).
+        name: The key's in the register.
+        config: Algorithm Designer Arguments (``**config``)
 
     Returns:
-        Экземпляр оценщика.
+        An instance of the estimator.
 
     Raises:
-        KeyError: Если алгоритм с таким именем не зарегистрирован.
+        KeyError: If the algorithm with that name is not registered.
     """
     if name not in _REGISTRY:
         raise KeyError(f"No epiplexity estimator registered under {name!r}. Available: {sorted(_REGISTRY)}.")
@@ -53,12 +53,12 @@ def build(name: str, **config: object) -> EpiplexityEstimator:
 
 
 def available() -> list[str]:
-    """Отсортированный список зарегистрированных имён алгоритмов."""
+    """A sorted list of registered algorithm names."""
     return sorted(_REGISTRY)
 
 
 def _import_estimators() -> None:
-    """Импортирует встроенные оценщики, чтобы они зарегистрировались."""
+    """Imports built-in estimators so they register."""
     from . import (
         prequential,  # noqa: F401
         requential,  # noqa: F401

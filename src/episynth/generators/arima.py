@@ -1,7 +1,7 @@
-"""SARIMA-подобные процессы с исходным или исправленным отбором коэффициентов.
+"""SARIMA-like processes with original or corrected coefficient selection.
 
-По умолчанию сохраняется поток исходного генератора Mix, Don't Pick, включая ошибку
-ориентации полинома. Исправленный отбор включается явно: coefficient_mode="corrected".
+By default, the original Mix generator, Don't Pick, is stored stream, including the orientation
+error of the polynomial. Corrected selection is activated explicitly: coefficient_mode="corrected".
 """
 
 from typing import Literal
@@ -19,12 +19,12 @@ _TRIES = 100
 
 
 def _roots_outside(poly: np.ndarray, *, lag_order: bool = False) -> np.ndarray:
-    """Все ли корни пакета полиномов `(m, k+1)` по модулю больше 1,05.
+    """All the roots of the `(m, k+1)` polynomial package are larger than 1,05.
 
-    Первый коэффициент равен 1. В исходном режиме коэффициенты идут по убыванию степеней,
-    как в `np.roots`. При `lag_order=True` они идут по возрастанию степеней: проверяем
-    обратные корни внутри круга радиуса 1/1,05. Это избегает деления на последний
-    коэффициент, который может быть нулём. Корни считаются пакетной сопровождающей матрицей.
+    The first coefficient is 1. In the initial mode, the coefficients go down in degrees, as in
+    `np.roots`. In `lag_order=True`, they go up in degrees: check the inverse roots inside the
+    circle of the radius 1 / 1,05. This avoids dividing into the last coefficient, which can be
+    zero. The roots are considered a packet accompanying matrix.
     """
     m, k1 = poly.shape
     k = k1 - 1
@@ -39,17 +39,17 @@ def _roots_outside(poly: np.ndarray, *, lag_order: bool = False) -> np.ndarray:
 
 
 def _sample_coeffs(k: int, rng: np.random.Generator, sign: float, coefficient_mode: str = "legacy") -> np.ndarray:
-    """Коэффициенты AR (`sign=-1`) или MA (`sign=+1`) с заданным отбором по корням.
+    """The coefficients are AR (`sign=-1`) or MA (`sign=+1`) with a given root selection.
 
-    Legacy повторяет ошибку оригинала: у полинома z**k + sign*a[0]*z**(k-1) + ...
-    произведение модулей корней равно |a[-1]| <= 0,8. Поэтому все корни не могут иметь
-    модуль > 1,05: 100 кандидатов всегда отклоняются и берётся U(-0,3; 0,3)**k.
-    Corrected проверяет лаговый полином 1 + sign*sum(a[j]*z**(j+1)). После 100 неудач
-    тот же малый запасной вектор гарантированно допустим при k <= 3, поскольку
+    Legacy repeats the error of the original: the polynomial z**k + sign*a[0]*z**(k-1) + ... the
+    product of the root modules is equal to |a[-]1]| <= 0,8Therefore, all roots cannot have a
+    module. 1,05: 100 Candidates are always rejected and U(-)0,3; 0,3)**k. Corrected checks the lag
+    polynomial 1 + sign*sum(a[j]*z**(j+1) After 100 Failures of the same small spare vector are
+    guaranteed at k <= 3because
     0,3 * (1,05 + 1,05**2 + 1,05**3) < 1.
 
-    Кандидаты разыгрываются блоком с возвратом состояния генератора, чтобы сохранить
-    порядок случайных чисел построчного отбора до первого удачного кандидата.
+    Candidates are played in a block with the return of the generator state in order to maintain the
+    order of random numbers of line selection until the first successful candidate.
     """
     state = rng.bit_generator.state
     block = rng.uniform(-0.8, 0.8, size=(_TRIES, k))
@@ -75,25 +75,24 @@ def _sample_ma(q: int, rng: np.random.Generator, coefficient_mode: str = "legacy
 
 
 class ARIMA(Generator):
-    r"""ARIMA(p, d, q) со случайными порядками и, с вероятностью 0,3, сезонными членами.
+    r"""ARIMA(p, d, q) with random orders and, with probability 0,3, seasonal terms.
 
-    Порядки :math:`p, q \in \{0..3\}`, :math:`d \in \{0, 1, 2\}`. В режиме `legacy` все
-    векторы AR/MA, включая сезонные, фактически равномерны из :math:`[-0{,}3;\,0{,}3]^k`:
-    унаследованная ошибка порядка коэффициентов отклоняет все 100 исходных кандидатов.
-    Этот режим сохраняет опубликованные ряды до бита. В режиме `corrected` кандидаты из
-    :math:`[-0{,}8;\,0{,}8]^k` принимаются, если корни лаговых AR/MA-полиномов лежат вне
-    круга радиуса 1,05 (стационарность AR, обратимость MA); после 100 неудач используется
-    тот же малый запасной вектор. Это явно другое распределение генератора. Сезонный
-    период из :math:`\{4, 7, 12, 24, 52\}` с сезонными AR и MA первого порядка и сезонным
-    разностью. Рекурсия ARMA считается на 500 точек разгона длиннее ряда, затем берётся
-    хвост нужной длины; при :math:`d = 2` ряды сильно нестационарны. Распределение не зависит от
-    длины ряда. Рекурсия считается пакетом по рядам поэлементно теми же операциями, что у
-    оригинала. Основной и `exact` режимы совпадают при одном `coefficient_mode`;
-    воспроизведение исходного генератора обеспечивается только для `legacy`.
+    Orders :math:`p, q \in \{0..3\}`, :math:`d \in \{0, 1, 2\}`In mode. `legacy` vectors AR/MA,
+    including seasonal ones, are actually uniform from :math:`[-0{,}3;\,0{,}3]^k`Inherited error in
+    the order of coefficients rejects everything 100 This mode saves the published series down to
+    the bit. `corrected` candidates from :math:`[-0{,}8;\,0{,}8]^k` are accepted if the roots of the
+    lag AR/MAThe polynomials lie outside the radius circle. 1,05 (stationarity) ARreversibility
+    MAafter 100 It's obviously a different distribution of the generator. Seasonal from :math:`\{4,
+    7, 12, 24, 52\}` seasonally AR and MA First order and seasonal difference. ARMA counted 500
+    Acceleration points are longer than a row, then the tail of the desired length is taken; at
+    :math:`d = 2` The distribution does not depend on the length of the series. Recursion is
+    considered a packet in rows, elementally the same operations as the original. `exact` regimes
+    coincide with one `coefficient_mode`Reproduction of the original generator is provided only for
+    `legacy`.
 
     Args:
-        length: Длина ряда.
-        coefficient_mode: `legacy` сохраняет исходные ряды; `corrected` исправляет отбор коэффициентов.
+        length: The length of the row.
+        coefficient_mode: `legacy` saves the original series; `corrected` corrects the selection of coefficients.
     """
 
     name = "arima"

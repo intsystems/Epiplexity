@@ -1,12 +1,12 @@
 % Build with XeLaTeX twice. Main talk: 12 slides; 3 optional appendix slides.
 \documentclass[aspectratio=169,11pt]{beamer}
 \usepackage{fontspec,polyglossia}
-\setdefaultlanguage{russian}\setotherlanguage{english}
-\setsansfont{DejaVu Sans}\setmainfont{DejaVu Sans}
-\setmonofont{DejaVu Sans Mono}[Scale=0.78]
-\newfontfamily\cyrillicfont{DejaVu Sans}
-\newfontfamily\cyrillicfontsf{DejaVu Sans}
-\newfontfamily\cyrillicfonttt{DejaVu Sans Mono}[Scale=0.78]
+\setdefaultlanguage{english}
+\IfFontExistsTF{DejaVu Sans}{\setsansfont{DejaVu Sans}\setmainfont{DejaVu Sans}}{}
+\IfFontExistsTF{DejaVu Sans Mono}{\setmonofont{DejaVu Sans Mono}[Scale=0.78]}{}
+
+
+
 \usepackage{amsmath,amssymb,booktabs,array,graphicx,tikz,listings}
 \usetikzlibrary{arrows.meta,positioning,calc}
 \definecolor{Navy}{HTML}{12364A}\definecolor{Teal}{HTML}{087E80}
@@ -24,53 +24,53 @@
 \newcommand{\code}[1]{\texttt{\detokenize{#1}}}
 \newcommand{\smallnote}[1]{{\scriptsize\color{gray}#1\par}}
 \newcommand{\sourcefile}[2]{\href{https://github.com/intsystems/Epiplexity/blob/main/#1}{\code{#2}}}
-\hypersetup{pdftitle={episynth: Proof of Concept — Prequential},pdfauthor={Epiplexity team},pdfsubject={Prequential theory, library architecture and CPU demonstration},pdflang={ru-RU}}
+\hypersetup{pdftitle={episynth: Proof of Concept — Prequential},pdfauthor={Epiplexity team},pdfsubject={Prequential theory, library architecture and CPU demonstration},pdflang={en-US}}
 \begin{document}
 
 \begin{frame}[plain]
-\vspace{7mm}{\color{Teal}\large Библиотека для экспериментов с временными рядами\par}
+\vspace{7mm}{\color{Teal}\large A library for time-series experiments\par}
 \vspace{6mm}{\huge\bfseries episynth\par}\vspace{2mm}{\LARGE Proof of Concept\par}
-\vspace{4mm}{\large Prequential-оценка эпиплексии:\\теория, архитектура, реализация\par}
-\vspace{6mm}{\small Алексей Кравацкий · Марк Иконников\\Даниил Казачков · Данила Черноусов\par}
-\vspace{5mm}\href{https://github.com/intsystems/Epiplexity}{\color{Teal}\small github.com/intsystems/Epiplexity}\hfill{\small 21 октября 2026}
+\vspace{4mm}{\large Prequential estimation of epiplexity\\Theory, architecture, and implementation\par}
+\vspace{6mm}{\small Alexey Kravatskiy · Mark Ikonnikov\\Daniil Kazachkov · Danila Chernousov\par}
+\vspace{5mm}\href{https://github.com/intsystems/Epiplexity}{\color{Teal}\small github.com/intsystems/Epiplexity}\hfill{\small October 21, 2026}
 \end{frame}
 
-\begin{frame}{Что проверяем в исследовании}
-\begin{block}{Вопрос}
-Связано ли количество структуры, извлечённой из синтетического генератора, с качеством прогноза на реальных временных рядах?
+\begin{frame}{Research question}
+\begin{block}{Question}
+Is the amount of structure learned from a synthetic generator associated with forecast accuracy on real time series?
 \end{block}\vspace{2mm}
 \begin{columns}[T]
-\column{.49\textwidth}\textbf{Для каждого генератора \(g\)}
-\begin{itemize}\item обучаем Moirai с нуля;\item считаем оценку \(\widehat S_g\);\item проверяем перенос на GIFT-Eval.\end{itemize}
-\column{.47\textwidth}\textbf{Условия сравнения}
-\begin{itemize}\item одна архитектура;\item общий бюджет в серии;\item 11 генераторов / 55 задач.\end{itemize}
+\column{.49\textwidth}\textbf{For each generator \(g\)}
+\begin{itemize}\item Train Moirai from scratch.\item Compute the estimate \(\widehat S_g\).\item Evaluate transfer on GIFT-Eval.\end{itemize}
+\column{.47\textwidth}\textbf{Comparison protocol}
+\begin{itemize}\item One architecture.\item Equal budgets within a series.\item 11 generators and 55 tasks.\end{itemize}
 \end{columns}\vspace{2mm}
 \par\vspace{1mm}{\small \(g\longmapsto(\widehat S_g,Q_g),\quad\rho=\operatorname{Spearman}(\widehat S_g,Q_g).\)}\par\vspace{1mm}
-\smallnote{\(Q_g\) — ошибка прогноза: меньше — лучше. Ожидаемый знак полезной связи — отрицательный.}
+\smallnote{\(Q_g\) is forecast error, where lower is better. We expect a useful association to be negative.}
 \end{frame}
 
-\begin{frame}{Архитектура следует структуре эксперимента}
+\begin{frame}{The architecture follows the experiment}
 \centering
 \begin{tikzpicture}[node distance=5mm and 5mm,box/.style={draw=Teal,rounded corners=2pt,fill=Mist,align=center,font=\small,text width=38mm,minimum height=12mm},arr/.style={-{Latex[length=2mm]},thick,color=Teal}]
-\node[box](g){Генераторы / Corpus\\\scriptsize воспроизводимые ряды};
-\node[box,right=of g](w){WindowSpec / Batch\\\scriptsize контекст, цель, маски};
-\node[box,right=of w](t){Moirai + Trainer\\\scriptsize обучение и EMA};
-\node[box,below=10mm of g](a){analysis / estimators\\\scriptsize площадь и биты};
-\node[box,right=of a](r){Корреляция по \(g\)\\\scriptsize оценка vs. качество};
-\node[box,right=of r](e){GIFT-Eval\\\scriptsize качество чекпойнта};
-\draw[arr](g)--(w);\draw[arr](w)--(t);\draw[arr](t)--node[right,font=\scriptsize]{веса}(e);
+\node[box](g){Generators / Corpus\\\scriptsize reproducible series};
+\node[box,right=of g](w){WindowSpec / Batch\\\scriptsize context, target, masks};
+\node[box,right=of w](t){Moirai + Trainer\\\scriptsize training and EMA};
+\node[box,below=10mm of g](a){analysis / estimators\\\scriptsize area and bits};
+\node[box,right=of a](r){Correlation across \(g\)\\\scriptsize estimate vs. accuracy};
+\node[box,right=of r](e){GIFT-Eval\\\scriptsize checkpoint accuracy};
+\draw[arr](g)--(w);\draw[arr](w)--(t);\draw[arr](t)--node[right,font=\scriptsize]{weights}(e);
 \draw[arr](e)--(r);\draw[arr](a)--(r);
-\draw[arr](t.south west)--++(-3mm,-3mm)-|node[pos=.7,above,font=\scriptsize]{лоссы до шага + held-out}(a.north);
+\draw[arr](t.south west)--++(-3mm,-3mm)-|node[pos=.48,above,font=\scriptsize,fill=white,inner sep=1pt]{pre-update and held-out losses}(a.north);
 \end{tikzpicture}\vspace{4mm}
 \begin{itemize}
-\item \code{train.py}: читает JSON, выбирает компоненты и запускает оценщик.
-\item Общие слои не зависят от выбора алгоритма оценивания.
-\item \code{estimators/}: единый контракт и реестр расширений.
+\item \code{train.py} reads JSON, selects components, and runs the estimator.
+\item The shared layers work with any estimator.
+\item \code{estimators/} defines the shared protocol and plugin registry.
 \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{Prequential: предсказать → обучить}
-Для окна \(i\): контекст \(C_i\), будущее \(Y_i\), номер батча \(b(i)\).
+\begin{frame}[fragile]{Prequential coding: predict, then train}
+For window \(i\), let \(C_i\) be the context, \(Y_i\) the target, and \(b(i)\) the batch index.
 \[\ell_i=-\log q_{\theta_{b(i)-1}}(Y_i\mid C_i),\qquad L_{\mathrm{pre}}=\sum_{i=1}^{N}\ell_i.\]
 \begin{lstlisting}
 for batch in stream:
@@ -81,28 +81,28 @@ for batch in stream:
     self.optimizer.step()
     # persist per_window: pre-update values
 \end{lstlisting}
-\smallnote{Блочный prequential: окна батча оцениваются общей моделью. Запись лоссов после шага не меняет их предобновлённые значения. Clipping и EMA опущены.}
-\vspace{1mm}{\small \textbf{Ключевое условие:} оценка окна до обучения на соответствующем батче.}
+\smallnote{In blockwise prequential coding, the same model scores every window in a batch. Storing the losses after the update preserves their pre-update values. The example omits clipping and EMA.}
+\vspace{1mm}{\small \textbf{Key condition.} Score each window before training on its batch.}
 \end{frame}
 
-\begin{frame}{От prequential-лосса к эпиплексии}
-Prequential-лосс включает ошибки до освоения закономерностей. Из него вычитаем финальный held-out уровень за тот же бюджет.
+\begin{frame}{From prequential loss to epiplexity}
+Prequential loss includes errors made while the model is still learning. Subtract the final held-out loss scaled to the same number of windows.
 \vspace{-1mm}
 \[\overline\ell_{\mathrm{fin}}=\frac1m\sum_{j=1}^{m}-\log q_{\bar\theta_{\mathrm{fin}}}(Y_j^{\mathrm{held}}\mid C_j^{\mathrm{held}})\]
-\begin{block}{Разложение, используемое в episynth}
+\begin{block}{Decomposition used by episynth}
 \[\widehat H=\frac{N\overline\ell_{\mathrm{fin}}}{\ln2},\quad\widehat S=\frac{L_{\mathrm{pre}}-N\overline\ell_{\mathrm{fin}}}{\ln2},\quad\widehat S+\widehat H=\frac{L_{\mathrm{pre}}}{\ln2}.\]
 \end{block}
-\smallnote{\(\bar\theta_{\mathrm{fin}}\) — финальные EMA-веса, \(m\) — число независимых от обучения held-out окон. Лоссы в натах, результат в битах.}
-\vspace{1mm}{\small\textbf{Эмпирическая оценка, а не точная теоретическая эпиплексия.}}
+\smallnote{\(\bar\theta_{\mathrm{fin}}\) denotes the final EMA weights and \(m\) counts held-out windows independent of training. Losses are in nats and the result is in bits.}
+\vspace{1mm}{\small\textbf{An empirical estimate of theoretical epiplexity.}}
 \end{frame}
 
-\begin{frame}{Геометрический смысл: знаковая площадь}
+\begin{frame}{Geometric interpretation: signed area}
 \centering\includegraphics[width=.94\textwidth,height=35mm,keepaspectratio]{figures/area_schematic.pdf}\par
 {\small \(A=\sum_i(\ell_i-\overline\ell_{\mathrm{fin}}),\qquad\widehat S=A/\ln2.\)}\par\vspace{2mm}
-\smallnote{Схематическая иллюстрация, не измеренный прогон. Участки ниже baseline дают отрицательный вклад; код не обрезает площадь снизу нулём.}
+\smallnote{The figure is schematic. Regions below the baseline contribute negative area, which the implementation retains.}
 \end{frame}
 
-\begin{frame}[fragile]{Как формула реализована в коде}
+\begin{frame}[fragile]{How the code implements the formula}
 \begin{lstlisting}
 # PrequentialEstimator.run(...)
 Trainer(model, generator, spec, config, out).run()
@@ -114,42 +114,42 @@ l_fin = heldout.mean()
 A = L_pre - len(losses) * l_fin
 \end{lstlisting}\vspace{1mm}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{.40\textwidth}>{\raggedright\arraybackslash}p{.56\textwidth}@{}}
-\code{window_loss.f32}&Лосс каждого окна до обновления весов.\\[1mm]
-\code{heldout_ema_1.f32}&Held-out лоссы конечной EMA-модели.\\[1mm]
-\code{PrequentialEstimator}&Запускает обучение и переводит результат в биты.\\
+\code{window_loss.f32}&Loss for each window before the weight update.\\[1mm]
+\code{heldout_ema_1.f32}&Held-out losses of the final EMA model.\\[1mm]
+\code{PrequentialEstimator}&Runs training and converts the result to bits.\\
 \end{tabular}\vspace{2mm}
-\smallnote{Исходники: \sourcefile{src/episynth/estimators/prequential.py}{estimators/prequential.py}, \sourcefile{src/episynth/analysis.py}{analysis.py}, \sourcefile{src/episynth/training.py}{training.py}.}
+\smallnote{Source files \sourcefile{src/episynth/estimators/prequential.py}{estimators/prequential.py}, \sourcefile{src/episynth/analysis.py}{analysis.py}, and \sourcefile{src/episynth/training.py}{training.py}.}
 \end{frame}
 
-\begin{frame}{Конфигурация маленького CPU-прогона}
+\begin{frame}{Small CPU run configuration}
 \begin{columns}[T]
-\column{.48\textwidth}\textbf{Данные и форма задачи}
+\column{.48\textwidth}\textbf{Data and task shape}
 \begin{itemize}
-\item \code{waveform}, длина ряда 256;
-\item контекст 128, горизонт 32;
-\item размер патча 32;
-\item 64 train-окна, 32 held-out;
-\item батч 4: всего 16 шагов.
+\item \code{waveform}, series length 256
+\item Context 128, horizon 32
+\item Patch size 32
+\item 64 training and 32 held-out windows
+\item Batch size 4, for 16 steps
 \end{itemize}
-\column{.48\textwidth}\textbf{Модель и обучение}
+\column{.48\textwidth}\textbf{Model and training}
 \begin{itemize}
-\item ширина 64, один слой;
-\item 60\,994 параметра;
-\item распределение Student-t;
-\item CPU, fp32, init seed 0;
-\item AdamW, EMA, раздельные сиды.
+\item Width 64, one layer
+\item 60\,994 parameters
+\item Student-t distribution
+\item CPU, fp32, initialization seed 0
+\item AdamW, EMA, and separate seeds
 \end{itemize}
 \end{columns}\vspace{3mm}
-{\small \textbf{Связь с большими экспериментами:} те же классы, реестр и конфигурационные объекты, что и в GPU-прогонах; уменьшен вычислительный бюджет.}
+{\small \textbf{Relation to the large experiments.} The CPU run uses the same classes, registry, and configuration objects as the GPU runs with a smaller compute budget.}
 \end{frame}
 
-\begin{frame}{PoC выполнен: лоссы, held-out и оценка в битах}
+\begin{frame}{Proof of concept: losses and estimates in bits}
 \centering\includegraphics[width=\textwidth,height=43mm,keepaspectratio]{figures/demo_notebook.png}\vspace{2mm}
-{\small\begin{tabular}{@{}ccc@{}}\textbf{Model part}&\textbf{Data part}&\textbf{Total}\\788.284 бит&5499.059 бит&6287.343 бит\end{tabular}}\par\vspace{2mm}
-\smallnote{График из выполненного demo\_estimators.ipynb: 6 кодовых ячеек, ошибок выполнения нет. Заливка выделяет только участки выше baseline; численный расчёт A учитывает оба знака. Короткий прогон не доказывает сходимость оценки или корреляцию с переносом.}
+{\small\begin{tabular}{@{}ccc@{}}\textbf{Model part}&\textbf{Data part}&\textbf{Total}\\788.284 bits&5499.059 bits&6287.343 bits\end{tabular}}\par\vspace{2mm}
+\smallnote{All six code cells of demo\_estimators.ipynb ran successfully. The shading shows positive excess loss, while the calculation of \(A\) keeps both signs. Convergence and correlation with transfer require further evidence.}
 \end{frame}
 
-\begin{frame}[fragile]{Интеграция алгоритмов через один контракт}
+\begin{frame}[fragile]{One protocol for integrating estimators}
 \begin{lstlisting}
 class EpiplexityEstimator(Protocol):
     name: str
@@ -160,71 +160,71 @@ class EpiplexityEstimator(Protocol):
     ) -> dict[str, float]: ...
 \end{lstlisting}\vspace{1mm}
 \begin{enumerate}
-\item Реализовать \code{run}: вернуть \code{model_part_bits} и \code{data_part_bits}.
-\item Зарегистрировать класс: \code{@register("name")}.
-\item Выбрать через \code{build("name")} или поле JSON \code{estimator}.
+\item Implement \code{run} and return \code{model_part_bits} and \code{data_part_bits}.
+\item Register the class with \code{@register("name")}.
+\item Select it with \code{build("name")} or the JSON field \code{estimator}.
 \end{enumerate}\vspace{1mm}
-\smallnote{Prequential реализован. Requential — каркас, вызывающий NotImplementedError. В ноутбуке ConstantEstimator показывает регистрацию, а не научный алгоритм.}
+\smallnote{The prequential estimator is implemented. The requential stub raises NotImplementedError. The notebook's ConstantEstimator demonstrates registration.}
 \end{frame}
 
-\begin{frame}[fragile]{Автодок и проверки реализации}
+\begin{frame}[fragile]{Generated documentation and implementation checks}
 \begin{columns}[T]
-\column{.47\textwidth}\textbf{Автодок Sphinx}
+\column{.47\textwidth}\textbf{Sphinx autodoc}
 \begin{lstlisting}[language={}]
 .. automodule:: episynth.analysis
    :members:
 \end{lstlisting}
-Сигнатуры, аннотации и docstrings автоматически превращаются в API-страницу.
-\vspace{3mm}\href{https://intsystems.github.io/Epiplexity/api/analysis.html\#episynth.analysis.run_area}{\color{Teal}\textbf{Открыть автодок run\_area}}
-\column{.49\textwidth}\textbf{Что проверяется}
+Sphinx generates the API page from signatures, type annotations, and docstrings.
+\par\vspace{2mm}\href{https://intsystems.github.io/Epiplexity/api/analysis.html\#episynth.analysis.run_area}{\color{Teal}\textbf{Open the run\_area reference}}
+\column{.49\textwidth}\textbf{What the checks cover}
 \begin{itemize}
-\item pytest: формулы площади, обучение, файлы и resume;
-\item генерация, окна и модель;\item Ruff: стиль и импорты;
-\item Sphinx: предупреждения считаются ошибками сборки.
+\item pytest: area formulas, training, artifacts, and resume
+\item Generation, windows, and the model\item Ruff: style and imports
+\item Sphinx treats build warnings as errors.
 \end{itemize}
 \end{columns}\vspace{3mm}
-\smallnote{Последняя полная проверка базового кода: 72 passed, 2 skipped. Пропуски требуют внешних данных GIFT-Eval и весов Moirai. Сборка docs на push/PR, публикация Pages только вручную.}
+\smallnote{Last full check of the base revision: 72 passed, 2 skipped. The skipped tests require GIFT-Eval data or Moirai weights. Docs build on pushes and pull requests. Pages deployment is manual.}
 \end{frame}
 
-\begin{frame}{Что подтверждает Proof of Concept}
+\begin{frame}{What the proof of concept establishes}
 \begin{enumerate}
-\item \textbf{Ноутбук:} конфигурация \(\to\) \code{build("prequential")} \(\to\) прогон \(\to\) графики и биты.
-\item \textbf{Код:} контракт \(\to\) PrequentialEstimator \(\to\) общий Trainer \(\to\) \code{run_area}.
-\item \textbf{Документация:} сгенерированная API-страница с параметрами и результатом функции.
+\item \textbf{Notebook.} Configuration \(\to\) \code{build("prequential")} \(\to\) run \(\to\) plots and bit estimates.
+\item \textbf{Code.} Protocol \(\to\) PrequentialEstimator \(\to\) shared Trainer \(\to\) \code{run_area}.
+\item \textbf{Documentation.} The generated API page describes function parameters and results.
 \end{enumerate}\vspace{2mm}
-\begin{block}{Подтверждённый результат}
-Базовый алгоритм встроен в библиотеку: данные проходят весь путь от генератора до сохранённых лоссов и оценки. Интерфейс позволяет подключать новые оценщики.
+\begin{block}{Result}
+The implemented estimator takes generator data through training to saved losses and an estimate. The interface supports additional estimators.
 \end{block}\vspace{1mm}
-\href{https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb}{\color{Teal}\small Выполненный ноутбук}\hfill\href{https://intsystems.github.io/Epiplexity/}{\color{Teal}\small Документация}\hfill\href{https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf}{\color{Teal}\small Технический отчёт}
+\href{https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb}{\color{Teal}\small Executed notebook}\hfill\href{https://intsystems.github.io/Epiplexity/}{\color{Teal}\small Documentation}\hfill\href{https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf}{\color{Teal}\small Technical report}
 \end{frame}
 
 \appendix
-\begin{frame}{Приложение: неопределённость и ограничения}
+\begin{frame}{Appendix: uncertainty and limitations}
 \[\operatorname{SE}(\widehat S)=\frac{N}{\ln2}\operatorname{SE}(\overline\ell_{\mathrm{fin}}),\qquad\operatorname{SE}(\overline\ell_{\mathrm{fin}})=\frac{s_{\mathrm{held}}}{\sqrt m}.\]
 \begin{itemize}
-\item Это ошибка от конечного held-out набора при независимости окон; она не включает разброс по сидам обучения.
-\item EMA и raw endpoint могут давать разные площади. Фиксируем протокол и проверяем чувствительность.
-\item Для непрерывных плотностей NLL и разложение могут быть отрицательными; важны масштаб и деквантование.
-\item Один прогон не решает теоретическую оптимизацию по наблюдателям: оценка привязана к архитектуре и бюджету.
+\item With independent held-out windows, this error reflects the finite held-out sample. Variation across training seeds is separate.
+\item EMA and raw endpoints can yield different areas. Fix the protocol and check sensitivity.
+\item With continuous densities, NLL and its components can be negative. Scale and dequantization matter.
+\item An estimate from one run depends on its architecture and budget. The theoretical definition optimizes over observers.
 \end{itemize}
-\smallnote{Отрицательная знаковая площадь сама по себе не подтверждает отрицательную теоретическую эпиплексию.}
+\smallnote{A negative signed area alone offers insufficient evidence for negative theoretical epiplexity.}
 \end{frame}
 
-\begin{frame}{Приложение: контекст больших серий}
+\begin{frame}{Appendix: results from the larger runs}
 \centering\includegraphics[width=\textwidth,height=45mm,keepaspectratio]{figures/large_series_context.pdf}
-\smallnote{Источник: сохранённые CSV техотчёта, по 11 генераторов. Отдельный повтор Waveform по сиду исключён. Штриховая линия — качество сезонного наива.}
-\vspace{2mm}{\small Во всех 11 семействах связь площади с агрегированным CRPS слабая: \(\rho\approx-0.18\) и \(0.00\); bootstrap-интервалы включают ноль. Это результат большого исследования, не маленького PoC.}
+\smallnote{Source: archived CSVs from the technical report, with 11 generators per series. The additional Waveform seed is excluded. The dashed line shows the seasonal-naive baseline.}
+\vspace{2mm}{\small Across all 11 families, the association with aggregate CRPS is weak: \(\rho\approx-0.18\) and \(0.00\). Both bootstrap intervals include zero. These results come from the larger study.}
 \end{frame}
 
-\begin{frame}{Источники и воспроизводимость}
+\begin{frame}{Sources and reproducibility}
 \small\begin{itemize}
-\item Finzi et al. (2026), \textit{From Entropy to Epiplexity}. \href{https://arxiv.org/abs/2601.03220}{arXiv:2601.03220}. Теория и prequential-подход.
+\item Finzi et al. (2026), \textit{From Entropy to Epiplexity}. \href{https://arxiv.org/abs/2601.03220}{arXiv:2601.03220}. Theory and prequential coding.
 \item Woo et al. (2024), \textit{Unified Training of Universal Time Series Forecasting Transformers}. \href{https://arxiv.org/abs/2402.02592}{arXiv:2402.02592}. Moirai.
-\item Aksu et al. (2024), \textit{GIFT-Eval}. \href{https://arxiv.org/abs/2410.10393}{arXiv:2410.10393}. Бенчмарк переноса.
-\item Nagpal et al. (2026), \textit{Mix, Don't Pick}. \href{https://arxiv.org/abs/2606.09912}{arXiv:2606.09912}. Генераторы.
+\item Aksu et al. (2024), \textit{GIFT-Eval}. \href{https://arxiv.org/abs/2410.10393}{arXiv:2410.10393}. Transfer benchmark.
+\item Nagpal et al. (2026), \textit{Mix, Don't Pick}. \href{https://arxiv.org/abs/2606.09912}{arXiv:2606.09912}. Generators.
 \end{itemize}\vspace{2mm}
-\textbf{Данные:} выполненный ноутбук и CSV в \code{publications/technical_report/data/}.\par\vspace{1mm}
-\textbf{Базовая ревизия:} \code{c910088}. Материалы презентации: \code{publications/slides/poc_prequential/}.\par\vspace{1mm}
-\smallnote{Схема площади отделена от измеренных данных. Большие GPU-эксперименты при подготовке не перезапускались.}
+\textbf{Data.} Executed notebook and CSVs in \code{publications/technical_report/data/}.\par\vspace{1mm}
+\textbf{Base revision.} \code{c910088}. Slide materials are in \code{publications/slides/poc_prequential/}.\par\vspace{1mm}
+\smallnote{The area schematic is illustrative. The large GPU results come from archived runs.}
 \end{frame}
 \end{document}

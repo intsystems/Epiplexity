@@ -1,139 +1,149 @@
-# episynth PoC: заметки выступающего
+# episynth proof of concept: speaker notes
 
-Основная часть — слайды 1–12, около 12–15 минут с коротким показом ноутбука и API.
-Слайды 13–15 — приложение; их не обязательно показывать в основном выступлении.
+Slides 1–12 take about 12–15 minutes, including a short demonstration of the
+notebook and API. Slides 13–15 are optional appendix slides.
 
-## 1. Титульный слайд — 20 секунд
+## 1. Title slide (20 seconds)
 
-«Мы покажем работающий proof of concept episynth: как prequential-идея превращается
-в оценку в битах, где эта формула реализована и как алгоритм встроен в библиотеку».
+“We’ll show the working episynth proof of concept. We’ll follow the prequential
+calculation from the formula to an estimate in bits and see where the
+estimator fits in the library.”
 
-## 2. Исследовательский вопрос — 60 секунд
+## 2. Research question (60 seconds)
 
-«Мы меняем генератор синтетических рядов и обучаем для каждого отдельный экземпляр
-одинаковой модели. Из обучения получаем оценку структуры, из GIFT-Eval — качество
-на реальных данных. Затем проверяем корреляцию этих величин по генераторам».
+“We vary the synthetic time-series generator and train a separate instance
+of the same model on each one. Training gives an estimate of learned
+structure, and GIFT-Eval gives forecast performance on real data. We then
+measure their correlation across generators.”
 
-Q на этом слайде означает ошибку: если больше структуры связано с лучшим прогнозом,
-ожидаемый знак корреляции отрицательный. Сам конвейер не предполагает, что связь
-обязательно существует. Архитектура, бюджет и протокол фиксируются внутри серии.
+Q denotes forecast error. If more learned structure is associated with
+better forecasts, the expected correlation is negative. The experiment
+tests whether this relationship exists while fixing the architecture,
+budget, and protocol within each series.
 
-## 3. Архитектура — 50 секунд
+## 3. Architecture (50 seconds)
 
-Проведите по стрелкам от генератора через окна и Trainer. После обучения есть
-две ветки: лоссы дают оценку структуры, веса дают качество переноса. Их объединяет
-анализ корреляции. Генераторы, окна и обучение — общая механика; estimators —
-точка расширения. Corpus позволяет заменить дорогую онлайн-генерацию чтением с диска.
+Follow the arrows from the generator through windows and Trainer. Training
+produces two inputs to the correlation analysis. Losses give an estimate of
+structure, and the weights allow us to measure transfer performance. Generators,
+windows, and training are shared components. The estimator registry is the
+extension point. A saved corpus can replace costly online generation with
+disk reads.
 
-## 4. Prequential — 80 секунд
+## 4. Prequential coding (80 seconds)
 
-«Prequential означает predict then learn. Мы оцениваем будущее окна текущей
-моделью, затем используем батч для обновления весов».
+“Prequential coding means predict, then learn. We score each window’s future
+using the current model and then train on the batch.”
 
-У нас **блочный** prequential: четыре окна PoC-батча оцениваются одной моделью;
-обновление делается один раз на батч, а не после каждого окна. Поэтому в формуле
-использован номер батча b(i). Значения лоссов вычислены до optimizer.step,
-хотя файл заполняется после него. Нельзя пересчитать loss уже обновлённой моделью.
+The procedure is **blockwise**. The same model scores all four windows in a
+demo batch. The weights update once per batch, so the formula uses the
+batch index b(i). Compute losses before `optimizer.step` and write these
+pre-update values to disk after the step.
 
-Оптимизируется средний NLL на точку горизонта, но сохраняется полный NLL каждого
-окна. Нормировка loss на horizon для оптимизатора не меняет единицы записанных данных.
+The optimizer uses mean NLL per horizon point. The file records the full
+NLL per window, so dividing by the horizon for optimization leaves the
+stored units unchanged.
 
-## 5. От prequential-лосса к model part — 100 секунд
+## 5. From prequential loss to the model part (100 seconds)
 
-«Сумма online-ошибок содержит и обучение структуре, и остаточную трудность
-предсказания. Вычитаем конечный held-out уровень за тот же бюджет».
+“The sum of online errors reflects both learning structure and the
+remaining difficulty of making predictions. We subtract the final held-out
+loss scaled to the same budget.”
 
-Held-out окна берутся из **того же синтетического генератора**, с отдельными
-сидами. Это не данные GIFT-Eval. Финальный predictor использует EMA-веса.
-Суммарный лосс минус N умножить на held-out средний лосс даёт знаковую площадь;
-деление на ln(2) переводит наты в биты.
+The held-out windows come from **the same synthetic generator**, with seeds
+separate from training. The final predictor uses EMA weights. Subtracting
+N times the mean held-out loss from total training loss gives signed area.
+Dividing by ln(2) converts nats to bits.
 
-Не говорите, что вычислена точная теоретическая эпиплексия, размер файла весов
-или чистая энтропия шума. Теория мотивирует модельную часть двухчастного кода
-при вычислительном ограничении; наш рабочий показатель — excess prequential loss
-при фиксированных наблюдателе, бюджете и протоколе. Конечный held-out loss также
-содержит ошибки аппроксимации и оптимизации. Общий алгоритм/инициализация считаются
-фиксированными; отдельную стоимость setup мы здесь не оцениваем. Для непрерывных
-данных интерпретация плотности как длины кода требует фиксированной точности/
-деквантования; для презентации используются записанные NLL в исходных единицах ряда.
+Describe this as excess prequential loss for a fixed observer, budget, and
+protocol. It is a proxy for the model part of a compute-bounded two-part code.
+The final held-out loss includes approximation and optimization error.
+The shared algorithm and initialization are fixed and setup cost is outside
+this estimate. A code-length interpretation of continuous densities requires
+a fixed precision or dequantization. The presentation uses recorded NLLs
+in the original series units. This estimate alone cannot establish exact
+theoretical epiplexity, weights-file size, or pure noise entropy.
 
-## 6. Геометрическая интерпретация — 45 секунд
+## 6. Geometric interpretation (45 seconds)
 
-«Вычисляется знаковая площадь, включая отрицательные участки. Иллюстрация на этом
-слайде нарисована схематически, она не является результатом обучения».
+“The estimate is a signed area, including contributions from regions below
+the baseline. The slide uses a schematic to show how that works.”
 
-Не подменяйте сумму превышений суммой только положительных превышений: код не
-применяет max(loss - baseline, 0). Поэтому реальная оценка может оказаться отрицательной.
+The code sums signed excesses without clipping at zero. An actual estimate
+can therefore be negative.
 
-## 7. Реализация — 70 секунд
+## 7. Implementation (70 seconds)
 
-Покажите цепочку PrequentialEstimator.run → Trainer.run → from_run_dir → run_area.
-Основная формула — буквально сумма массива минус длина массива на held-out среднее.
-Для нового анализа готового прогона переобучение не нужно: используется from_run_dir.
-Файлы float32 без заголовка; в них полные лоссы окон в натах. Ссылки на исходники
-в PDF кликабельны.
+Show `PrequentialEstimator.run` → `Trainer.run` → `from_run_dir` → `run_area`.
+The calculation sums the loss array and subtracts its length times the
+held-out mean. `from_run_dir` computes the estimate from a saved run without
+retraining. The files are headerless float32 arrays containing full window
+losses in nats. The PDF links to the source.
 
-## 8. Конфигурация PoC — 50 секунд
+## 8. Proof-of-concept configuration (50 seconds)
 
-«Здесь мы уменьшаем бюджет: один слой, 60 994 параметра, 64 окна и CPU.
-Интерфейсы и путь расчёта те же, что у большой версии». Обратите внимание:
-модель в этом демо имеет одну Student-t компоненту; в больших сериях конфигурация
-другая, с тремя компонентами. Разделены обучающие и held-out сиды.
+“We use one layer, 60,994 parameters, 64 training windows, and a CPU. The
+interfaces and calculation are the same as for a larger run.”
 
-## 9. Готовый результат — 70 секунд
+The demo model has one Student-t component. The larger series use three
+components. Training and held-out seeds are separate.
 
-Откройте выполненный ноутбук: https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb
+## 9. Demo results (70 seconds)
 
-Покажите конфигурацию, строку запуска и сохранённые графики. Данные слайда:
-model part 788.284 бит, data part 5499.059 бит, сумма 6287.343 бит.
-Все шесть кодовых ячеек выполнены. График взят из сохранённого notebook output,
-а не сгенерирован заново для убедительной кривой сходимости.
+Open the [executed notebook](https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb).
 
-Заливка исходного графика подчёркивает только области выше уровня; число model part
-посчитано по знаковой площади, включая отрицательные вклады. Маленький прогон
-не демонстрирует устойчивость оценки и не является проверкой корреляции на 11 генераторах.
-Для живого повторного запуска используйте свежий kernel, поскольку повторная
-регистрация demo_constant в том же процессе отклоняется реестром.
+Show the configuration, the call that runs the estimator, and the saved
+plots. The model part is 788.284 bits, the data part is 5499.059 bits, and
+the total is 6287.343 bits. All six code cells ran. The slide uses the plot
+from those saved outputs.
 
-## 10. Расширение библиотеки — 60 секунд
+The shading highlights regions above the baseline. The model part uses
+the signed area, including negative contributions. This short run shows
+that the interface works. Stability and correlation across eleven
+generators are questions for the larger study. Start a fresh kernel for a
+live rerun because the registry rejects duplicate `demo_constant` registration.
 
-Одинаковая сигнатура run отделяет общий конвейер от алгоритма. Новый оценщик
-регистрируется и выбирается через build или конфигурацию. Нейтральные слои
-переписывать для выбора алгоритма не нужно. Если алгоритму нужны дополнительные
-операции, он реализует их внутри своего run, используя общую механику при необходимости.
+## 10. Extending the library (60 seconds)
 
-Requential в текущем репозитории — заглушка; не показывайте его как работающий
-алгоритм. ConstantEstimator в ноутбуке показывает только регистрацию класса.
+The common `run` signature lets each algorithm use the same pipeline.
+Register a new estimator and select it through `build` or the configuration.
+Any algorithm-specific operations belong in its `run` implementation,
+which can use the shared components.
 
-## 11. Автодок и проверки — 60 секунд
+The current requential estimator is a registered stub. The notebook's
+`ConstantEstimator` demonstrates class registration.
 
-Откройте: https://intsystems.github.io/Epiplexity/api/analysis.html#episynth.analysis.run_area
+## 11. Generated API documentation and checks (60 seconds)
 
-Покажите параметры, возвращаемый RunArea и исходник. Затем при необходимости
-откройте doc/source/api/analysis.rst: automodule получает данные из Python-кода.
-Это выполняет требование показать хотя бы одну автоматически документированную функцию.
+Open the [run_area API reference](https://intsystems.github.io/Epiplexity/api/analysis.html#episynth.analysis.run_area).
 
-Последняя полная проверка базового кода — 72 passed, 2 skipped; это не новый запуск
-тестов при подготовке слайдов. Пропущены проверки с внешними весами и GIFT-Eval.
-Автосборка документации сохранена, публикация сайта запускается только вручную.
+Show the parameters, return value `RunArea`, and linked source. If helpful,
+open `doc/source/api/analysis.rst` and point out that `automodule` obtains
+this information from Python. This demonstrates an automatically documented
+function.
 
-## 12. Заключение — 40 секунд
+The baseline verification reported 72 passed and 2 skipped. The skipped
+tests require external weights and GIFT-Eval data. The docs build automatically
+and site publication is manual.
 
-«PoC подтверждает интеграцию базового алгоритма: генерация, обучение, запись
-pre-update потерь, held-out оценка и разложение выполняются через общий интерфейс.
-Для научного ответа используем длинные серии и GIFT-Eval, описанные в техотчёте».
+## 12. Conclusion (40 seconds)
 
-## Приложение: ответы на возможные вопросы
+“The proof of concept confirms that the base estimator is integrated. The
+shared interface covers generation, training, recording pre-update losses,
+held-out evaluation, and decomposition. The research question uses the
+long runs and GIFT-Eval results described in the technical report.”
 
-- **Почему ошибка площади растёт с N?** При фиксированных записанных train-лоссах
-  неопределённость среднего baseline умножается на N. Формула условна на данном
-  обученном predictor и предполагает независимые held-out окна; разброс обучения
-  по сидам требует отдельной оценки.
-- **Почему не доказываем полезность генератора одним числом?** Протокол зависит
-  от архитектуры, бюджета, EMA и распределения целей. Самая большая площадь
-  не гарантирует наилучший перенос.
-- **Что дали большие серии?** По всем 11 семействам Spearman около -0.18 и 0.00
-  для двух бюджетов; интервалы включают ноль. На слайде показаны данные CSV
-  технического отчёта, без дополнительного повтора Waveform по сиду.
-- **Зачем размерность в натах на графике?** Для фиксированного бюджета перевод
-  всей площади в биты умножением на 1/ln(2) не меняет ранги и Spearman.
+## Appendix: possible questions
+
+- **Why does area uncertainty grow with N?** With the recorded training
+  losses fixed, N multiplies the uncertainty of the mean baseline. The
+  formula conditions on the fitted predictor and assumes independent
+  held-out windows. Training-seed variability needs a separate estimate.
+- **Why is one number insufficient to establish generator utility?**
+  The protocol depends on architecture, compute budget, EMA, and the target
+  distribution. The largest area offers no guarantee of the best transfer.
+- **What did the larger runs show?** Spearman correlation was about −0.18
+  and 0.00 across all eleven families at the two budgets, with intervals
+  including zero. The slide uses saved CSVs and excludes the extra Waveform seed.
+- **Why plot nats?** At a fixed budget, converting the area to bits by
+  multiplying by 1/ln(2) leaves rankings and Spearman correlation unchanged.
