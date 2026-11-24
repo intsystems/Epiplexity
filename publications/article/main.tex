@@ -657,6 +657,589 @@ area to another requires assumptions about the predictive distributions
 or training trajectories. For a comparison of coding estimates, the
 predictive distributions used for scoring must be specified explicitly.
 
+
+\clearpage
+\section{Proposed Theory}\label{sec:proposed-theory}
+
+The empirical results in Section~\ref{sec:results} distinguish two
+questions that are logically independent. First, does the excess
+prequential loss in Eq.~\eqref{eq:area} approximate the description
+length in Eq.~\eqref{eq:epiplexity}? Second, even if the description
+length is known, under what conditions does it order sources by
+zero-shot forecast quality? We study the first question through
+computable predictive laws and the second through an analytically
+solvable model of predictive mechanisms. The latter uses a restricted
+MDL objective, rather than claiming to compute unrestricted epiplexity.
+Throughout this section all logarithms and description lengths are
+expressed in nats (the program lengths in Eq.~\eqref{eq:epiplexity}
+are multiplied by $\log 2$).
+
+\subsection{Computational accessibility and excess prequential loss}
+\label{sec:theory-accessibility}
+
+Let $P$ be the law of $(C,Y)$ and consider $N$ independent windows,
+with contexts shared by the encoder and decoder. For the formal
+epiplexity statements, observations have a fixed discrete
+representation. Write $p(\cdot\mid C)$ for the true conditional mass
+function, $R_P(q)=\mathbb E_P[-\log q(Y\mid C)]$ for predictive risk,
+and $S_T(P;N)$ for the conditional epiplexity of these $N$ windows.
+The continuous-density risks used in the experiments are treated
+separately below.
+
+\paragraph{Lemma 1 (approximation bound).}
+Suppose a predictive program of length at most $B(\delta)$ implements
+a conditional law $q_\delta$ satisfying
+\[
+ \mathbb E_C D_{\rm KL}(p(\cdot\mid C)\Vert q_\delta(\cdot\mid C))
+ \leq\delta.
+\]
+Let $t(\delta)$ bound the per-window execution cost, including the
+operations required for admissibility in $\mathcal P_T$.
+Assuming additive execution costs with setup costs included, we have
+\begin{equation}
+ S_T(P;N)\leq
+ \inf_{\delta:\,Nt(\delta)\leq T}
+ \{B(\delta)+N\delta\}.
+ \label{eq:pt-bound}
+\end{equation}
+
+\emph{Proof.}
+The candidate product predictor has expected data cost at most
+$NH(Y\mid C)+N\delta$. By optimality, the MDL objective cannot exceed
+$B(\delta)+NH(Y\mid C)+N\delta$. The data term of every admissible
+program is at least $H(Y^N\mid C^N)=NH(Y\mid C)$ by Gibbs' inequality.
+Subtracting this lower bound and taking the infimum proves
+Eq.~\eqref{eq:pt-bound}. \hfill$\square$
+
+This is an application of the MDL variational principle
+\cite{rissanen1978,finzi2026}. In particular, a single finite program
+that obtains error $\delta_N=O(N^{-1})$ at an admissible budget $T_N$
+implies $S_{T_N}(P;N)=O(1)$, provided the program can infer $N$ from
+the input format. The bound is sufficient, not necessary: an
+inaccessible posterior need not imply a large model-description term.
+The pseudorandom-generator examples of \citet{finzi2026} illustrate
+how inaccessible regularity can instead contribute to time-bounded
+entropy.
+
+\paragraph{OU reference.}
+Consider the non-switching stationary AR(1) model of
+Section~\ref{sec:ou-bayes}. A latent coefficient $\phi$ is independently
+drawn for each window's underlying trajectory, with
+$\phi=\psi(U)$, $U\sim{\rm Unif}[a,b]$, and $\psi$ analytic in a
+neighborhood of $[a,b]$. Assume $|\psi(u)|\leq1-\eta$ on the real
+interval, for some $\eta>0$. The prior $\phi=\sin U$ used in
+Eq.~\eqref{eq:ou-reference} satisfies these assumptions.
+For fixed context and horizon lengths, the conditional law is the ratio
+of marginal likelihoods
+\[
+ p(Y\mid C)=\frac{\int_a^b p_{\psi(u)}(C,Y)\,du}
+                  {\int_a^b p_{\psi(u)}(C)\,du}.
+\]
+For discretized contexts and targets, the likelihoods in this formula
+are probabilities of the corresponding cells, rather than densities
+at cell representatives.
+
+\paragraph{Lemma 2 (quadrature reference).}
+Assume a fixed finite partition of the context and target spaces
+into measurable cells with positive Lebesgue measure. Let $q_m$ be
+the conditional mass function obtained by replacing the prior by
+its $m$-node Gauss--Legendre quadrature distribution, with normalized
+positive weights. There exist constants $K<\infty$ and $\rho>1$ such
+that
+\begin{equation}
+ \mathbb E_C D_{\rm KL}(p(\cdot\mid C)\Vert q_m(\cdot\mid C))
+ \leq K\rho^{-2m}.
+ \label{eq:pt-quadrature}
+\end{equation}
+
+\emph{Proof.}
+For fixed window dimension, the Gaussian covariance matrix has entries
+$\phi^{|i-j|}$. It is uniformly positive definite on the compact
+real parameter interval. By continuity, in a sufficiently small
+complex neighborhood its inverse exists, the real part of the inverse
+is uniformly positive definite on real vectors, and an analytic branch
+of the determinant factor can be chosen. The complex Gaussian density
+is consequently dominated by $M\exp(-\lambda\|x\|^2)$ for positive
+constants $M,\lambda$. Integration over any cell preserves analyticity
+by dominated holomorphic integration. A Bernstein ellipse contained
+in this neighborhood therefore gives an exponentially decreasing
+quadrature error for every joint and marginal cell probability
+\cite{trefethen2019}. Finiteness of the partitions makes the bound
+uniform over cells. The true context masses and conditional target
+masses have strictly positive minima, because the real Gaussian
+density is positive. Taking ratios thus gives
+$|p(y\mid c)-q_m(y\mid c)|\leq K_1\rho^{-m}$ uniformly,
+and $q_m(y\mid c)\geq p(y\mid c)/2$ for sufficiently large $m$.
+The inequality
+$D_{\rm KL}(p\Vert q)\leq\sum_y(p(y)-q(y))^2/q(y)$
+then proves Eq.~\eqref{eq:pt-quadrature}, after adjusting the constant
+for finitely many smaller $m$. \hfill$\square$
+
+Consequently $m_N=O(\log N)$ suffices for $O(N^{-1})$ KL error.
+If a fixed computable implementation of the prior, partition,
+quadrature, probability evaluation and sampling achieves this accuracy
+within $T_N$, Lemma~1 gives
+\begin{equation}
+ S_{T_N}(P_{\rm OU};N)=O(1).
+ \label{eq:pt-ou-bounded}
+\end{equation}
+For an explicit budget, let $t_{\rm node}(m)$ account for the
+precision-dependent evaluation of the requisite Gaussian cell
+probabilities at a quadrature node, and let $t_{\rm setup}(m)$ include
+node and weight computation. The probability evaluation cost is
+$O(t_{\rm setup}(m_N)+Nm_Nt_{\rm node}(m_N))$; sampling,
+normalization and finite-precision overhead must also be included.
+A uniform bit-complexity bound for these operations, including
+dependence on $\eta$, window dimension and bin resolution, remains
+to be established. In particular, an $O(N(c+h)\log N)$ bound for
+exact-context likelihood evaluation should not be interpreted as a
+proved bound for joint discrete probability evaluation. The constants
+in Eq.~\eqref{eq:pt-quadrature} need not be useful at practical
+window sizes. The statement concerns the non-switching OU reference,
+not the Markov-switching SDE source in Table~\ref{tab:generators}.
+
+For a continuous exact context, discretizing only the target cannot
+increase conditional KL divergence, by the data-processing inequality.
+If both context and target are discretized, the corresponding
+conditional laws must be induced from a common joint-law construction;
+discretizing targets alone does not justify conditioning on bin
+representatives.
+
+\paragraph{Learning-curve representation.}
+Let $q_n$ denote the pre-update predictor after observing $n$ windows,
+with a fixed predictor throughout each batch, and $q_f$ the final EMA
+predictor used in Eq.~\eqref{eq:area}. Under independent training
+windows and independent held-out endpoint evaluation, set
+\[
+ L(n)=\mathbb E R_P(q_n),\qquad L_f(N)=\mathbb E R_P(q_f),
+ \qquad \overline A_N=\mathbb E A_N.
+\]
+Then
+\begin{equation}
+ \overline A_N=\sum_{n=0}^{N-1}L(n)-NL_f(N)
+ =\sum_{n=0}^{N-1}D(n)-ND_f(N),
+ \label{eq:pt-regret}
+\end{equation}
+where $D(n)=\mathbb E D_{\rm KL}(p(\cdot\mid C)\Vert
+q_n(\cdot\mid C))$, with expectation over training histories and
+fresh contexts; $D_f(N)$ is defined analogously.
+This follows by cancelling the common Bayes risk, as in
+Eq.~\eqref{eq:proper}. For continuous densities with finite risks,
+the same identity holds with differential conditional entropy.
+For Moirai's product of conditional marginals, replacing the joint
+oracle by the optimal product oracle in both regret terms leaves
+the area unchanged: their risks differ by conditional total
+correlation (Section~\ref{sec:ou-bayes}).
+
+\paragraph{Theorem 1 (separation of prequential area and bounded
+epiplexity).}
+Suppose $S_{T_N}(P;N)=O(1)$ and the expected risk of a learner on
+the \emph{same representation of the source} satisfies
+\[
+ L(n)=L_\infty+a n^{-\alpha}+o(n^{-\alpha}),
+ \qquad a>0,\quad 0<\alpha<1.
+\]
+Assume additionally that $L_f(N)-L(N)=o(N^{-\alpha})$.
+Then
+\begin{equation}
+ \overline A_N-S_{T_N}(P;N)
+ =\frac{a\alpha}{1-\alpha}N^{1-\alpha}
+   +o(N^{1-\alpha}).
+ \label{eq:pt-separation}
+\end{equation}
+
+\emph{Proof.}
+Using Eq.~\eqref{eq:pt-regret}, the constant Bayes-independent
+limit cancels, and the endpoint discrepancy contributes
+$o(N^{1-\alpha})$. The sum of the leading power terms is
+$a\sum_{n=1}^{N}n^{-\alpha}-aN^{1-\alpha}$, up to $O(1)$.
+Since $\sum_{n=1}^N n^{-\alpha}=N^{1-\alpha}/(1-\alpha)+O(1)$,
+the result follows; subtracting a bounded $S_{T_N}$ does not change
+the leading term. \hfill$\square$
+
+The power-law area calculation itself is not new
+\cite[Section~6.3 and Appendix~B]{finzi2026}. The separation comes
+from an independent bound on the description length of the source.
+It is conditional on a common representation, admissible execution
+budget and learning-curve asymptotics. In particular, it is not a
+claim that the archived Moirai trajectories satisfy these asymptotics:
+the empirical areas use continuous densities, budget-dependent
+optimization and a fitted EMA endpoint. A finite-run power-law fit
+does not establish the hypothesis of Theorem~1. Section~\ref{sec:pt-joint}
+also gives an example where a power-law area does track a growing
+restricted description length. For Chaotic, the large area in
+Table~\ref{tab:results} is consistent with costly learning of an
+accessible approximation; it does not establish that inaccessible
+chaotic structure has high epiplexity. This distinction remains a
+hypothesis to test, not an identification of chaos with cryptographic
+pseudorandomness.
+
+\subsection{Direct description of the fitted predictor}
+\label{sec:pt-direct}
+
+Let $B_f$ be the expected cost of describing the final predictor.
+For an independent sample of $N$ windows, its two-part description
+has ideal expected length $B_f+NL_f(N)$. The expected prequential
+length for the original training sample is $\overline A_N+NL_f(N)$.
+Under the independent-window assumptions and a common discrete
+coding convention, their difference is exactly $\overline A_N-B_f$.
+The comparison is between expected lengths for samples of equal size,
+not a claim about the realized code lengths of the same training
+sample. In the continuous experiment the analogous comparison is
+between log-density costs, not actual binary code lengths.
+
+For the architecture specified in Appendix~\ref{sec:protocol}, a
+direct FP32 representation uses
+$32\cdot10{,}746{,}600\log 2\simeq238.4$ million nats for the weights
+alone. Table~\ref{tab:pt-direct} compares this conservative parameter
+budget with the reported EMA areas at the larger training budget.
+The weights were evaluated in bfloat16 in the archived runs; FP32
+is a reference representation, not a claim about their on-disk format.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Reported 40M-window EMA areas from Table~\ref{tab:results}
+relative to the direct FP32 weight budget $B_{\rm w}$. This is a
+density-loss comparison, excluding architecture and coding overhead.}
+\label{tab:pt-direct}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Generator & Area (million nats) & $A_N/B_{\rm w}$\\
+\midrule
+Chaotic & 1956.6 & 8.21\\
+Waveform & 1061.2 & 4.45\\
+KernelSynth & 926.1 & 3.88\\
+TSI & 765.9 & 3.21\\
+StepFunction & 588.3 & 2.47\\
+\midrule
+ARIMA & 154.5 & 0.65\\
+ETS & 138.6 & 0.58\\
+TimeSynth & 114.9 & 0.48\\
+GARCH & 100.9 & 0.42\\
+fBm & 40.6 & 0.17\\
+SDE & 34.6 & 0.15\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For five generators the area exceeds the direct weight budget by
+factors between 2.47 and 8.21. This challenges its interpretation as
+the minimum description length of the fitted predictor. It is not
+an upper bound on $S_T(P;N)$ by the weight budget alone: Lemma~1
+also includes the residual conditional KL and admissibility under
+$T$. Nor does the table prove a realized discrete codelength
+comparison, since bin probabilities, precision, architecture and
+other overheads have not been evaluated. A useful subsequent test
+is whether quantized weights preserve held-out risk sufficiently
+well to reduce the expected two-part description further. With
+costs in nats, a compressed endpoint of length $B_b$ wins the
+ideal expected-length comparison whenever
+$L_f^{(b)}(N)-L_f(N)<(\overline A_N-B_b)/N$.
+
+\subsection{Predictive mechanisms and transfer}
+\label{sec:pt-transfer}
+
+No source-only scalar can in general order distinct conditional
+predictors on arbitrary targets: choosing the target conditional
+law to coincide with either predictor reverses the preference under
+strictly proper log-loss, provided their risks are finite and the
+context distribution puts mass where the predictors differ.
+Positive transfer guarantees therefore require assumptions on the
+relationship between sources and targets. This complements the
+empirical information--transfer associations in
+\citet{finzi2026,su2026}.
+
+Consider a scalar forecast with a shared dictionary of centered,
+pairwise orthogonal mechanisms $f_1,\ldots,f_d$:
+\begin{equation}
+ Y=\sum_{j=1}^d f_j(C)+\varepsilon,\qquad
+ \varepsilon\sim\mathcal N(0,\sigma^2),\quad
+ \varepsilon\perp C.
+ \label{eq:pt-mechanisms}
+\end{equation}
+Orthogonality holds under each source $P$ and the target $Q$.
+The conditional law is shared, while the context distributions
+can differ: this is a covariate-shift model. Define
+$v_j^P=\mathbb E_P f_j(C)^2$ and $v_j^Q$ analogously.
+For a subset $J\subseteq\{1,\ldots,d\}$, consider the predictor
+$q_J=\mathcal N(\sum_{j\in J}f_j(C),\sigma^2)$ with fixed variance
+and an assigned additive description cost
+$S(J)=s_0+\sum_{j\in J}s_j$, $s_j>0$.
+Assume these costs include the mechanism identifiers and are
+compatible with the chosen restricted description scheme.
+Define the restricted population MDL objective
+\[
+ M_{P,N}(J)=S(J)+NR_P(q_J),\quad
+ J_P(N)\in\arg\min_J M_{P,N}(J),\quad S_P(N)=S(J_P(N)).
+\]
+This is a continuous-density MDL objective within a prescribed
+class, not the unrestricted $S_T$ of Finzi et al.
+
+Orthogonality and fixed variance give
+\[
+ R_P(q_J)=\tfrac12\log(2\pi e\sigma^2)
+             +\frac{1}{2\sigma^2}\sum_{j\notin J}v_j^P.
+\]
+The decision to include mechanism $j$ changes $M_{P,N}$ by
+$s_j-Nv_j^P/(2\sigma^2)$, independently of all other mechanisms.
+Define source and target relevance densities
+\[
+ r_j^P=\frac{v_j^P}{s_j},\qquad r_j^Q=\frac{v_j^Q}{s_j}.
+\]
+With exclusion at equality, the optimum satisfies
+\begin{equation}
+ J_P(N)=\{j:r_j^P>2\sigma^2/N\}.
+ \label{eq:pt-threshold}
+\end{equation}
+Thus the source selects mechanisms according to its own predictive
+gain per nat of description.
+
+On the target, the MSE gain over the zero-mean predictor is
+\[
+ G_Q(P;N)=\sum_{j\in J_P(N)}v_j^Q.
+\]
+Consequently, for the same threshold $\lambda_N=2\sigma^2/N$,
+\begin{equation}
+ \begin{aligned}
+ S_P(N)-s_0&=\sum_j s_j\mathbf 1\{r_j^P>\lambda_N\},\\
+ G_Q(P;N)&=\sum_j r_j^Qs_j\mathbf 1\{r_j^P>\lambda_N\}.
+ \end{aligned}
+ \label{eq:pt-selection-transfer}
+\end{equation}
+
+\paragraph{Theorem 2 (alignment of mechanism selection and transfer).}
+Suppose the mechanisms admit a common ordering for which
+$r_1^Q\geq\cdots\geq r_d^Q\geq0$ and
+$r_1^P\geq\cdots\geq r_d^P$ for every source under consideration.
+Then for any two sources at the same budget,
+\begin{equation}
+ S_{P_1}(N)\geq S_{P_2}(N)
+ \ \Longrightarrow\
+ G_Q(P_1;N)\geq G_Q(P_2;N).
+ \label{eq:pt-alignment}
+\end{equation}
+Moreover, under this common ordering the selected subset maximizes
+target gain among subsets of the same description cost whenever
+that cost is attained by the selected prefix.
+
+\emph{Proof.}
+By Eq.~\eqref{eq:pt-threshold}, each selected set is a prefix
+$\{1,\ldots,k_P\}$. Since all $s_j>0$, larger description cost
+implies larger prefix length, hence inclusion of the smaller set.
+The additional terms in $G_Q$ are nonnegative, proving the first
+claim. For the second, let $J^*=\{1,\ldots,k_P\}$ and let $J$
+have the same total cost. The total costs of $J^*\setminus J$
+and $J\setminus J^*$ are equal. Every density in the first set
+is at least every density in the second, so the cost-weighted gain
+of the first set is at least that of the second. \hfill$\square$
+
+The monotonicity part requires only nested selected sets and
+nonnegative target gains; alignment with the target ordering
+additionally provides the equal-cost optimality claim. Without
+alignment, larger source complexity can yield smaller target gain.
+For example, take $s=(1,3)$, $v^Q=(1,0)$,
+$v^{P_1}=(2,0.5)$ and $v^{P_2}=(0.5,4)$, with
+$N/(2\sigma^2)=1$. The selected sets are $\{1\}$ and $\{2\}$,
+respectively. The description costs above $s_0$ are $1$ and $3$,
+but target gains are $1$ and $0$.
+
+A quantitative statement for non-nested sets follows by defining
+the relevant description cost
+$S_P^{\rm rel}=\sum_{j\in J_P:r_j^Q>0}s_j$,
+its fraction $\kappa_P=S_P^{\rm rel}/(S_P-s_0)$, and the
+cost-weighted mean $\bar r_P^Q$ of the positive target densities
+in $J_P$. Ratios with zero denominators are set to zero.
+Equation~\eqref{eq:pt-selection-transfer} gives the identity
+\begin{equation}
+ G_Q(P;N)=(S_P(N)-s_0)\kappa_P\bar r_P^Q.
+ \label{eq:pt-density}
+\end{equation}
+If all positive target densities lie in $[r_{\min}^+,r_{\max}]$
+with $r_{\min}^+>0$, then
+\[
+ r_{\min}^+\kappa_1(S_{P_1}-s_0)>
+ r_{\max}\kappa_2(S_{P_2}-s_0)
+ \quad\Longrightarrow\quad G_Q(P_1;N)>G_Q(P_2;N).
+\]
+The relevant-cost gap must dominate heterogeneity in the density
+of target relevance. The identity alone is not a transfer theorem;
+Eq.~\eqref{eq:pt-threshold} specifies how the relevant cost arises
+from source-side MDL selection.
+
+The shared-law assumption can be relaxed to
+$Y=\sum_j\beta_j^P f_j(C)+\varepsilon_P$ on the source and the
+corresponding coefficients $\beta_j^Q$ on the target. If the
+selected source coefficients are recovered exactly, the target MSE
+gain of mechanism $j$ becomes
+\[
+ \bigl(2\beta_j^P\beta_j^Q-(\beta_j^P)^2\bigr)v_j^Q.
+\]
+It can be negative, even if source and target both contain the
+same mechanism. For example, opposite nonzero AR(1) coefficients
+give negative gain relative to the zero-mean predictor. The
+nonnegative-gain condition of Theorem~2 cannot be dropped under
+conditional shift.
+
+\paragraph{Forecast scores.}
+If the sum of omitted mechanisms is centered Gaussian with
+variance $V_J=\sum_{j\notin J}v_j^Q$, independent of target noise
+$\mathcal N(0,\sigma^2)$, then
+\[
+ \begin{aligned}
+ R_Q^{\rm MAE}(q_J)&=\sqrt{2/\pi}\sqrt{\sigma^2+V_J},\\
+ R_Q^{\rm CRPS}(q_J)&=\sqrt{2/\pi}\sqrt{2\sigma^2+V_J}
+                         -\sigma/\sqrt{\pi}.
+ \end{aligned}
+\]
+The first expression follows from the absolute Gaussian moment;
+the second follows by substituting independent forecast draws
+into the CRPS identity of Section~\ref{sec:downstream-evaluation}
+\cite{gneiting2007}. Both increase strictly with $V_J$.
+Hence Theorem~2 orders these population scores under the additional
+Gaussian assumptions. For scaled scores, the normalization must
+preserve the relevant risk ordering; a random context-dependent
+seasonal denominator need not do so \cite{hyndman2006}.
+An ordering that holds for every benchmark configuration is preserved
+by the geometric aggregation in Eq.~\eqref{eq:downstream-ratio}.
+An ordering on a single target does not establish this property.
+
+\subsection{A joint model of restricted complexity and learning curves}
+\label{sec:pt-joint}
+
+The preceding mechanism model also provides a case in which the
+prequential proxy tracks a description cost, rather than merely
+separating from it. Let $a_j=v_j^P/(2\sigma^2)$ and
+$\tau_j=s_j/a_j$ (set $\tau_j=\infty$ if $a_j=0$).
+Consider an ideal population-MDL learner that selects the set
+$J_P(n)$ of Eq.~\eqref{eq:pt-threshold} after $n$ windows.
+It has access to the true source risks; this is an oracle reference,
+not a claim about how Moirai estimates the mechanisms.
+Use its final raw predictor as the endpoint. Its learning curve is
+\[
+ L(n)=H_P+\sum_{j:\,n\leq\tau_j}a_j,\qquad
+ H_P=\tfrac12\log(2\pi e\sigma^2).
+\]
+
+\paragraph{Proposition (area of sequential MDL selection).}
+If $\sum_j a_j<\infty$, then
+\begin{equation}
+ \begin{aligned}
+ A_N&=\sum_{j:\,\tau_j<N}a_j(\lfloor\tau_j\rfloor+1),\\
+ 0&\leq A_N-(S_P(N)-s_0)
+       \leq\sum_{j:\,\tau_j<N}a_j .
+ \end{aligned}
+ \label{eq:pt-exact-area}
+\end{equation}
+
+\emph{Proof.}
+In $\sum_{n=0}^{N-1}(L(n)-L(N))$, mechanisms still omitted at
+$N$ cancel. A mechanism selected by $N$ contributes $a_j$ at
+each of the $\lfloor\tau_j\rfloor+1$ preceding indices for
+which $n\leq\tau_j$. The bounds follow from
+$a_j\tau_j=s_j$. \hfill$\square$
+
+In particular, $A_N=S_P(N)-s_0+O(1)$. The identity gives a precise
+setting in which prequential area tracks restricted complexity.
+
+\paragraph{Growing complexity.}
+Extend the model to countably many orthogonal mechanisms with
+$v_j^P=Vj^{-\beta}$, $\beta>1$, and $s_j=s>0$.
+The regression sum exists in $L^2(P)$ because the variances are
+summable. Use the restricted prefix dictionary with assigned costs
+$s_0+ks$ for a prefix of length $k$; these costs can be realized
+by a unary prefix code up to fixed overhead and a choice of cost
+unit. They are not asserted to be the shortest possible
+algorithmic descriptions of those prefixes.
+The threshold rule gives
+\[
+ k_N=\left(\frac{NV}{2\sigma^2s}\right)^{1/\beta}+O(1).
+\]
+Consequently,
+\begin{equation}
+ A_N=S_P(N)-s_0+O(1)
+     =s\left(\frac{NV}{2\sigma^2s}\right)^{1/\beta}+O(1).
+ \label{eq:pt-growing}
+\end{equation}
+The remaining risk is asymptotic to a positive constant times
+$N^{-(1-1/\beta)}$, by the integral asymptotic for
+$\sum_{j>k_N}j^{-\beta}$. Thus both the restricted description
+cost and the area grow as a power. This example concerns an
+assigned restricted code class; a shorter unrestricted program
+could exploit the common description of the dictionary.
+
+\paragraph{Bounded complexity with a growing area.}
+For a finite dictionary and a source whose true predictor is
+$q_{[d]}$, consider a randomized procedure that uses $q_\varnothing$
+until a random switching time $\tau$, then uses $q_{[d]}$.
+Let $\Pr(\tau>n)=(n+1)^{-\alpha}$ with $0<\alpha<1$.
+Both predictors belong to the same finite class; the procedure is
+an intentionally delayed oracle, constructed to isolate the
+effect of learning dynamics. Its expected risk is
+$L(n)=H_P+a(n+1)^{-\alpha}$, where $a=\sum_j a_j>0$.
+Theorem~1's summation argument gives
+\[
+ \mathbb E A_N=\frac{a\alpha}{1-\alpha}N^{1-\alpha}+O(1),
+ \qquad S_P(N)=O(1).
+\]
+This contrasts with Eq.~\eqref{eq:pt-growing}: the same kind of
+power-law curve can arise without an increasing description cost.
+
+For comparison, Bayesian sequential prediction over a finite
+dictionary with positive prior mass $w_*$ on the true predictor
+has cumulative expected KL regret at most $-\log w_*$, by the
+mixture likelihood bound. In a regular $k$-dimensional
+parametric family with a fixed true interior parameter and a
+positive smooth prior, the classical Bayesian redundancy
+asymptotic is $(k/2)\log N+O(1)$ under suitable regularity
+\cite{clarke1990}. With final expected KL of order $N^{-1}$,
+subtracting the endpoint preserves that logarithmic leading term.
+These are statements about particular learning rules, not universal
+rates for neural training or for arbitrary misspecified families.
+
+\subsection{Implications for the archived experiments}
+\label{sec:pt-implications}
+
+The theory distinguishes estimation of structural complexity from
+its usefulness on a target. The first is addressed by
+Eqs.~\eqref{eq:pt-separation} and \eqref{eq:pt-exact-area}; the
+second is addressed by Eqs.~\eqref{eq:pt-alignment} and
+\eqref{eq:pt-density}. Neither result establishes the true
+epiplexity or the relevance fraction of any of the eleven
+archived sources. In particular, the similar Waveform areas across
+initializations and the different downstream scores in
+Section~\ref{sec:results} do not identify which mechanism caused
+the discrepancy. The large areas of Chaotic and Waveform may
+reflect estimation effects, target mismatch, or both.
+
+The proposed theory suggests three pre-specified ranking baselines
+for each target configuration $Q_j$: the area $A_N(g)$ alone,
+a nonnegative source--target feature similarity
+$\operatorname{Sim}(P_g,Q_j)$ alone, and their product.
+The feature map, normalization and similarity must be fixed before
+examining their associations with the target scores. Similarity
+is only a proxy for relevance, not an estimate of
+$\kappa_P$ justified by Theorem~2. A product that improves upon
+area alone but not similarity alone provides no evidence for the
+incremental usefulness of area. Per-configuration CRPS and MASE
+from the archived results~\cite{chernousovresults} permit these
+comparisons without changing trained predictors, once the source
+and target features are available.
+
+The existing bootstrap intervals in Table~\ref{tab:correlations}
+describe uncertainty across generator families conditional on
+the fitted runs. A permutation sensitivity analysis of the
+exploratory exclusion of Chaotic and Waveform should recompute
+the maximum absolute Spearman correlation over all
+$\binom{11}{2}=55$ exclusions for each permutation, rather than
+treating the observed exclusion as fixed in advance. Such a test
+requires an exchangeability null for the generator-score pairs.
+The Waveform repeat can also be compared with the between-source
+dispersion, but a single repeat cannot estimate a general
+initialization variance. These analyses and the direct weight-cost
+comparison require no new model training; numerical OU calibration
+and compressed-endpoint comparisons remain separate experiments.
+
+
 \bibliographystyle{abbrvnat}
 \bibliography{references}
 
