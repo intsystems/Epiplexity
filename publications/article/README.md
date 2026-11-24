@@ -1,7 +1,7 @@
 # Research article
 
 [Read the article](main.pdf): *Epiplexity and Transfer in Synthetic Time-Series Pretraining*
-(11 pages including references and appendices).
+(18 pages including references and appendices).
 The manuscript is [main.tex](main.tex), with references in [references.bib](references.bib).
 
 Section 2 connects synthetic forecasting, description length, and prior
@@ -10,8 +10,11 @@ objective and its ranking hypothesis. Section 4 develops the prequential
 estimate and describes requential coding, predictive V-information, and the
 OU Bayes reference. Sections 5 and 6 define and report CRPS and MASE ratios
 for eleven generators at both training budgets. The full comparison shows a
-weak association between excess loss and transfer. Appendix B derives the
-dependence of learning-curve areas on the scoring rule.
+weak association between excess loss and transfer.
+Section 8, Proposed Theory, develops bounds for computable predictive laws,
+separates excess prequential area from description length, and studies
+transfer through a restricted model of predictive mechanisms. Appendix B
+derives the dependence of learning-curve areas on the scoring rule.
 
 The [technical report](../technical_report/README.md) describes our `episynth`
 library, architecture, interfaces, and executable examples. The
@@ -30,7 +33,7 @@ python build_report.py
 ```
 
 Compilation requires pdfLaTeX and BibTeX. Committed tables and figures also
-allow `build_report.py` to run on its own. It checks the eleven-page budget,
+allow `build_report.py` to run on its own. It checks the eighteen-page budget,
 unresolved references, and overflowing boxes, and records PDF and source hashes.
 
 `reproduce.py` runs the following scripts in order:
