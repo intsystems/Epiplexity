@@ -9,14 +9,25 @@ predictive loss reduction. Built-in and custom estimators implement
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Protocol, runtime_checkable
 
 from ..generators.base import Generator
 from ..model.moirai import MoiraiModule
 from ..training import TrainConfig
 from ..windows import WindowSpec
+
+
+def write_estimator_result(out_dir: str | Path, result: Mapping[str, Any]) -> None:
+    """Publish a complete JSON result atomically on the run filesystem."""
+    out = Path(out_dir)
+    with TemporaryDirectory(dir=out) as staging:
+        path = Path(staging) / "estimator_result.json"
+        path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
+        path.replace(out / path.name)
 
 
 @runtime_checkable

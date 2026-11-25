@@ -28,11 +28,10 @@ generators, forecasting windows, a Moirai port, and training with per-window los
   seasonal-naive and Moirai forecasters (using either the local protocol or the
   leaderboard notebook's protocol), per-window metrics and their exact aggregation
   under the leaderboard and scaled definitions, and the log density of observed targets.
-- `episynth.estimators` provides the epiplexity estimator plugin interface. The
-  `estimator` field of an `episynth.train` configuration selects a registered
-  algorithm by name. Built-ins include `prequential` (excess loss area),
-  `v_information` (predictive value of context), and the `requential` stub. Add
-  another estimator in one module using `@register`.
+- `episynth.estimators` provides the estimator registry used by the `estimator` field of an `episynth.train` configuration.
+  Built-ins include `prequential` (excess loss area), `v_information` (predictive value of context), and `requential` (conditional student model length in bits).
+  The requential estimator draws from the EMA teacher by default and supports replayable finite ordered random coding with `estimator_config.mode="orc"`.
+  Add another estimator in one module using `@register`.
 
 ```python
 from episynth.generators import GENERATORS

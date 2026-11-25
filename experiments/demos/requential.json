@@ -1,0 +1,18 @@
+{
+  "estimator": "requential",
+  "estimator_config": {"mc_repeats": 8},
+  "data": {"generator": "waveform"},
+  "spec": {
+    "series_length": 32, "context_max": 16, "context_lengths": [16],
+    "horizon": 4, "patch_size": 4
+  },
+  "model": {
+    "d_model": 64, "num_layers": 1, "patch_sizes": [4, 8],
+    "components": ["student_t"]
+  },
+  "train": {
+    "n_windows": 32, "batch_size": 4, "init_seed": 0, "warmup_steps": 1,
+    "heldout_first_seed": 72, "heldout_windows": 8, "eval_batch_size": 4,
+    "precision": "fp32", "eval_precision": "fp32", "device": "cpu"
+  }
+}

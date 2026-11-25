@@ -9,9 +9,7 @@ The proposed four-method library scope is **prequential coding**, **requential
 coding**, **predictive V-information**, and **Bayesian predictive log-loss**.
 Prequential coding is the method used in the saved transfer experiments. The
 Bayesian method uses the existing OU reference and has narrower applicability.
-V-information is implemented; requential remains a stub. This is a concrete
-proposal for the library. Generation, fitting, and benchmark evaluation provide the shared
-execution layer.
+The registry implements prequential coding, requential coding, and predictive V-information.
 
 Method status
 -------------
@@ -32,7 +30,7 @@ Method status
    * - Requential coding
      - How expensive is reconstructing a student's learned predictive behavior?
      - ``build("requential").run(...)``
-     - Registered stub; raises ``NotImplementedError``
+     - Direct estimate and finite ORC codec
    * - Predictive V-information
      - How much does context improve prediction for a specified model family?
      - ``build("v_information").run(...)``;
@@ -44,10 +42,8 @@ Method status
        ``pointwise_window_nll``
      - Implemented reference; common public wrapper proposed
 
-``estimators.available()`` lists registered names, including stubs. Currently
-it returns ``prequential``, ``requential`` and ``v_information``; the first and
-last run complete estimation procedures. A general Bayesian estimator is not
-registered. The OU functions remain in ``episynth.checks.ou_bayes``.
+``estimators.available()`` lists the three registered estimators.
+The OU reference is available in ``episynth.checks.ou_bayes``.
 
 1. Prequential coding and its structural proxy
 ----------------------------------------------
@@ -108,27 +104,56 @@ The method compresses a student's training trajectory through teacher-selected
 proposals regenerated from shared randomness. The reference is
 `Qiu et al. (2026) <https://arxiv.org/abs/2607.11883>`_.
 
-**Required inputs.** Teacher/student models and update rules; real-data stream;
-shared contexts; seeded proposal sampling; smoothing/projection settings;
-training budget; and the code's shared initialization conventions.
+**CPU example.** The example uses a one-layer Moirai with a Student-t head, four-point horizons, and a budget of 32 real waveform windows.
+Set ``RUN_ROOT`` to your experiment storage directory.
 
-**Required computation.** Implement teacher updates and student training on
-selected synthetic targets, account for whole-message teacher/student KL,
-and define reproducible selection and decoding. The KL estimate, expected-code
-bound including overhead, and realized encoded length need distinct result
-labels. Contexts must either be available to the decoder as declared side
-information or have their transmission cost included.
+.. code-block:: bash
 
-**Required outputs.** Student checkpoint, cumulative KL estimate in bits,
-overhead convention/bound, message count, and the settings needed to reproduce
-the measurement. A real codec must additionally provide its messages and
-decoder. These are proposed requirements, not fields returned by current code.
+   python -m episynth.train --config experiments/demos/requential.json --out "$RUN_ROOT/req"
+   python -m episynth.train --config experiments/demos/requential.json --out "$RUN_ROOT/orc" \
+       --set estimator_config.mode=orc --set estimator_config.candidates=5 \
+       --set 'estimator_config.projection_steps=[2]' --set estimator_config.sampling_seed=1
 
-**Current behavior.** Construction succeeds; calling
-``RequentialEstimator.run`` raises ``NotImplementedError``. The constructor's
-parameters describe the intended implementation. They do not currently control
-a functioning teacher/student algorithm. ``test_estimators.py`` verifies this
-unsupported status.
+**Training and splits.** The teacher trains on real windows. The student trains on EMA-teacher samples conditional on public contexts, with the source horizon erased.
+Use continuous heads. A pure log-normal mixture requires a shared lower endpoint and observed targets above it.
+The example reserves seeds [0, 32) for real training, [32, 64) for public contexts, [64, 72) for projection validation, and [72, 80) for final evaluation.
+Set ``public_first_seed``, ``validation_first_seed``, and ``validation_windows`` in the estimator configuration to place these splits in an existing corpus.
+For a prequential comparison, share the exact initial weights, training seeds, batch size, and final held-out split.
+Teacher-only recovery consumes the same real budget and sends zero messages.
+The result records the validation loss before projection, the final recovery loss, the number of recovery windows, and whether the teacher recovered within budget.
+
+**Estimated length.** Each observed horizon is one message.
+``estimated_kl_bits`` sums signed Monte Carlo log likelihood ratios over the coded windows and can be negative on a short run.
+Independent teacher draws (``mc_repeats`` per message) estimate each message KL for the nonlinear overhead.
+The plug-in uses the nonnegative part of that mean as :math:`D` and sums :math:`D+2\log_2(1+D)+5.21` in ``plugin_expected_length_bound_bits`.
+``estimated_overhead_bits`` reports the sum of the last two terms alone.
+The reported Monte Carlo standard errors use within-message repeat variances for the leading term and a delete-one jackknife for the overhead, conditional on the visited model states.
+Variation across training runs requires independent seeds.
+Finite Monte Carlo sampling gives an estimate of the expected-length bound, without a certified upper bound.
+
+**Replay.** Finite ordered random coding uses a fixed pool of student proposals for each horizon.
+The encoder chooses a proposal by its ordered exponential arrival time and likelihood ratio, then writes its one-based Elias-delta index to ``indices.bin`.
+The selected horizons approximate the teacher law, so the encoder uses separate direct teacher draws for the KL estimate.
+The finite race is Algorithm 4 of `Theis and Yosri (2022) <https://proceedings.mlr.press/v162/theis22a.html>`_.
+Large message KL can require exponentially many proposals.
+
+.. code-block:: python
+
+   from pathlib import Path
+   from episynth.estimators import build
+
+   codec = build("requential", **result["estimator_config"])
+   payload = Path(result["artifacts"]["stream"]).read_bytes()
+   raw, ema = codec.decode(initial_model, generator, spec, train, payload,
+                           result["realized_message_bits"], result["message_count"])
+
+The decoder needs the exact initial state, public source and seeds, and shared student update settings on the same deterministic runtime.
+Corpus-backed contexts require the corresponding corpus.
+``realized_message_bits`` counts only the meaningful payload bits. The byte padding, message count, bit-length framing, and shared setup are excluded.
+``estimator_result.json`` records the split identities, generator settings, KL trajectory, projection events, and final EMA held-out NLLs in nats per window.
+Each run stores ``student.pt``, its report, and any index stream in a separate subdirectory.
+The evaluation CLI accepts this checkpoint with either ``--weights raw`` or ``--weights ema``.
+The top-level report points to these artifacts so later runs can reuse the output directory while earlier streams remain replayable.
 
 3. Predictive V-information
 ---------------------------

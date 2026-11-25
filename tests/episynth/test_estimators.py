@@ -44,12 +44,10 @@ def test_register_rejects_duplicates():
     _REGISTRY.pop("dupe")
 
 
-def test_requential_is_skeleton():
-    """The Requential Estimator is registered, but its run has not yet been implemented."""
-    est = build("requential")
+def test_requential_factory():
+    est = build("requential", projection_steps=[], mode="orc", candidates=4)
+    assert isinstance(est, EpiplexityEstimator)
     assert est.name == "requential"
-    with pytest.raises(NotImplementedError):
-        est.run(None, None, None, None, "unused")  # type: ignore[arg-type]
 
 
 def test_prequential_from_run_dir_uses_heldout(tmp_path):

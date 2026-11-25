@@ -91,11 +91,8 @@ Built-in estimators
 
 * :class:`episynth.estimators.prequential.PrequentialEstimator` uses the shared ``Trainer``
   to sum window losses before their training step (the area under the loss curve).
-* :class:`episynth.estimators.requential.RequentialEstimator` concerns the code for a student
-  reconstructed from indices of samples drawn from the teacher's distribution. The
-  registered stub raises :class:`NotImplementedError` on execution. See
-  ``publications/research_notes/.../requential_coding.md``.
-
+* :class:`episynth.estimators.requential.RequentialEstimator` trains a student on synthetic horizons and estimates its code length from pre-update EMA predictions.
+  Its finite ORC mode transmits indices into the student's seeded proposal stream.
 * :class:`episynth.estimators.v_information.VInformationEstimator` trains two Moirai
   models with shared training-set normalization, selects checkpoints on the validation
   set, and compares paired losses on the test set. The conditional predictor can
@@ -104,10 +101,8 @@ Built-in estimators
 How estimators use the trainer
 ------------------------------
 
-The shared ``Trainer`` in :mod:`episynth.training` runs the training loop and delegates
-protocol-specific window losses to ``Trainer.compute_loss``. The prequential estimator
-uses the standard implementation. The planned requential estimator subclasses
-``Trainer`` and overrides ``compute_loss`` to estimate the teacher-student KL divergence.
+The prequential estimator uses the shared ``Trainer`` and its ``compute_loss`` method.
+The requential estimator owns separate teacher and student optimizers so that the teacher can train on real windows during projection recovery while the student and its message stream pause.
 
 CLI
 ---

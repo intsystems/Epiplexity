@@ -193,13 +193,21 @@ def plot(root: Path) -> None:
 
 
 def render(root: Path, rows: list[dict]) -> None:
+    folder = root / "results"
+    folder.mkdir(parents=True, exist_ok=True)
+    stem = folder / "v_information_vs_crps"
+    render_figure(rows, stem)
+    with stem.with_suffix(".csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def render_figure(rows: list[dict], stem: Path) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    folder = root / "results"
-    folder.mkdir(parents=True, exist_ok=True)
-    stem = folder / "v_information_vs_crps"
     ink, point, leader = "#203245", "#17688a", "#92a3b2"
     fig, axes = plt.subplots(1, 2, figsize=(8.2, 2.95), sharey=True)
     fig.subplots_adjust(left=0.077, right=0.985, bottom=0.21, top=0.87, wspace=0.12)
@@ -235,10 +243,6 @@ def render(root: Path, rows: list[dict]) -> None:
     for ext in (".pdf", ".png"):
         fig.savefig(stem.with_suffix(ext), dpi=200)
     plt.close(fig)
-    with stem.with_suffix(".csv").open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 if __name__ == "__main__":

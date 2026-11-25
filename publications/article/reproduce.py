@@ -7,5 +7,5 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 if __name__ == "__main__":
-    for script in ("analyze_runs.py", "prepare_tables.py", "make_plots.py"):
+    for script in ("analyze_runs.py", "prepare_tables.py", "make_plots.py", "plot_coding_transfer.py"):
         subprocess.run([sys.executable, str(HERE / script)], cwd=HERE, check=True)

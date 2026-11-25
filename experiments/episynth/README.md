@@ -145,6 +145,31 @@ The runner publishes the completed branch under the run directory with an exclus
 Run the same command with the remaining allocation to resume from completed shards and checkpoints.
 To regenerate the figure from the paired losses, run `python experiments/episynth/scripts/v_information_transfer.py plot --root "$ROOT"`.
 
+## Requential model length versus archived CRPS
+
+The horizontal coordinate sums the pre-update EMA teacher/student log likelihood ratios over coded forecast windows, in bits per trained student.
+The vertical coordinate is the archived geometric mean of the CRPS ratios on the same 55 transfer tasks as the V-information figure.
+Both panels use the archive's initialization, generator, window distribution, and real training budget.
+Projection recovery counts toward that budget and sends zero messages.
+The eight repeated teacher draws per message supply the Monte Carlo standard error and the separate plug-in overhead in the CSV.
+
+Set `REQ_ROOT` to the requential experiment directory and `VINFO_ROOT` to the archive containing the original KernelSynth corpus.
+Public contexts start at seed 100,000,000.
+For KernelSynth, place contiguous corpus shards covering 39,999,488 public seeds under `$REQ_ROOT/data/kernelsynth/<first_seed>` using the archived settings (length 1024, five kernels, chunk 64, CUDA factorization).
+Projection validation and final evaluation each use 100,000 fixed windows starting at 1,000,000,000 and 2,000,000,000, respectively.
+
+```bash
+export PYTHONPATH=src
+python experiments/episynth/scripts/requential_transfer.py --root "$REQ_ROOT" --source-root "$VINFO_ROOT" --run s2_waveform
+python experiments/episynth/scripts/requential_transfer.py --root "$REQ_ROOT" --plot
+```
+
+Run one fit per generator with its archived `s2_` name, including the separate `s2_waveform_seed1` fit.
+Use `series_kernelsynth --through 1999872` for the small KernelSynth point and `s2_kernelsynth` for the large point.
+Each other seed-zero trajectory supplies both budget milestones.
+The worker can resume from `runs/<run>/resume.pt`, including during recovery.
+The plot command joins the 23 completed measurements to the archive and writes the PNG, PDF, and source CSV under `results/`.
+
 ## Gotchas
 
 - **Triton loads compiled kernels by file path.**

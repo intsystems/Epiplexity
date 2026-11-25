@@ -28,6 +28,7 @@ where :math:`h` is the horizon and :math:`s` is the normalization scale.
 """
 
 import csv
+import hashlib
 import json
 import math
 import time
@@ -122,6 +123,16 @@ def window_nll(mixture: Mixture, batch: WindowBatch, patch_size: int) -> torch.T
     return nll.masked_fill(~mask[..., :patch_size], 0).sum(dim=(1, 2))
 
 
+def weights_digest(model: MoiraiModule) -> str:
+    """Hash state names, dtypes, shapes, and tensor bytes in model order."""
+    digest = hashlib.sha256()
+    for name, value in model.state_dict().items():
+        value = value.detach().cpu().contiguous()
+        digest.update(f"{name}:{value.dtype}:{tuple(value.shape)}".encode())
+        digest.update(value.view(torch.uint8).numpy().tobytes())
+    return digest.hexdigest()
+
+
 def param_groups(model: nn.Module, weight_decay: float) -> list[dict]:
     """Parameter groups as in uni2ts: the weights of the linear layers are regularized, the rest is not."""
     decay, no_decay = [], []
@@ -143,7 +154,7 @@ class Trainer:
     resume, and held-out evaluation across estimation protocols. Override
     :meth:`compute_loss` to return protocol-specific per-window losses and an
     optional log normalization scale. The default is prequential loss.
-    A subclass can implement a requential teacher-student objective.
+    The requential estimator manages its two optimizers separately.
 
     Args:
         model: Initialized model. Its weights are replaced when resuming.

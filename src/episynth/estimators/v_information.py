@@ -9,7 +9,6 @@ conditions on the fitted models; optimization error is not a PAC guarantee.
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 import math
 import os
@@ -24,6 +23,7 @@ from ..generators import Generator
 from ..model.moirai import MoiraiConfig, MoiraiModule
 from ..splits import source_description, validate_splits
 from ..training import TrainConfig, Trainer, window_nll
+from ..training import weights_digest as _weights_digest
 from ..windows import WindowSpec, WindowStream
 from .registry import register
 
@@ -57,15 +57,6 @@ def _read_losses(path: Path, n: int) -> np.ndarray:
     if not np.isfinite(values).all():
         raise ValueError(f"nonfinite losses: {path}")
     return values
-
-
-def _weights_digest(model: MoiraiModule) -> str:
-    digest = hashlib.sha256()
-    for name, value in model.state_dict().items():
-        value = value.detach().cpu().contiguous()
-        digest.update(f"{name}:{value.dtype}:{tuple(value.shape)}".encode())
-        digest.update(value.view(torch.uint8).numpy().tobytes())
-    return digest.hexdigest()
 
 
 def _stream(generator: Generator, spec: WindowSpec, config: TrainConfig,

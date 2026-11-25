@@ -38,6 +38,5 @@ Open :doc:`api/estimators` to show the automatically generated documentation for
 The parameter and return descriptions come from docstrings, and type information
 comes from annotations in the source. The class has a source-code link.
 
-For example, ``build("prequential")`` returns that estimator;
-``available()`` lists the registered names. ``requential`` appears in that list
-as a planned implementation and raises ``NotImplementedError`` when run.
+Use ``available()`` to list the registered names and ``build("prequential")`` to construct the estimator used in this notebook.
+For a CPU requential run, see :doc:`measurements`.

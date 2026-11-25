@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field, model_validator
 from .corpus import Corpus
 from .estimators import available as estimators_available
 from .estimators import build as build_estimator
+from .estimators.base import write_estimator_result
 from .generators import GENERATORS, Generator, Mixture
 from .model.moirai import MoiraiConfig, small
 from .splits import seeds_available, validate_splits
@@ -172,7 +173,7 @@ def main() -> None:
         (out / "run.json").write_text(config.model_dump_json(indent=1))
     model = build_model(config.model, config.train.init_seed)
     result = build_estimator(config.estimator, **config.estimator_config).run(model, generator, config.spec, config.train, out)
-    (out / "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
+    write_estimator_result(out, result)
     print(json.dumps({"estimator": config.estimator, "result": result}, indent=2, ensure_ascii=False))
 
 

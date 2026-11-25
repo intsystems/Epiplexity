@@ -53,7 +53,5 @@ External integrations
 Planned algorithms
 ------------------
 
-The working estimators are prequential and predictive V-information. Requential is registered and documented,
-but its ``run`` method raises ``NotImplementedError``. Bayesian codes and other
-estimators discussed in the research plans are future work, not installed or
-implemented capabilities of this release.
+The registry provides prequential coding, requential coding, and predictive V-information.
+A general Bayesian coding estimator remains future work.

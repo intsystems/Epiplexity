@@ -20,10 +20,11 @@ import argparse
 import json
 from pathlib import Path
 
-from ..generators import GENERATORS
 from ..model.moirai import MoiraiConfig
+from ..train import DataConfig, build_generator
 from ..training import TrainConfig, build_model
 from ..windows import WindowSpec
+from .base import write_estimator_result
 from .registry import available, build
 
 
@@ -70,11 +71,11 @@ def main(argv: list[str] | None = None) -> None:
         config = config.model_copy(update={"device": args.device})
     if args.init_seed is not None:
         config = config.model_copy(update={"init_seed": args.init_seed})
-    generator = GENERATORS[args.generator](length=spec.series_length)
+    generator = build_generator(DataConfig(generator=args.generator), spec.series_length)
     model = build_model(model_cfg, config.init_seed)
     estimator = build(args.estimator, **estimator_config)
     result = estimator.run(model, generator, spec, config, args.out)
-    Path(args.out, "estimator_result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
+    write_estimator_result(args.out, result)
     print(json.dumps({"estimator": args.estimator, "generator": args.generator, "result": result}, indent=2, ensure_ascii=False))
 
 

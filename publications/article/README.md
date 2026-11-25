@@ -51,6 +51,20 @@ The original training was conducted by Danila Chernousov and archived at commit
 Large checkpoints, per-window vectors, and benchmark datasets have separate
 artifact locations documented in [the experiment README](../../experiments/episynth/README.md).
 
+## Coding comparisons
+
+From this directory, run `python plot_coding_transfer.py` to rebuild the three supplementary figures on CPU from repository data.
+The full `reproduce.py` command also runs this step.
+
+| Figure (PNG and PDF) | Plot data under `data/` |
+| --- | --- |
+| `figures/v_information_vs_crps` | `v_information_vs_crps.csv`, 23 observations at 2M and 40M windows |
+| `figures/requential_vs_crps_2m` | `requential_vs_crps_2m.csv`, 11 observations at 2M windows |
+| `figures/prequential_to_requential_crps_2m` | `run_statistics.csv` and `requential_vs_crps_2m.csv`, paired by generator, initialization seed, and window count |
+
+The arrows connect excess prequential loss in million bits to estimated requential KL in million bits per student at the same archived CRPS ratio.
+The script checks each run and CRPS ratio against the prequential archive.
+
 ## Evidence and figures
 
 | Artifact | Contents |

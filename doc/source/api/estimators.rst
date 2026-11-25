@@ -3,13 +3,10 @@ Estimators
 
 .. automodule:: episynth.estimators
 
-``episynth.estimators`` exports ``EpiplexityEstimator``, ``register``,
-``build`` and ``available`` from the modules below. Prequential and V-information are implemented;
-requential is a planned algorithm whose ``run`` raises ``NotImplementedError``.
+``episynth.estimators`` exports ``EpiplexityEstimator``, ``register``, ``build``, and ``available``.
+The registry provides prequential coding, requential coding, and predictive V-information.
 
-See :doc:`../measurements` for the four-method library proposal, scientific
-quantities, input/output contracts, and implementation status. Registry names
-include stubs; a common Bayesian wrapper is not implemented.
+See :doc:`../measurements` for their input and output contracts and the OU Bayesian reference.
 
 estimators.base
 ---------------

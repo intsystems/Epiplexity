@@ -47,8 +47,8 @@ The four-method library scope is described in the
 
 1. **Prequential coding (implemented):** measure the predictive cost of the training
    sequence; return total, residual-data and signed model-proxy costs in bits.
-2. **Requential coding (registered stub):** describe a student's learned predictions
-   through teacher-selected synthetic training samples and their coding costs.
+2. **Requential coding (implemented):** estimate the bits needed to teach a student from conditional forecast samples.
+   Set ``RUN_ROOT`` to your experiment storage directory and run ``python -m episynth.train --config experiments/demos/requential.json --out "$RUN_ROOT/requential_cpu"``.
 3. **Predictive V-information (implemented):** fit predictors with and without context,
    select on validation, then estimate paired test log-loss reduction in bits per window.
    CPU example: ``python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_cpu``.
