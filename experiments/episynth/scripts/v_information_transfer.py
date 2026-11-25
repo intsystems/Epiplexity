@@ -4,7 +4,6 @@ measurements.
 
 import argparse
 import csv
-import fcntl
 import json
 import math
 import os
@@ -42,7 +41,7 @@ LABELS = {
         "arima": (.58, .43), "fbm": (.40, .33), "garch": (.76, .34),
         "chaotic": (.83, .60), "timesynth": (.13, .44)},
     2: {"kernelsynth": (.47, .035), "ets": (.93, .07), "waveform": (.39, .79),
-        "sde": (.11, .41), "stepfunction": (.43, .15), "tsi": (.62, .13),
+        "sde": (.105, .46), "stepfunction": (.43, .15), "tsi": (.62, .13),
         "arima": (.81, .43), "fbm": (.31, .30), "garch": (.67, .32),
         "chaotic": (.87, .70), "timesynth": (.12, .18), "repeat": (.32, .47)},
 }
@@ -142,6 +141,8 @@ def warm(root: Path, run: str) -> None:
     """Publish train normalization without overwriting a live estimator
     manifest.
     """
+    import fcntl
+
     from episynth.estimators.v_information import VInformationEstimator
     from episynth.train import build_generator, load_run_config
     from episynth.training import build_model
@@ -177,6 +178,8 @@ def fit_conditional(root: Path, run: str, workers: int) -> None:
     """Fit on a spare GPU and publish the completed branch if the main fit
     still needs it.
     """
+    import fcntl
+
     from episynth.estimators.v_information import VInformationEstimator
     from episynth.model.moirai import MoiraiConfig
     from episynth.train import build_generator, load_run_config

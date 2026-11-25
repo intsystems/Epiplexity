@@ -4,8 +4,9 @@
 
 The eight-page report documents the forecast-window and training contracts,
 the implemented measurement methods, and the artifacts needed to check a
-run. It includes CPU and archived Waveform examples, the two-budget GIFT-Eval
-comparison, a validation table linked to the tests, and runnable generator
+run. It includes CPU examples for prequential coding, requential coding, and
+V-information, plus the archived GIFT-Eval comparison and a validation table.
+It provides runnable generator
 and estimator examples in Section 8.
 
 Section 4 describes prequential coding, predictive V-information, and requential coding.
@@ -24,7 +25,8 @@ python build_report.py
 The build reads the committed figures and test counts. It checks the
 eight-page budget, cross-references, and text overflow, and records source
 and PDF hashes in [data/build_verification.json](data/build_verification.json).
-The report shares the transfer figure with the research article.
+The report shares the prequential transfer figure and the cross-method
+correlation table with the research article.
 
 ## Reproduce the measurements and validation
 
@@ -36,12 +38,13 @@ python -m pip install -r publications/technical_report/requirements.txt
 python publications/technical_report/reproduce.py
 ```
 
-The [example runner](run_examples.py) uses the [prequential configuration](examples/prequential.json)
-and [V-information configuration](../../experiments/demos/v_information.json).
-It verifies the prequential decomposition and paired test loss difference
-from saved vectors. It also checks the OU reference at two quadrature
-resolutions. The CPU run directories are under `build/report_demo`, and reruns
-use the trainer's resume behavior.
+The [example runner](run_examples.py) uses the [prequential](examples/prequential.json),
+[requential](../../experiments/demos/requential.json), and
+[V-information](../../experiments/demos/v_information.json) configurations.
+It checks the prequential decomposition and paired test loss difference from
+saved vectors, requential KL and overhead totals from per-step records, and
+the OU reference at two quadrature resolutions. The CPU run directories are
+under `build/report_demo`.
 
 The reproduction script runs the [library tests](../../tests/episynth/) and
 regenerates the three report figures. Add `--skip-checks` to retain the
@@ -58,6 +61,7 @@ as appropriate and invoke `pytest tests/episynth` directly.
 | [figures/execution.pdf](figures/execution.pdf) | Pre-update training losses and final checkpoint evaluation |
 | [figures/demo_loss.pdf](figures/demo_loss.pdf) | Learning curves and cumulative excess loss for the CPU and archived runs |
 | [Shared transfer figure](../article/figures/transfer_results.pdf) | Geometric-mean CRPS ratios for eleven generators at both budgets |
+| [Shared coding table](../article/data/coding_correlation_table.tex) | Full-set rank associations with archived CRPS for all three measurements |
 
 The archived Waveform panels use the committed configuration, batch means,
 and held-out EMA score in the [run directory](../../experiments/episynth/series2_2026-10-19/runs/s2_waveform/).

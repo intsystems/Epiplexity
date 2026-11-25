@@ -3,6 +3,7 @@
 import csv
 import sys
 from pathlib import Path
+from shutil import copyfile
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -13,6 +14,7 @@ plt.switch_backend("Agg")
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
 FIGURES = HERE / "figures"
+BLOG_IMAGES = HERE.parent / "blogpost" / "images"
 sys.path.insert(0, str(HERE.parents[1] / "experiments/episynth/scripts"))
 
 
@@ -32,8 +34,11 @@ def arrows(pairs: list[tuple[dict, dict]]) -> None:
     from v_information_transfer import NAMES
 
     ink, blue, orange = "#203245", "#17688a", "#c36019"
-    offsets = {"tsi": (-5, -13), "waveform": (7, 6), "sde": (4, 14),
-               "fbm": (3, -11), "arima": (6, -8), "garch": (6, 8)}
+    # Place labels in the open space around the endpoints of the archived runs.
+    # In the dense cluster, fBm has more room at the requential endpoint.
+    offsets = {"tsi": (8, -12), "waveform": (8, 10), "sde": (7, 15),
+               "fbm": (-1, 18), "arima": (8, 9), "garch": (7, 9),
+               "timesynth": (7, 16), "ets": (7, 9), "chaotic": (7, -10)}
     fig, ax = plt.subplots(figsize=(10, 6))
     fig.subplots_adjust(left=.09, right=.97, top=.84, bottom=.13)
     ax.set(
@@ -69,16 +74,22 @@ def arrows(pairs: list[tuple[dict, dict]]) -> None:
         ax.scatter(x_pre, y, color=blue, s=36, zorder=4)
         ax.scatter(x_req, y, color=orange, marker="D", s=27, zorder=4)
         generator = req["generator"]
-        dx, dy = offsets.get(generator, (6, 7))
+        label_x, alignment = (
+            (x_req, "center") if generator == "fbm" else (x_pre, "left")
+        )
         ax.annotate(
             NAMES[generator],
-            (x_pre, y),
-            xytext=(dx, dy),
+            (label_x, y),
+            xytext=offsets.get(generator, (7, 9)),
             textcoords="offset points",
-            ha="right" if dx < 0 else "left",
+            ha=alignment,
             va="center",
             color=ink,
             fontsize=10,
+            arrowprops={
+                "arrowstyle": "-", "color": "#92a3b2", "lw": 0.65,
+                "shrinkA": 2, "shrinkB": 4,
+            },
         )
     fig.text(
         0.09,
@@ -134,6 +145,8 @@ def main() -> None:
     )
     render_requential(list(req.values()), FIGURES / "requential_vs_crps_2m")
     arrows([(pre[k], row) for k, row in req.items()])
+    for name in ("prequential_to_requential_crps_2m.png", "v_information_vs_crps.png"):
+        copyfile(FIGURES / name, BLOG_IMAGES / name)
 
 
 if __name__ == "__main__":

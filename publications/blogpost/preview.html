@@ -143,6 +143,7 @@
         <script type="module" src="https://intsystems.github.io/javascript/mermaid_init.js"></script>
 
         <link rel="stylesheet" href="https://intsystems.github.io/style.css">
+
 <style>.blog-post__content [id] { scroll-margin-top: 120px; }</style>
 </head>
     <body>
@@ -432,7 +433,7 @@ S=L-H.\]
 <p>Use <code>variant="raw"</code> to check endpoint sensitivity. This reader needs the per-window loss files; a <code>steps.csv</code> export alone is insufficient. The report has a separate reconstruction script for the committed batch-mean exports.</p>
 <p>For larger experiments, <code>python -m episynth.train</code> accepts a JSON configuration and <code>--set</code> overrides, resumes saved runs, and writes <code>estimator_result.json</code>. The <a href="https://github.com/intsystems/Epiplexity/blob/main/src/episynth/README.md">package guide</a> documents configuration and corpus workflows.</p>
 <h3 id="which-measurement-methods-are-ready">Which measurement methods are ready?</h3>
-<p>The <a href="https://github.com/intsystems/Epiplexity/blob/main/doc/source/measurements.rst">measurement contracts</a> distinguish current functionality from the proposed scope:</p>
+<p>The library provides the following measurement methods. See the <a href="https://github.com/intsystems/Epiplexity/blob/main/doc/source/measurements.rst">measurement contracts</a> for inputs and units.</p>
 <table>
 <thead>
 <tr>
@@ -519,8 +520,15 @@ S=L-H.\]
 <p><em>Table 1. Selected primary runs from the report. Areas use the EMA endpoint and are reported in million nats, before conversion to bits. The correlations below use all eleven priors.</em></p>
 <p>KernelSynth ranked first and ETS second at both budgets. Yet Chaotic produced the largest excess area and transferred worse than seasonal naive. Across all eleven families, the Spearman correlations between area and downstream CRPS ratio were <strong>−0.18 at 2M and 0.00 at 40M</strong>. Their 95% bootstrap intervals, [−0.81, 0.51] and [−0.89, 0.61], are broad: this study does not establish a reliable ranking rule.</p>
 <p><img src="images/transfer_results.png" alt="Excess prequential area versus downstream CRPS ratio for all eleven priors at both budgets" /></p>
-<p><em>Figure 2. Each filled point represents one prior. The open Waveform point is an additional initialization, excluded from the correlations. The dashed line marks seasonal-naive performance. Source: technical report, Fig. 2.</em></p>
+<p><em>Figure 2. Each filled point represents one prior. The open Waveform point is an additional initialization, excluded from the correlations. The dashed line marks seasonal-naive performance.</em></p>
 <p>The saved artifacts also expose two practical sensitivities. At 40M, switching ARIMA’s endpoint from EMA to raw weights changes its area from 154.5 to 15.4 million nats. Waveform’s two initializations have almost identical areas, 1061.2 and 1063.6, but CRPS ratios of 1.373 and 0.972; an extreme forecast failure contributes to the difference. Inspecting only an area or a typical-task score would miss these effects.</p>
+<h3 id="do-other-measurements-rank-the-generators-better">Do other measurements rank the generators better?</h3>
+<p>At 2M windows, the requential KL estimates ranged from 8.65 to 13.49 million bits per student, compared with 13.92 to 182.11 million bits for the prequential areas. The two measures largely agreed on the order of the generators (Spearman ρ = 0.95). Requential KL had a weak association with downstream CRPS (ρ = −0.09).</p>
+<p><img src="images/prequential_to_requential_crps_2m.png" alt="Arrows connect prequential area and estimated requential KL for eleven generators at 2M windows" /></p>
+<p><em>Figure 3. Each arrow connects the prequential area to the estimated requential KL for one generator. Its height is the archived CRPS ratio of the original pretrained forecaster. The KL estimate excludes coding overhead.</em></p>
+<p>Predictive V-information measures how many bits of forecast log-loss are saved by using the context. We train a pair of forecasters with and without context and score them on the same held-out windows. At 40M windows, ETS and Chaotic both saved about 403 bits per window, with very different downstream CRPS ratios of 0.717 and 1.285. Across all eleven generators, the rank correlations with CRPS were −0.19 at 2M and −0.24 at 40M.</p>
+<p><img src="images/v_information_vs_crps.png" alt="Predictive V-information versus archived CRPS for each generator at 2M and 40M windows" /></p>
+<p><em>Figure 4. The horizontal axis shows the held-out gain from context. The vertical axis shows the CRPS ratio of the original pretrained forecaster. The open marker is the additional Waveform initialization.</em></p>
 <p>These results cover one architecture and mostly one initialization per prior. Budgets match window counts, rather than measured total compute. Stronger subset correlations and early-prefix analyses are exploratory; the report supplies the full tables and limitations. Archived training was conducted by <strong>Danila Chernousov (<code>Chernousovdv</code>)</strong>; the report analyzes those saved runs.</p>
 <h2 id="use-the-library-to-test-a-data-selection-hypothesis">Use the library to test a data-selection hypothesis</h2>
 <p>A practical first experiment is to compare your candidate generator with KernelSynth and ETS under a common task and budget. Save the learning measurements, fix the endpoint convention, then evaluate downstream forecasts. If you want to select priors using area alone, validate that rule on new generator families and repeat initializations before using it to allocate larger budgets.</p>

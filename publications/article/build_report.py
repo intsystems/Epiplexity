@@ -8,4 +8,4 @@ sys.path.insert(0, str(HERE.parent))
 if __name__ == "__main__":
     from build_document import build
 
-    build(HERE, max_pages=18)
+    build(HERE, max_pages=19)

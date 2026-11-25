@@ -65,9 +65,11 @@ Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
 {\large\bfseries\color{reportnavy} Abstract\par}
 \texttt{episynth} is a Python library for comparing probabilistic forecasters
 trained on synthetic time series. A run configuration specifies the generator,
-forecast window, model, and training budget. The library implements prequential coding, requential coding, and predictive $\mathcal V$-information, with a Bayesian likelihood reference for a known process. A CPU experiment verifies the measurement pipeline. In the
-archived comparison of eleven generators, excess prequential loss had a weak
-rank association with forecast quality on GIFT-Eval at both training budgets.
+forecast window, model, and training budget. The library records the evidence
+needed to compute prequential excess loss, requential coding costs, and
+predictive $\mathcal V$-information. It also provides a Bayesian likelihood
+reference for a known process. Across eleven generators, all three measures
+had weak rank associations with GIFT-Eval CRPS at their reported budgets.
 
 \begingroup
 \small
@@ -95,7 +97,7 @@ Method & Measurement & Interface\\
 Prequential coding & Total, endpoint, and excess loss in bits & \texttt{prequential} estimator\\
 Predictive $\mathcal V$-information & Paired NLL reduction and standard error in bits per window & \texttt{v\_information} estimator\\
 OU Bayes reference & Joint and pointwise predictive NLL in nats per window & Reference functions\\
-Requential coding & Cumulative teacher--student KL and coding overhead & \texttt{requential} estimator\\
+Requential coding & Cumulative teacher--student KL and coding overhead in bits & \texttt{requential} estimator\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -269,21 +271,20 @@ smaller than the gap.
 \repolink{src/episynth/checks/ou_bayes.py}{Bayesian likelihood functions.}
 
 \subsection{Requential coding}\label{sec:requential}
-In requential coding, a student is reconstructed by replaying updates on
-teacher-generated targets~\cite{qiu2026}. The leading term of the expected
-code length is the sum of the teacher-to-student Kullback--Leibler
-divergences in bits at the updates. The expected code length also includes
-overhead for encoding the indices of selected samples as binary messages.
-The \texttt{requential} estimator measures cumulative KL in bits from teacher samples.
-Its optional finite ordered random coder writes a stream of proposal indices and replays the student updates from shared seeds.
-\testlink{requential}{Encoder and decoder tests.}
+Requential coding reconstructs a student from updates on teacher-generated
+targets~\cite{qiu2026}. The \texttt{requential} estimator uses one horizon per
+message and updates once per batch. Direct mode samples from the EMA teacher
+and records the sum of teacher--student log ratios in bits and a separate
+plug-in overhead estimate. Finite ordered random coding (\texttt{orc}) also
+writes packed indices for decoder replay. Both modes record split seeds,
+message counts, and final losses.
+\testlink{requential}{Codec tests.}
 \repolink{doc/source/measurements.rst}{Measurement guide.}
 
 \clearpage
 \section{Worked measurements}\label{sec:examples}
-Run the examples from the repository root after installing the package.
-The commands use the committed configurations. The reported values are
-from the \repolink{publications/technical_report/data/example_results.json}{recorded CPU run}.
+Run these commands from the repository root after installing the package.
+\repolink{publications/technical_report/data/example_results.json}{Recorded CPU results.}
 
 \subsection{Prequential loss from a run directory}\label{sec:waveform-example}
 \begin{lstlisting}
@@ -313,68 +314,60 @@ forecast observations per window.}
 \label{fig:demo}
 \end{figure}
 
-\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}
+\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information and requential coding}
 \begin{lstlisting}
 python -m episynth.train --config experiments/demos/v_information.json --out build/report_demo/v_information
+python -m episynth.train --config experiments/demos/requential.json --out build/report_demo/requential
 \end{lstlisting}
-Validation selects the context-free checkpoint for both roles, so the test
-loss vectors coincide. The zero gain and standard error in
-Table~\ref{tab:example-results} follow from this checkpoint selection.
+The $\mathcal V$-information demo selects the context-free checkpoint for
+both roles. The requential demo uses 32 real windows and 32 teacher-generated
+horizons. Table~\ref{tab:example-results} reports both results.
 \repolink{publications/technical_report/run_examples.py}{Example runner.}
 
 \clearpage
 \section{Archived pretraining and transfer}\label{sec:transfer}
-The comparison used eleven generators and two budgets, with one additional
-Waveform initialization at the larger budget. Each generated series contains
-1,024 observations. A training window contains 13 to 512 context observations,
-and the forecast target consists of the next 64 observations. The six-layer Moirai
-configuration has width 384, patch size 32, and 10,746,600 parameters. The runs used batches
-of 1,024 windows and scored the final EMA models on 100,000 separate windows
-from their respective generators. \repolink{experiments/episynth/README.md}{Run archive.}
+We trained six-layer Moirai models (width 384, patch size 32, 10,746,600
+parameters) on eleven generators for 1,953 or 39,062 updates of 1,024 windows.
+Each 1,024-point series supplies a window with 13 to 512 context observations
+and a 64-point forecast target. Final EMA models were scored on 100,000 fresh
+windows per run. Waveform has a second initialization at 40M windows.
 
 \subsection{Zero-shot forecast evaluation}
-The final EMA predictors were evaluated without fine-tuning on 55 short-term
-GIFT-Eval configurations~\cite{aksu2024}. For each configuration, the
-continuous ranked probability score (CRPS) is computed from forecast
-samples and scaled by the seasonal error of each window's history.
-Mean absolute scaled error (MASE) uses the sample median. The scores are
-averaged over retained forecast observations. The ratio to the seasonal
-na\"ive forecast is computed within each configuration and then aggregated
-by geometric mean.
+The original final EMA predictors were evaluated zero-shot on 55 short-term
+GIFT-Eval configurations~\cite{aksu2024}. CRPS uses forecast samples and MASE
+uses the sample median. Scores are scaled by the historical seasonal error,
+averaged within each configuration, and compared with the seasonal na\"ive
+forecast. We aggregate configuration ratios by geometric mean.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{../article/figures/transfer_results.pdf}
+\includegraphics[width=.86\linewidth]{../article/figures/transfer_results.pdf}
 \caption{Excess prequential loss and downstream CRPS for eleven generators.
 A ratio below one indicates lower CRPS than the seasonal na\"ive forecast.
 The open marker shows the additional Waveform initialization.}
 \label{fig:transfer}
 \end{figure}
 
+\subsection{Requential coding and \texorpdfstring{$\mathcal V$}{V}-information}
+The follow-up runs use the same generator, real-window budget, and
+initialization as the archived comparisons. The CRPS scores are from the
+original pretrained predictors. Requential KL ranges from 8.65 to 13.49
+million bits per student at 2M windows. The comparison uses the KL sum
+from direct teacher draws. For $\mathcal V$-information, separate Moirai
+fits with and without context are scored on 100,000 paired test windows
+per run. Those results cover both budgets and the Waveform repeat.
+
 \begin{table}[H]
 \centering\small
-\caption{Association of excess prequential loss with downstream CRPS.
-Intervals use paired bootstrap resampling within each set. The subset
-excludes Chaotic and Waveform and was selected after inspecting the results.}
-\label{tab:transfer}
-\begin{tabular}{@{}rrrcc@{}}
-\toprule
-Windows per run & Optimizer steps & Generators & Spearman $\rho$ & 95\% interval\\
-\midrule
-1,999,872  & 1,953  & 11 & $-0.18$ & $[-0.81,\,0.51]$\\
-39,999,488 & 39,062 & 11 & $0.00$  & $[-0.89,\,0.61]$\\
-39,999,488 & 39,062 &  9 & $-0.82$ & $[-1.00,\,-0.28]$\\
-\bottomrule
-\end{tabular}
+\caption{Spearman correlations with archived CRPS across the 11 primary
+generators per budget. Intervals use a paired bootstrap of generators.}
+\label{tab:coding-transfer}
+\input{../article/data/coding_correlation_table.tex}
 \end{table}
 
-KernelSynth and ETS rank first and second in CRPS at both budgets. The
-Waveform repeat improves downstream CRPS substantially at nearly the
-same excess loss. In the full comparison, the intervals include zero at
-both budgets, giving little support for ranking generators by excess loss.
-The stronger association in the exploratory subset shows how the result
-depends on which generators are included.
-\repolink{publications/article/data/run_statistics.csv}{Per-run metrics.}
+All full-set intervals include zero. The exploratory 40M prequential
+comparison excluding Chaotic and Waveform gave $\rho=-0.82$ with interval
+$[-1.00,\,-0.28]$. \repolink{experiments/episynth/README.md}{Sweep commands and artifacts.}
 
 \clearpage
 \section{Validation}\label{sec:validation}
@@ -393,6 +386,9 @@ Prequential coding & Total loss $L$ (bits) & 14,828.66\\
 \addlinespace[3pt]
 Predictive $\mathcal V$-information & Mean test NLL in each role (bits per window) & 68.4402\\
  & Paired gain and standard error (bits per window) & 0\\
+\addlinespace[3pt]
+Requential coding & Cumulative KL (Monte Carlo SE), bits & 7.66 (5.62)\\
+ & Plug-in coding overhead (bits) & 191.16\\
 \addlinespace[3pt]
 OU Bayes reference & Scored windows (dequantization disabled) & 64\\
  & Quadrature nodes (coarse / fine) & 512 / 1,024\\
@@ -449,19 +445,14 @@ summaries. \testlink{evaluation}{Evaluation},
 \end{table}
 
 \subsection{Integration checks with external artifacts}
-The recorded suite skips two integration tests. The window-indexing test
-uses the GIFT-Eval snapshot specified by \texttt{GIFT\_EVAL\_DIR}. The
-likelihood test scores sinusoidal and noise windows using the published
-Moirai-Small checkpoint specified by \texttt{MOIRAI\_SMALL\_DIR}.
-\testlink{evaluation}{GIFT-Eval test.}
-\testlink{model}{Published-checkpoint test.}
-
-Run the library suite from the repository root.
+The recorded suite skips two checks that require external artifacts.
+\testlink{evaluation}{Window indexing} uses the GIFT-Eval snapshot at
+\texttt{GIFT\_EVAL\_DIR}. \testlink{model}{Likelihood evaluation} uses the
+published Moirai-Small checkpoint at \texttt{MOIRAI\_SMALL\_DIR}.
+\repolink{publications/technical_report/data/test_results.json}{Recorded test outcomes.}
 \begin{lstlisting}
 python -m pytest tests/episynth -q -rs
 \end{lstlisting}
-\repolink{publications/technical_report/data/test_results.json}{Per-test outcomes and skip reasons.}
-\repolink{publications/technical_report/README.md}{Report reproduction instructions.}
 
 \clearpage
 \section{Extending the library}\label{sec:extensions}

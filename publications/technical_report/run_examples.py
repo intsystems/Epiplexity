@@ -34,6 +34,7 @@ def main():
     configs = {
         "prequential": HERE / "examples" / "prequential.json",
         "v_information": ROOT / "experiments" / "demos" / "v_information.json",
+        "requential": ROOT / "experiments" / "demos" / "requential.json",
     }
     env = os.environ.copy()
     env.update(
@@ -87,6 +88,24 @@ def main():
         abs_tol=1e-8,
     )
 
+    req = outputs["requential"]
+    for key in (
+        "estimated_kl_bits", "estimated_overhead_bits",
+        "plugin_expected_length_bound_bits",
+    ):
+        assert math.isclose(
+            req[key], math.fsum(step[key] for step in req["steps"]), abs_tol=1e-8
+        )
+    recovery_windows = sum(event["recovery_windows"] for event in req["projections"])
+    assert req["message_count"] + recovery_windows == req["real_windows"]
+    outputs["requential"] = {
+        key: req[key] for key in (
+            "mode", "real_windows", "message_count", "mc_repeats", "estimated_kl_bits",
+            "estimated_kl_mc_se_bits", "estimated_overhead_bits",
+            "plugin_expected_length_bound_bits", "heldout_nats_per_window",
+        )
+    }
+
     spec = WindowSpec(
         series_length=64,
         context_max=32,
@@ -138,6 +157,7 @@ def main():
             "recomputed_prequential": True,
             "paired_test_gain": True,
             "paired_standard_error": True,
+            "recomputed_requential_totals": True,
             "ou_quadrature_convergence": True,
         },
         "python": sys.version,
@@ -155,8 +175,8 @@ def main():
         json.dumps(result, indent=2) + "\n", encoding="utf-8"
     )
     print(
-        "Verified prequential recomputation, paired information, and OU"
-        " quadrature."
+        "Verified prequential and requential totals, paired information,"
+        " and OU quadrature."
     )
 
 

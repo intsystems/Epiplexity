@@ -42,7 +42,7 @@ pdfauthor={Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatski
 Danila Chernousov \quad Mark Ikonnikov\\
 Daniil Kazachkov \quad Alexey Kravatskiy\\[3pt]
 {\small Moscow Institute of Physics and Technology\\
-13 November 2026\par}
+25 November 2026\par}
 \end{center}
 \begin{abstract}
 Synthetic time-series generators provide a choice of pretraining distributions
@@ -54,9 +54,12 @@ and evaluate the final predictors on GIFT-Eval. Forecast quality varies
 widely across generators, but the full-set rank associations with the
 prequential area are weak at both budgets. Changes to the final predictor can
 markedly alter the area, and an additional Waveform initialization changes
-downstream accuracy with little change in area. We explain what a signed area
-measures under log-loss and other proper scoring rules, and give a
-counterexample in which two proper scores reverse the ranking.
+downstream accuracy with little change in area. At the smaller budget,
+requential KL gives a similar generator ranking and has a weak association
+with downstream CRPS. Predictive $\mathcal V$-information also has weak
+associations with CRPS at both budgets. We characterize when excess
+prequential loss can diverge from model description length and show that a
+change of proper scoring rule can reverse the ranking.
 \end{abstract}
 
 \section{Introduction}
@@ -81,7 +84,9 @@ We test that ranking in completed runs that vary the generator at a common
 architecture and window budget. The potential saving is in downstream
 evaluation, where the generator ranking can guide which predictors to score
 first. We examine the effect of the final loss used to compute the area and
-derive how a change of scoring rule can change the ordering. The companion
+compare the ranking with cumulative requential KL and predictive
+$\mathcal V$-information. We also derive how a change of scoring rule can
+change the ordering. The companion
 \href{https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report}
 {\texttt{episynth} technical report} documents the implementation and examples.
 
@@ -228,8 +233,8 @@ For each training budget $N$ considered, $\rho_N<0$.
 \end{hypothesis}
 
 \section{Measuring learned structure and predictability}\label{sec:measurements}
-The empirical ranking uses one prequential area per generator at each
-budget. The area depends on the predictive distribution used for scoring
+The primary empirical ranking uses one prequential area per generator at
+each budget. The area depends on the predictive distribution used for scoring
 and on the loss of the final predictor. Requential coding describes a
 trained student by its updates. Predictive $\mathcal V$-information
 measures the benefit of observing context. The Ornstein--Uhlenbeck (OU)
@@ -306,16 +311,16 @@ therefore yield different rankings for different scoring rules.
 \subsection{Requential coding}\label{sec:requential}
 Prequential coding gives a way to reconstruct the fitted predictor by
 decoding its training data. Requential coding reconstructs a student by
-using targets drawn from a teacher~\cite{qiu2026}. Given shared contexts
-and training history at step $k$, let $Q_k$ and $P_k$ be the teacher's and
-student's distributions for a batch of targets. The encoder selects an
+using targets drawn from a teacher~\cite{qiu2026}. Given the shared context
+and training history for message $k$, let $Q_k$ and $P_k$ be the teacher's and
+student's distributions for a forecast horizon. The encoder selects an
 element of a proposal sequence drawn from $P_k$ using shared randomness.
-The selection rule makes the accepted batch follow $Q_k$. The encoder
-transmits its index and the decoder regenerates the batch and replays
-the student update.
+The selection rule makes the accepted horizon follow $Q_k$. The encoder
+transmits its index. After decoding all the horizons in a batch, the decoder
+replays the student update.
 
 Let $D_k=\mathrm{KL}_2(Q_k\Vert P_k)$ be the Kullback--Leibler (KL)
-divergence of the full batch in bits. For finite divergences the expected
+divergence of the horizon in bits. For finite divergences the expected
 code length in the construction of Qiu et al.~\cite{qiu2026} satisfies
 \begin{equation}
  \mathbb E L_{\rm req}\le C_{\rm setup}
@@ -330,15 +335,16 @@ overhead of encoding the selected indices as binary messages.
 For a numerical estimate of the KL term, draw
 $\widetilde{\mathbf Y}_k\sim Q_k$ and evaluate
 $\widehat D_k=\log_2[Q_k(\widetilde{\mathbf Y}_k)/P_k(\widetilde{\mathbf Y}_k)]$
-using the batch densities or probability masses before updating the student
+using the horizon densities or probability masses before updating the student
 on the draw. The conditional mean of $\widehat D_k$ given the current teacher
 and student is $D_k$. Summing the estimates gives an estimate of the
 expected cumulative KL. For a fixed teacher and student, the Monte Carlo
-standard error from $m$ independent batch draws is estimated by
+standard error from $m$ independent draws is estimated by
 $s_r/\sqrt m$, where $s_r$ is the sample standard deviation of the log ratios.
 Training repeats address variation in the full trajectories.
-A comparison against $A_N$ would report the two training budgets and match
-the predictive quality of the student and the original predictor.
+The transfer comparison uses direct teacher draws. Its reported statistic
+is the estimated sum of KL terms in bits per student. Coding overhead, setup
+costs, and the length of a serialized bitstream are separate quantities.
 
 \subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}\label{sec:v-information}
 Learning the unconditional distribution of the target can contribute to
@@ -534,6 +540,24 @@ $R_{\rm CRPS}(g;N)$ for $R_{\mathcal T}(q_{g,N})$ in the generator-selection
 objective and examine MASE, median configuration ratios, and mean
 downstream NLL as additional views of forecast quality.
 
+\subsection{Requential and \texorpdfstring{$\mathcal V$}{V}-information comparisons}
+\label{sec:coding-protocol}
+We pair each supplementary measurement with the archived CRPS ratio for
+the same generator, window budget, and initialization. These CRPS ratios
+score the original pretrained predictors. The requential comparison covers
+the eleven 2M runs. An EMA teacher trains on the source while a student
+trains on teacher-generated targets for shared contexts. When the teacher
+is projected onto the student, any subsequent teacher-only recovery uses
+part of the real-window budget and adds no coding cost. Eight extra
+teacher draws per message estimate conditional Monte Carlo variance and
+the plug-in overhead separately from the KL sum plotted here.
+
+For predictive $\mathcal V$-information we fit two new predictors per
+archive entry under the protocol of Section~\ref{sec:v-information}.
+We score the selected EMA predictors on 100,000 paired test windows per
+entry. The measurements cover both budgets and the additional Waveform
+initialization. The training budget applies to each fit.
+
 \subsection{Rank association and its sensitivity}
 At each budget we estimate $\rho_N$ from the primary run for each
 generator. The 95\% percentile intervals use 10,000 paired bootstrap
@@ -620,6 +644,46 @@ zero.
 \href{https://github.com/intsystems/Epiplexity/blob/main/publications/article/data/task_ratios.csv}
 {Per-configuration scores.}
 
+\subsection{Requential coding and predictive \texorpdfstring{$\mathcal V$}{V}-information}
+\label{sec:coding-results}
+At 2M windows, estimated requential KL ranges from 8.65 to 13.49 million
+bits per student. The excess prequential areas for those runs range from
+13.92 to 182.11 million bits. The requential estimates span a narrower
+range and preserve much of the prequential ordering (Spearman
+$\rho=0.95$ between the two estimates, Figure~\ref{fig:coding-transfer}).
+Their association with the archived CRPS is weak ($\rho=-0.09$).
+
+Predictive $\mathcal V$-information also has weak associations with CRPS
+at both budgets (Table~\ref{tab:coding-correlations}). At 40M windows,
+ETS and Chaotic have almost the same gain from context (403.02 and 402.41
+bits per window), with CRPS ratios 0.717 and 1.285, respectively. The two
+Waveform fits have gains of 214.39 and 214.28 bits per window, with CRPS
+ratios of 1.373 and 0.972. The forecast improvement available from context
+on the generator can therefore be similar for predictors whose archived
+transfer performance differs substantially.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Spearman correlations with archived GIFT-Eval CRPS for the
+eleven primary generator runs per budget. The 95\% percentile intervals
+use 10,000 paired bootstrap resamples of generator families.}
+\label{tab:coding-correlations}
+\input{data/coding_correlation_table.tex}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=.83\linewidth]{figures/prequential_to_requential_crps_2m.pdf}\par
+\smallskip
+\includegraphics[width=\linewidth]{figures/v_information_vs_crps.pdf}
+\caption{Requential KL and predictive $\mathcal V$-information paired
+with archived CRPS ratios. Each arrow in the top panel keeps the archived
+CRPS fixed while moving from the excess prequential loss to the estimated
+requential KL. The bottom panels show context-based NLL gains at both
+budgets. The open marker denotes the additional Waveform initialization.}
+\label{fig:coding-transfer}
+\end{figure}
+
 \section{Discussion}\label{sec:discussion}
 
 \subsection{Learning on the generator and transfer to target series}
@@ -640,15 +704,16 @@ Replication across initializations and generator families would test the
 stability of the ranking.
 
 \subsection{Distinguishing measurement effects}
-The endpoint comparison isolates the contribution of the reference
-loss to the area. A requential comparison at matched held-out predictive
-quality would ask whether the observed ranking depends on using this
-learning-curve proxy for model description. Predictive
-$\mathcal V$-information would test whether high-area generators also
-offer a greater reduction in loss from using context. In a controlled
-OU experiment, the pointwise Bayes reference gives a loss benchmark
-matched to Moirai's horizon factorization. These comparisons address
-different possible sources of variation in the prequential estimate.
+At 2M windows, switching from the learning-curve proxy to requential KL
+yields a similar ordering and leaves the association with CRPS weak.
+The narrow range of KL estimates should be interpreted in light of the
+different endpoints and the omitted coding overhead. Comparing actual
+description lengths would also require matching held-out predictive
+quality. Predictive $\mathcal V$-information assesses how much context
+helps on each source. The similar gains for ETS and Chaotic illustrate
+why this quantity alone does not determine transfer. In a controlled OU
+experiment, the pointwise Bayes reference gives a loss benchmark matched
+to Moirai's horizon factorization.
 
 The training objective also matters to comparisons across architectures.
 A proper-score area measures gains in the sense of its own risk.

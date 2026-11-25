@@ -170,6 +170,20 @@
         },
         "uncertainty": "paired test sampling error conditional on fitted models"
       }
+    },
+    "requential": {
+      "mode": "direct",
+      "real_windows": 32,
+      "message_count": 32,
+      "mc_repeats": 8,
+      "estimated_kl_bits": 7.663601440947077,
+      "estimated_kl_mc_se_bits": 5.623381244207706,
+      "estimated_overhead_bits": 191.15703979135202,
+      "plugin_expected_length_bound_bits": 201.97640169235626,
+      "heldout_nats_per_window": {
+        "teacher": 9.339190885424614,
+        "student": 9.677339300513268
+      }
     }
   },
   "ou_reference": {
@@ -225,6 +239,7 @@
     "recomputed_prequential": true,
     "paired_test_gain": true,
     "paired_standard_error": true,
+    "recomputed_requential_totals": true,
     "ou_quadrature_convergence": true
   },
   "python": "3.12.13 (main, Jul 23 2026, 14:44:57) [MSC v.1944 64 bit (AMD64)]",
@@ -236,6 +251,7 @@
   },
   "configuration_sha256": {
     "prequential": "a2a308fe77461ee7292b26dd645743cf60eeeb4108258fb632e7963a8542c4f7",
-    "v_information": "306de2047fa4387bfdf2d93afeaa13ee9c020eaed639d53b2cabe56921556f4d"
+    "v_information": "306de2047fa4387bfdf2d93afeaa13ee9c020eaed639d53b2cabe56921556f4d",
+    "requential": "7e1df126abca6b7b1f090bc5e38c76f2b5826b4addaecdbc692a2a9b7d1f0aaa"
   }
 }

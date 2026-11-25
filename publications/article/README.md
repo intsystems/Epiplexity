@@ -1,7 +1,7 @@
 # Research article
 
 [Read the article](main.pdf): *Epiplexity and Transfer in Synthetic Time-Series Pretraining*
-(18 pages including references and appendices).
+(19 pages including references and appendices).
 The manuscript is [main.tex](main.tex), with references in [references.bib](references.bib).
 
 Section 2 connects synthetic forecasting, description length, and prior
@@ -9,8 +9,9 @@ evidence on transfer. Section 3 defines the zero-shot generator-selection
 objective and its ranking hypothesis. Section 4 develops the prequential
 estimate and describes requential coding, predictive V-information, and the
 OU Bayes reference. Sections 5 and 6 define and report CRPS and MASE ratios
-for eleven generators at both training budgets. The full comparison shows a
-weak association between excess loss and transfer.
+for eleven generators at both training budgets. The full comparison shows
+weak rank associations with CRPS for excess prequential loss, 2M
+requential KL, and predictive V-information at 2M and 40M windows.
 Section 8, Proposed Theory, develops bounds for computable predictive laws,
 separates excess prequential area from description length, and studies
 transfer through a restricted model of predictive mechanisms. Appendix B
@@ -33,7 +34,7 @@ python build_report.py
 ```
 
 Compilation requires pdfLaTeX and BibTeX. Committed tables and figures also
-allow `build_report.py` to run on its own. It checks the eighteen-page budget,
+allow `build_report.py` to run on its own. It checks the nineteen-page budget,
 unresolved references, and overflowing boxes, and records PDF and source hashes.
 
 `reproduce.py` runs the following scripts in order:
@@ -41,7 +42,7 @@ unresolved references, and overflowing boxes, and records PDF and source hashes.
 - `analyze_runs.py` reads committed configurations, batch-mean training curves,
   held-out scores, and GIFT-Eval summaries under `experiments/episynth/` and
   writes the pretraining and transfer table.
-- `prepare_tables.py` generates the correlation table and verifies the Bernoulli
+- `prepare_tables.py` generates both correlation tables and verifies the Bernoulli
   CRPS/KL ranking reversal from expected scores.
 - `make_plots.py` generates the comparison figures, seeded generator samples,
   and GIFT-Eval gallery. The GIFT-Eval figure uses the stored histories below.
@@ -53,8 +54,9 @@ artifact locations documented in [the experiment README](../../experiments/episy
 
 ## Coding comparisons
 
-From this directory, run `python plot_coding_transfer.py` to rebuild the three supplementary figures on CPU from repository data.
+From this directory, run `python plot_coding_transfer.py` to rebuild the three coding comparison figures on CPU from repository data.
 The full `reproduce.py` command also runs this step.
+The plotting step copies the paired coding and V-information PNGs to the blog's `images/` directory.
 
 | Figure (PNG and PDF) | Plot data under `data/` |
 | --- | --- |
@@ -75,7 +77,8 @@ The script checks each run and CRPS ratio against the prequential archive.
 | `data/checkpoint_statistics.csv`, `data/prefix_correlations.csv` | Prefix measurements and final-transfer associations |
 | `data/analysis_verification.json` | Input hashes, rounding bounds, baseline checks, and compression comparisons |
 | `data/migration_verification.json` | Equality of the five migrated statistical tables with the previous analysis |
-| `data/results_table.tex`, `data/correlation_table.tex` | Generated manuscript tables |
+| `data/results_table.tex`, `data/correlation_table.tex` | Prequential and forecast results |
+| `data/coding_correlation_table.tex` | Full-set prequential, requential, and V-information rank associations with bootstrap intervals |
 | `data/counterexample.json`, `data/counterexample.tex` | Direct calculation of the score-ranking reversal |
 | `figures/generator_examples.pdf` | Eleven seeded 192-point series in generator-table order, one vector trace per page |
 | `figures/generator_gallery.pdf` | Five additional 192-point draws from each of the eleven generators |
@@ -97,6 +100,7 @@ The benchmark gallery takes the final 192 positions of the first test-window
 history in each selected configuration of the [Salesforce GIFT-Eval Parquet release](https://huggingface.co/datasets/Salesforce/GiftEvalParquet/tree/faad405a631f3082bd3d4e4d47fa8ff976357205).
 The stored excerpts preserve missing observations and enable offline plotting.
 
-The coding discussion follows the cited constructions. The article reports
-completed prequential experiments. A requential comparison and measurements
-for quantile or diffusion models are proposed follow-up experiments.
+The requential sweep reports the estimated cumulative KL term for direct
+teacher draws. The V-information sweep reports paired NLL gains in bits per
+window. Both use archived CRPS from the original pretrained predictors.
+Measurements for quantile or diffusion models remain follow-up experiments.
