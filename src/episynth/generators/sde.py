@@ -8,14 +8,21 @@ _MAX_REGIMES = 4
 
 
 class SDE(Generator):
-    r"""OU process with 2-4 modes (probabilities 0,5, 0,3, 0,2), replaceable by Markov chain.
+    r"""OU process with 2-4 modes (probabilities 0,5, 0,3, 0,2), replaceable by
+    Markov chain.
 
-    Each mode has its own rate of return :math:`\theta`, level :math:`\mu` and volatility
-    :math:`\sigma`; the transition matrix is played on rows from the Dirichlet distribution with a
-    heavy diagonal. The time step is single, the transition between steps is accurate (Doob):
-    :math:`x_{t+1} = \mu_k + (x_t - \mu_k) e^{-\theta_k} + s_k \varepsilon_t` with :math:`s_k^2 =
-    \sigma_k^2 (1 - e^{-2\theta_k}) / (2\theta_k)`. The distribution does not depend on the length
-    of the series. The chain and the recursion are considered to be the same as the original mode.
+    Each mode has its own rate of return :math:`\theta`, level :math:`\mu` and
+    volatility
+    :math:`\sigma`; the transition matrix is played on rows from the Dirichlet
+    distribution with a
+    heavy diagonal. The time step is single, the transition between steps is
+    accurate (Doob):
+    :math:`x_{t+1} = \mu_k + (x_t - \mu_k) e^{-\theta_k} + s_k \varepsilon_t`
+    with :math:`s_k^2 =
+    \sigma_k^2 (1 - e^{-2\theta_k}) / (2\theta_k)`. The distribution does not
+    depend on the length
+    of the series. The chain and the recursion are considered to be the same as
+    the original mode.
 
     Args:
         length: The length of the row.
@@ -33,7 +40,9 @@ class SDE(Generator):
         mus = np.empty(k)
         mus[0] = base_mu
         for i in range(1, k):
-            mus[i] = mus[i - 1] + rng.choice([-1.0, 1.0]) * rng.uniform(1.0, 4.0)
+            mus[i] = mus[i - 1] + rng.choice([-1.0, 1.0]) * rng.uniform(
+                1.0, 4.0
+            )
         return thetas, mus, sigmas
 
     @staticmethod
@@ -49,17 +58,29 @@ class SDE(Generator):
         return cdf
 
     def _ou_scalar(self, regimes, thetas, mus, sigmas, rng) -> np.ndarray:
-        """Recursion of the OU in one row, like the original; you need an alternate path."""
+        """Recursion of the OU in one row, like the original; you need an
+        alternate path.
+        """
         dt = 1.0
         x = np.empty(self.length)
         k0 = regimes[0]
-        x[0] = mus[k0] + (sigmas[k0] / np.sqrt(2.0 * thetas[k0])) * rng.standard_normal()
+        x[0] = (
+            mus[k0]
+            + (sigmas[k0] / np.sqrt(2.0 * thetas[k0])) * rng.standard_normal()
+        )
         decay = np.exp(-thetas * dt)
-        t_std = np.sqrt(np.maximum((sigmas**2 / (2 * thetas)) * (1 - np.exp(-2 * thetas * dt)), 1e-15))
+        t_std = np.sqrt(
+            np.maximum(
+                (sigmas**2 / (2 * thetas)) * (1 - np.exp(-2 * thetas * dt)),
+                1e-15,
+            )
+        )
         noise = rng.standard_normal(self.length - 1)
         for t in range(self.length - 1):
             k = regimes[t + 1]
-            x[t + 1] = mus[k] + (x[t] - mus[k]) * decay[k] + t_std[k] * noise[t]
+            x[t + 1] = (
+                mus[k] + (x[t] - mus[k]) * decay[k] + t_std[k] * noise[t]
+            )
         return x
 
     def _batch(self, seeds: np.ndarray) -> np.ndarray:
@@ -86,20 +107,38 @@ class SDE(Generator):
             thetas[i, :k], mus[i, :k], sigmas[i, :k] = th, mu, sg
         rows = np.arange(n)
         for t in range(1, L):
-            regimes[:, t] = (cdf[rows, regimes[:, t - 1]] <= u[:, t - 1, None]).sum(axis=1)
+            regimes[:, t] = (
+                cdf[rows, regimes[:, t - 1]] <= u[:, t - 1, None]
+            ).sum(axis=1)
         dt = 1.0
         decay = np.exp(-thetas * dt)
-        t_std = np.sqrt(np.maximum((sigmas**2 / (2 * thetas)) * (1 - np.exp(-2 * thetas * dt)), 1e-15))
+        t_std = np.sqrt(
+            np.maximum(
+                (sigmas**2 / (2 * thetas)) * (1 - np.exp(-2 * thetas * dt)),
+                1e-15,
+            )
+        )
         x = np.empty((n, L))
         k0 = regimes[:, 0]
-        x[:, 0] = mus[rows, k0] + (sigmas[rows, k0] / np.sqrt(2.0 * thetas[rows, k0])) * z0
+        x[:, 0] = (
+            mus[rows, k0]
+            + (sigmas[rows, k0] / np.sqrt(2.0 * thetas[rows, k0])) * z0
+        )
         for t in range(L - 1):
             k = regimes[:, t + 1]
             m = mus[rows, k]
-            x[:, t + 1] = m + (x[:, t] - m) * decay[rows, k] + t_std[rows, k] * noise[:, t]
+            x[:, t + 1] = (
+                m
+                + (x[:, t] - m) * decay[rows, k]
+                + t_std[rows, k] * noise[:, t]
+            )
         bad = ~np.all(np.isfinite(x), axis=1)
         for i in np.flatnonzero(bad):
             x[i] = self._ou_scalar(
-                np.zeros(L, dtype=np.int64), np.array([1.0]), np.array([0.0]), np.array([0.5]), rngs[i]
+                np.zeros(L, dtype=np.int64),
+                np.array([1.0]),
+                np.array([0.0]),
+                np.array([0.5]),
+                rngs[i],
             )
         return x

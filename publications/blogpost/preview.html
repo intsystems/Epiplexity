@@ -341,54 +341,54 @@
 <table>
 <thead>
 <tr>
-<th align="left">Stage</th>
-<th align="left">What episynth handles</th>
+<th style="text-align: left;">Stage</th>
+<th style="text-align: left;">What episynth handles</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="left">Generate</td>
-<td align="left">Seeded series from eleven prior families, precomputed corpora, or mixtures</td>
+<tbody>
+<tr>
+<td style="text-align: left;">Generate</td>
+<td style="text-align: left;">Seeded series from eleven prior families, precomputed corpora, or mixtures</td>
 </tr>
 <tr>
-<td align="left">Form tasks</td>
-<td align="left">Context–future windows, padding, masks, and dequantization</td>
+<td style="text-align: left;">Form tasks</td>
+<td style="text-align: left;">Context–future windows, padding, masks, and dequantization</td>
 </tr>
 <tr>
-<td align="left">Train</td>
-<td align="left">A probabilistic Moirai model, pre-update loss logging, EMA weights, checkpoints, and resumption</td>
+<td style="text-align: left;">Train</td>
+<td style="text-align: left;">A probabilistic Moirai model, pre-update loss logging, EMA weights, checkpoints, and resumption</td>
 </tr>
 <tr>
-<td align="left">Measure</td>
-<td align="left">Prequential loss and its signed decomposition into residual and structural-proxy terms</td>
+<td style="text-align: left;">Measure</td>
+<td style="text-align: left;">Prequential loss decomposition, requential coding cost, and predictive gain from context</td>
 </tr>
 <tr>
-<td align="left">Evaluate</td>
-<td align="left">GIFT-Eval forecasts, per-window metrics, and configuration summaries</td>
+<td style="text-align: left;">Evaluate</td>
+<td style="text-align: left;">GIFT-Eval forecasts, per-window metrics, and configuration summaries</td>
 </tr>
-</tbody></table>
-<p>You can use the generators independently or run the full pipeline. The current training integration uses the library&#39;s <a href="https://arxiv.org/abs/2402.02592v2">Moirai</a> port. Its measurements describe a specified learner and training procedure; using them to choose data still requires validation against your downstream tasks.</p>
+</tbody>
+</table>
+<p>You can use the generators independently or run the full pipeline. The current training integration uses the library’s <a href="https://arxiv.org/abs/2402.02592v2">Moirai</a> port. Its measurements describe a specified learner and training procedure; using them to choose data still requires validation against your downstream tasks.</p>
 <h2 id="start-with-reproducible-synthetic-series">Start with reproducible synthetic series</h2>
 <p>The package requires Python 3.10 or newer. Install it from the repository in an activated environment:</p>
-<pre><code class="language-bash">git clone https://github.com/intsystems/Epiplexity.git
-cd Epiplexity
-python -m pip install -e .
-</code></pre>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/intsystems/Epiplexity.git</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> Epiplexity</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> pip install <span class="at">-e</span> .</span></code></pre></div>
 <p>Generating data takes a few lines:</p>
-<pre><code class="language-python">import numpy as np
-from episynth.generators import GENERATORS
-
-generator = GENERATORS[&quot;sde&quot;](length=1024)
-series = generator.generate(np.arange(8))
-print(series.shape)  # (8, 1024)
-</code></pre>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.generators <span class="im">import</span> GENERATORS</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>generator <span class="op">=</span> GENERATORS[<span class="st">&quot;sde&quot;</span>](length<span class="op">=</span><span class="dv">1024</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>series <span class="op">=</span> generator.generate(np.arange(<span class="dv">8</span>))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(series.shape)  <span class="co"># (8, 1024)</span></span></code></pre></div>
 <p>Each seed identifies a series, so you can revisit examples and construct separate training and held-out seed ranges. Window selection also depends on the series seed, independently of batch composition. This makes it possible to compare runs using the same examples without storing every generated window.</p>
-<p>The eleven families follow the synthetic priors studied in <a href="https://arxiv.org/abs/2606.09912v1"><em>Mix, Don&#39;t Pick</em></a>: KernelSynth, ETS, Waveform, SDE, StepFunction, TSI, ARIMA, fBm, GARCH, Chaotic, and TimeSynth. Together they cover smooth variation, trends, seasonality, discontinuities, stochastic dynamics, and changing volatility.</p>
-<p><img src="images/generator_gallery.png" alt="Example series from the eleven synthetic generator families"></p>
+<p>The eleven families follow the synthetic priors studied in <a href="https://arxiv.org/abs/2606.09912v1"><em>Mix, Don’t Pick</em></a>: KernelSynth, ETS, Waveform, SDE, StepFunction, TSI, ARIMA, fBm, GARCH, Chaotic, and TimeSynth. Together they cover smooth variation, trends, seasonality, discontinuities, stochastic dynamics, and changing volatility.</p>
+<p><img src="images/generator_gallery.png" alt="Example series from the eleven synthetic generator families" /></p>
 <p><em>Figure 1. Examples of the available priors, independently standardized for display. These illustrate generator behavior; they are not archived training traces.</em></p>
 <p>For expensive generators, <code>episynth.corpus</code> writes seeded series to disk for reuse. The training interface accepts either these corpora or online generation, and <code>Mixture</code> combines sources into an equal mixture. This lets you change the data source while keeping the rest of the experiment fixed.</p>
 <h2 id="what-the-learning-curve-measurement-means">What the learning-curve measurement means</h2>
 <p>The motivation comes from <a href="https://arxiv.org/html/2601.03220v2#S3">epiplexity</a>: the model-description part of an optimal two-part code available to a computationally bounded observer. One part describes learned structure; the other pays for residual uncertainty. The observer and its computational budget matter.</p>
-<p><code>episynth</code> implements an accessible, training-dependent proxy using <strong>prequential prediction</strong>: score each batch before learning from it, then update the model. Early predictions cost more when the model has yet to learn regularities. Subtracting the final predictor&#39;s average held-out loss from the accumulated loss gives an excess area.</p>
+<p><code>episynth</code> implements an accessible, training-dependent proxy using <strong>prequential prediction</strong>: score each batch before learning from it, then update the model. Early predictions cost more when the model has yet to learn regularities. Subtracting the final predictor’s average held-out loss from the accumulated loss gives an excess area.</p>
 <p>For per-window losses in nats, the estimator returns:</p>
 \[L=\frac{\sum_{i=1}^{N}\ell_i}{\ln 2},\qquad
 H=\frac{N\bar\ell_{\mathrm{heldout}}}{\ln 2},\qquad
@@ -396,133 +396,135 @@ S=L-H.\]
 <p>Here, <code>total_bits</code> is the accumulated predictive cost, <code>data_part_bits</code> is the endpoint residual estimate, and <code>model_part_bits</code> is the signed excess. <code>n_windows</code> records the budget. A high, flat loss curve can have little excess, whereas a sustained loss decrease creates a larger area.</p>
 <p><strong>The excess is a structural proxy, not an exact computation of formal epiplexity or a guarantee of useful transfer.</strong> It depends on architecture, optimizer, data order, budget, and endpoint choice. We retain negative values rather than clipping them. Because forecasts use continuous densities, the bit-valued outputs are density-based measurements; producing a literal encoded file would additionally require quantization and a codec. Keep units and dequantization consistent across comparisons.</p>
 <h2 id="train-a-model-and-obtain-the-estimate">Train a model and obtain the estimate</h2>
-<p>The following small run connects the main components. It is a demonstration budget, far below the experiments discussed later. The example targets a CUDA GPU; for a CPU trial, set <code>device=&quot;cpu&quot;</code> and <code>precision=&quot;fp32&quot;</code>.</p>
-<pre><code class="language-python">from episynth.estimators import build
-from episynth.model.moirai import small
-from episynth.training import TrainConfig, build_model
-from episynth.windows import WindowSpec
-
-spec = WindowSpec(context_lengths=(128, 256, 512), horizon=64)
-model = build_model(
-    small(
-        patch_sizes=(32,),
-        components=(&quot;student_t&quot;, &quot;normal_fixed&quot;, &quot;log_normal&quot;),
-    ),
-    init_seed=0,
-)
-config = TrainConfig(
-    n_windows=8192,
-    batch_size=64,
-    warmup_steps=16,
-    heldout_windows=512,
-    checkpoint_fractions=(1.0,),
-    device=&quot;cuda&quot;,
-    precision=&quot;bf16&quot;,
-)
-result = build(&quot;prequential&quot;).run(
-    model, generator, spec, config, &quot;runs/sde-demo&quot;
-)
-print(result)
-</code></pre>
-<p>This continues the data-generation example. <code>WindowSpec</code> defines the forecasting task; <code>TrainConfig</code> fixes the training budget and evaluation settings. The model starts from scratch. During training, the estimator records each window&#39;s loss before its batch update and evaluates the final raw and exponentially averaged (EMA) weights on separate held-out seeds. The default decomposition uses the EMA endpoint.</p>
+<p>The following small run connects the main components. It is a demonstration budget, far below the experiments discussed later. The example targets a CUDA GPU; for a CPU trial, set <code>device="cpu"</code> and <code>precision="fp32"</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.estimators <span class="im">import</span> build</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.model.moirai <span class="im">import</span> small</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.training <span class="im">import</span> TrainConfig, build_model</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.windows <span class="im">import</span> WindowSpec</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>spec <span class="op">=</span> WindowSpec(context_lengths<span class="op">=</span>(<span class="dv">128</span>, <span class="dv">256</span>, <span class="dv">512</span>), horizon<span class="op">=</span><span class="dv">64</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>model <span class="op">=</span> build_model(</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    small(</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        patch_sizes<span class="op">=</span>(<span class="dv">32</span>,),</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        components<span class="op">=</span>(<span class="st">&quot;student_t&quot;</span>, <span class="st">&quot;normal_fixed&quot;</span>, <span class="st">&quot;log_normal&quot;</span>),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    init_seed<span class="op">=</span><span class="dv">0</span>,</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> TrainConfig(</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    n_windows<span class="op">=</span><span class="dv">8192</span>,</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    batch_size<span class="op">=</span><span class="dv">64</span>,</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    warmup_steps<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    heldout_windows<span class="op">=</span><span class="dv">512</span>,</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    checkpoint_fractions<span class="op">=</span>(<span class="fl">1.0</span>,),</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    device<span class="op">=</span><span class="st">&quot;cuda&quot;</span>,</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    precision<span class="op">=</span><span class="st">&quot;bf16&quot;</span>,</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> build(<span class="st">&quot;prequential&quot;</span>).run(</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    model, generator, spec, config, <span class="st">&quot;runs/sde-demo&quot;</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(result)</span></code></pre></div>
+<p>This continues the data-generation example. <code>WindowSpec</code> defines the forecasting task; <code>TrainConfig</code> fixes the training budget and evaluation settings. The model starts from scratch. During training, the estimator records each window’s loss before its batch update and evaluates the final raw and exponentially averaged (EMA) weights on separate held-out seeds. The default decomposition uses the EMA endpoint.</p>
 <p>The output directory contains the resolved training configuration, <code>window_loss.f32</code>, endpoint loss files, and checkpoints including <code>ckpt_1.pt</code>. These artifacts let you inspect the learning trajectory and recompute the decomposition without training again:</p>
-<pre><code class="language-python">from episynth.estimators.prequential import PrequentialEstimator
-
-result = PrequentialEstimator(variant=&quot;ema&quot;).from_run_dir(&quot;runs/sde-demo&quot;)
-print(result[&quot;model_part_bits&quot;], result[&quot;data_part_bits&quot;])
-</code></pre>
-<p>Use <code>variant=&quot;raw&quot;</code> to check endpoint sensitivity. This reader needs the per-window loss files; a <code>steps.csv</code> export alone is insufficient. The report has a separate reconstruction script for the committed batch-mean exports.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> episynth.estimators.prequential <span class="im">import</span> PrequentialEstimator</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> PrequentialEstimator(variant<span class="op">=</span><span class="st">&quot;ema&quot;</span>).from_run_dir(<span class="st">&quot;runs/sde-demo&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(result[<span class="st">&quot;model_part_bits&quot;</span>], result[<span class="st">&quot;data_part_bits&quot;</span>])</span></code></pre></div>
+<p>Use <code>variant="raw"</code> to check endpoint sensitivity. This reader needs the per-window loss files; a <code>steps.csv</code> export alone is insufficient. The report has a separate reconstruction script for the committed batch-mean exports.</p>
 <p>For larger experiments, <code>python -m episynth.train</code> accepts a JSON configuration and <code>--set</code> overrides, resumes saved runs, and writes <code>estimator_result.json</code>. The <a href="https://github.com/intsystems/Epiplexity/blob/main/src/episynth/README.md">package guide</a> documents configuration and corpus workflows.</p>
 <h3 id="which-measurement-methods-are-ready">Which measurement methods are ready?</h3>
 <p>The <a href="https://github.com/intsystems/Epiplexity/blob/main/doc/source/measurements.rst">measurement contracts</a> distinguish current functionality from the proposed scope:</p>
 <table>
 <thead>
 <tr>
-<th align="left">Method</th>
-<th align="left">Purpose</th>
-<th align="left">Current status</th>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Purpose</th>
+<th style="text-align: left;">Current status</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="left">Prequential coding</td>
-<td align="left">Measure accumulated predictive cost and signed excess</td>
-<td align="left">Implemented; used in our transfer study</td>
+<tbody>
+<tr>
+<td style="text-align: left;">Prequential coding</td>
+<td style="text-align: left;">Measure accumulated predictive cost and signed excess</td>
+<td style="text-align: left;">Implemented; used in our transfer study</td>
 </tr>
 <tr>
-<td align="left">Bayesian predictive log-loss</td>
-<td align="left">Compare a learned forecaster with a known-prior reference</td>
-<td align="left">OU/AR(1) quadrature functions implemented in <code>checks.ou_bayes</code></td>
+<td style="text-align: left;">Bayesian predictive log-loss</td>
+<td style="text-align: left;">Compare a learned forecaster with a known-prior reference</td>
+<td style="text-align: left;">OU/AR(1) quadrature functions implemented in <code>checks.ou_bayes</code></td>
 </tr>
 <tr>
-<td align="left">Requential coding</td>
-<td align="left">Describe learned predictions through teacher-selected samples</td>
-<td align="left">Registered stub; <code>run</code> raises <code>NotImplementedError</code></td>
+<td style="text-align: left;">Requential coding</td>
+<td style="text-align: left;">Describe learned predictions through teacher-selected samples</td>
+<td style="text-align: left;">Implemented as <code>requential</code>: estimates cumulative KL in bits and can encode and replay a finite proposal stream</td>
 </tr>
 <tr>
-<td align="left">Predictive V-information</td>
-<td align="left">Measure the predictive benefit of observing context</td>
-<td align="left">Proposed; no estimator implemented</td>
+<td style="text-align: left;">Predictive V-information</td>
+<td style="text-align: left;">Measure the predictive benefit of observing context</td>
+<td style="text-align: left;">Implemented as <code>v_information</code>: reports paired test loss reduction and its standard error in bits per forecast window</td>
 </tr>
-</tbody></table>
-<p>The OU reference is useful for checking whether a trained model approaches the predictive loss implied by a known generative process. It provides joint and pointwise scores; use the pointwise reference when comparing with Moirai&#39;s forecast factorization. Custom estimators can implement <code>EpiplexityEstimator</code> and register a name with <code>@register</code>.</p>
+</tbody>
+</table>
+<p>The <a href="https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb">meeting notebook</a> runs all three estimators on CPU. Its archived figures pair the original forecaster’s CRPS ratio with V-information at 2M and 40M training windows and with estimated requential KL at 2M windows.</p>
+<p>The OU reference is useful for checking whether a trained model approaches the predictive loss implied by a known generative process. It provides joint and pointwise scores; use the pointwise reference when comparing with Moirai’s forecast factorization. Custom estimators can implement <code>EpiplexityEstimator</code> and register a name with <code>@register</code>.</p>
 <h2 id="check-whether-the-learned-structure-transfers">Check whether the learned structure transfers</h2>
-<p>The next step is to evaluate the checkpoint on real data. Given a local snapshot of <code>Salesforce/GiftEval</code>, the library&#39;s evaluator can score the demonstration run:</p>
-<pre><code class="language-bash">python -m episynth.evaluation.run \
-  --data /path/to/GiftEval --out eval/sde-demo --model moirai \
-  --checkpoint runs/sde-demo/ckpt_1.pt \
-  --config-json runs/sde-demo/config.json --weights ema --device cuda
-</code></pre>
+<p>The next step is to evaluate the checkpoint on real data. Given a local snapshot of <code>Salesforce/GiftEval</code>, the library’s evaluator can score the demonstration run:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> episynth.evaluation.run <span class="dt">\</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--data</span> /path/to/GiftEval <span class="at">--out</span> eval/sde-demo <span class="at">--model</span> moirai <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--checkpoint</span> runs/sde-demo/ckpt_1.pt <span class="dt">\</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--config-json</span> runs/sde-demo/config.json <span class="at">--weights</span> ema <span class="at">--device</span> cuda</span></code></pre></div>
 <p>It writes per-window metrics and <code>summary.csv</code>, with one row per configuration. A <code>--model seasonal_naive</code> run supplies baseline scores. This final stage answers whether a source teaches useful forecasting behavior for the benchmark you chose.</p>
-<p>Our <a href="https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf">technical report</a> applies this workflow to eleven priors. We trained the same 10.75-million-parameter Moirai transformer from scratch at approximately <strong>2 million and 40 million windows per prior</strong>, with a horizon of 64. We evaluated the final EMA models without fine-tuning on 55 short-term <a href="https://arxiv.org/abs/2410.10393v2">GIFT-Eval</a> configurations.</p>
-<p>The main score is sample-based CRPS, which evaluates forecast distributions. We divide each configuration&#39;s score by seasonal naive and take their equally weighted geometric mean. <strong>Lower is better; below one beats the baseline.</strong> Selected results show why both the training measurement and downstream evaluation matter:</p>
+<p>Our <a href="https://github.com/intsystems/Epiplexity/blob/main/publications/article/main.pdf">research article</a> applies this workflow to eleven priors. We trained the same 10.75-million-parameter Moirai transformer from scratch at approximately <strong>2 million and 40 million windows per prior</strong>, with a horizon of 64. We evaluated the final EMA models without fine-tuning on 55 short-term <a href="https://arxiv.org/abs/2410.10393v2">GIFT-Eval</a> configurations.</p>
+<p>The main score is sample-based CRPS, which evaluates forecast distributions. We divide each configuration’s score by seasonal naive and take their equally weighted geometric mean. <strong>Lower is better; below one beats the baseline.</strong> Selected results show why both the training measurement and downstream evaluation matter:</p>
 <table>
 <thead>
 <tr>
-<th align="left">Prior</th>
-<th align="right">Area, 2M</th>
-<th align="right">CRPS ratio, 2M</th>
-<th align="right">Area, 40M</th>
-<th align="right">CRPS ratio, 40M</th>
+<th style="text-align: left;">Prior</th>
+<th style="text-align: right;">Area, 2M</th>
+<th style="text-align: right;">CRPS ratio, 2M</th>
+<th style="text-align: right;">Area, 40M</th>
+<th style="text-align: right;">CRPS ratio, 40M</th>
 </tr>
 </thead>
-<tbody><tr>
-<td align="left">KernelSynth</td>
-<td align="right">68.4</td>
-<td align="right"><strong>0.678</strong></td>
-<td align="right">926.1</td>
-<td align="right"><strong>0.639</strong></td>
+<tbody>
+<tr>
+<td style="text-align: left;">KernelSynth</td>
+<td style="text-align: right;">68.4</td>
+<td style="text-align: right;"><strong>0.678</strong></td>
+<td style="text-align: right;">926.1</td>
+<td style="text-align: right;"><strong>0.639</strong></td>
 </tr>
 <tr>
-<td align="left">ETS</td>
-<td align="right">26.7</td>
-<td align="right">0.731</td>
-<td align="right">138.6</td>
-<td align="right">0.717</td>
+<td style="text-align: left;">ETS</td>
+<td style="text-align: right;">26.7</td>
+<td style="text-align: right;">0.731</td>
+<td style="text-align: right;">138.6</td>
+<td style="text-align: right;">0.717</td>
 </tr>
 <tr>
-<td align="left">Waveform</td>
-<td align="right">70.9</td>
-<td align="right">0.818</td>
-<td align="right">1061.2</td>
-<td align="right">1.373</td>
+<td style="text-align: left;">Waveform</td>
+<td style="text-align: right;">70.9</td>
+<td style="text-align: right;">0.818</td>
+<td style="text-align: right;">1061.2</td>
+<td style="text-align: right;">1.373</td>
 </tr>
 <tr>
-<td align="left">Chaotic</td>
-<td align="right">126.2</td>
-<td align="right">1.171</td>
-<td align="right">1956.6</td>
-<td align="right">1.285</td>
+<td style="text-align: left;">Chaotic</td>
+<td style="text-align: right;">126.2</td>
+<td style="text-align: right;">1.171</td>
+<td style="text-align: right;">1956.6</td>
+<td style="text-align: right;">1.285</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
 <p><em>Table 1. Selected primary runs from the report. Areas use the EMA endpoint and are reported in million nats, before conversion to bits. The correlations below use all eleven priors.</em></p>
 <p>KernelSynth ranked first and ETS second at both budgets. Yet Chaotic produced the largest excess area and transferred worse than seasonal naive. Across all eleven families, the Spearman correlations between area and downstream CRPS ratio were <strong>−0.18 at 2M and 0.00 at 40M</strong>. Their 95% bootstrap intervals, [−0.81, 0.51] and [−0.89, 0.61], are broad: this study does not establish a reliable ranking rule.</p>
-<p><img src="images/transfer_results.png" alt="Excess prequential area versus downstream CRPS ratio for all eleven priors at both budgets"></p>
+<p><img src="images/transfer_results.png" alt="Excess prequential area versus downstream CRPS ratio for all eleven priors at both budgets" /></p>
 <p><em>Figure 2. Each filled point represents one prior. The open Waveform point is an additional initialization, excluded from the correlations. The dashed line marks seasonal-naive performance. Source: technical report, Fig. 2.</em></p>
-<p>The saved artifacts also expose two practical sensitivities. At 40M, switching ARIMA&#39;s endpoint from EMA to raw weights changes its area from 154.5 to 15.4 million nats. Waveform&#39;s two initializations have almost identical areas, 1061.2 and 1063.6, but CRPS ratios of 1.373 and 0.972; an extreme forecast failure contributes to the difference. Inspecting only an area or a typical-task score would miss these effects.</p>
+<p>The saved artifacts also expose two practical sensitivities. At 40M, switching ARIMA’s endpoint from EMA to raw weights changes its area from 154.5 to 15.4 million nats. Waveform’s two initializations have almost identical areas, 1061.2 and 1063.6, but CRPS ratios of 1.373 and 0.972; an extreme forecast failure contributes to the difference. Inspecting only an area or a typical-task score would miss these effects.</p>
 <p>These results cover one architecture and mostly one initialization per prior. Budgets match window counts, rather than measured total compute. Stronger subset correlations and early-prefix analyses are exploratory; the report supplies the full tables and limitations. Archived training was conducted by <strong>Danila Chernousov (<code>Chernousovdv</code>)</strong>; the report analyzes those saved runs.</p>
 <h2 id="use-the-library-to-test-a-data-selection-hypothesis">Use the library to test a data-selection hypothesis</h2>
 <p>A practical first experiment is to compare your candidate generator with KernelSynth and ETS under a common task and budget. Save the learning measurements, fix the endpoint convention, then evaluate downstream forecasts. If you want to select priors using area alone, validate that rule on new generator families and repeat initializations before using it to allocate larger budgets.</p>
-<p><code>episynth</code> provides the pieces for that experiment: reproducible synthetic tasks, training logs that support recomputation, an implemented prequential estimator, and a forecasting benchmark interface. Our completed comparison identifies useful priors under one protocol and shows why measuring learning progress must be paired with checking its relevance to the target task.</p>
+<p><code>episynth</code> provides the pieces for that experiment: reproducible synthetic tasks, training logs that support recomputation, prequential, requential, and predictive V-information estimators, and a forecasting benchmark interface. Our completed comparison identifies useful priors under one protocol and shows why measuring learning progress must be paired with checking its relevance to the target task.</p>
 <p>Start with the <a href="https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb">demo notebook</a> or the examples above. The <a href="https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report">report and reproduction scripts</a> provide the experimental evidence behind the results.</p>
 
 </div>

@@ -1,4 +1,6 @@
-"""Chaotic systems: the coordinate of the Lorentz attractor and the McKee-Glass equation."""
+"""Chaotic systems: the coordinate of the Lorentz attractor and the McKee-Glass
+equation.
+"""
 
 import numpy as np
 
@@ -8,12 +10,17 @@ _BURN_IN = 2000
 
 
 class Chaotic(Generator):
-    """The coordinate of the Lorentz system (RK4) or the solution of the McKee-Glass equation (Eyler) is equal.
+    """The coordinate of the Lorentz system (RK4) or the solution of the
+    McKee-Glass equation (Eyler) is equal.
 
-    The system parameters, the integration step and the initial conditions are random; the first
-    2000 points are discarded as a transient. No observational noise: the series are determined
-    under known parameters and initial conditions. Integrating into rows is piecemeal with the same
-    operations as the original, so the main mode coincides with the reproduction mode to the bit.
+    The system parameters, the integration step and the initial conditions are
+    random; the first
+    2000 points are discarded as a transient. No observational noise: the
+    series are determined
+    under known parameters and initial conditions. Integrating into rows is
+    piecemeal with the same
+    operations as the original, so the main mode coincides with the
+    reproduction mode to the bit.
 
     Args:
         length: The length of the row.
@@ -100,15 +107,19 @@ class Chaotic(Generator):
                 active = (i >= hist) & (i < hist + n_steps)
                 x_tau = x[rows, np.maximum(i - hist, 0)]
                 prev = x[:, i - 1]
-                new = prev + dt * (beta * x_tau / (1 + x_tau**n_exp) - gamma * prev)
+                new = prev + dt * (
+                    beta * x_tau / (1 + x_tau**n_exp) - gamma * prev
+                )
                 new = np.where(np.isfinite(new), new, prev)
                 x[:, i] = np.where(active, new, x[:, i])
         out = np.empty((m, n_steps))
         for i in range(m):
-            out[i] = x[i, hist[i] : hist[i] + n_steps]
+            out[i] = x[i, hist[i]: hist[i] + n_steps]
         return out
 
-    def _finish(self, series: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    def _finish(
+        self, series: np.ndarray, rng: np.random.Generator
+    ) -> np.ndarray:
         L = self.length
         if len(series) > L:
             series = series[:L]
@@ -126,7 +137,10 @@ class Chaotic(Generator):
         lor = [i for i, p in enumerate(params) if p["system"] == "lorenz"]
         mg = [i for i, p in enumerate(params) if p["system"] != "lorenz"]
         if lor:
-            sigma, rho, beta, dt = (np.array([params[i][key] for i in lor]) for key in ("sigma", "rho", "beta", "dt"))
+            sigma, rho, beta, dt = (
+                np.array([params[i][key] for i in lor])
+                for key in ("sigma", "rho", "beta", "dt")
+            )
             x0 = np.stack([params[i]["x0"] for i in lor], axis=1)
             traj = self._lorenz(sigma, rho, beta, dt, n_steps, x0)
             for j, i in enumerate(lor):

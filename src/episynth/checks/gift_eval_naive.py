@@ -1,13 +1,13 @@
-r"""Convergence of our estimation pipeline with the published numbers seasonal naive GIFT-Eval.
+r"""Compare seasonal-naive point forecasts with published GIFT-Eval results.
 
-    python -m episynth.checks.gift_eval_naive --data <image GiftEval> --published <results/Seasonal_Naive/all_results.csv>
-        [--out <catalogue run>] [--configs ...]
+.. code-block:: bash
 
-Considers the seasonal naive forecast our code for short-term configurations and compares point
-metrics (MASE, sMAPE, ND, MAE, MSE [0.5]) with published ones: they depend only on the data, windows
-and formulas, and not on the intervals of the statsforecast. Quantile metrics of the published naive
-depend on its intervals and are not checked here. Prints the relative divergence on each
-configuration and the largest configuration.
+    python -m episynth.checks.gift_eval_naive --data "$GIFT_EVAL_DIR" \
+        --published results/Seasonal_Naive/all_results.csv
+
+The check reports relative differences in MASE, sMAPE, ND, MAE, and MSE
+for the short-term configurations. Quantile scores also depend on the
+prediction intervals produced by the reference implementation.
 """
 
 import argparse
@@ -18,7 +18,13 @@ from episynth.evaluation.forecasters import SeasonalNaive
 from episynth.evaluation.gift_eval import SHORT_CONFIGS, GiftDataset
 from episynth.evaluation.run import evaluate_config
 
-_POINT = {"MASE[0.5]": "eval_metrics/MASE[0.5]", "sMAPE[0.5]": "eval_metrics/sMAPE[0.5]", "ND[0.5]": "eval_metrics/ND[0.5]", "MAE[0.5]": "eval_metrics/MAE[0.5]", "MSE[0.5]": "eval_metrics/MSE[0.5]"}
+_POINT = {
+    "MASE[0.5]": "eval_metrics/MASE[0.5]",
+    "sMAPE[0.5]": "eval_metrics/sMAPE[0.5]",
+    "ND[0.5]": "eval_metrics/ND[0.5]",
+    "MAE[0.5]": "eval_metrics/MAE[0.5]",
+    "MSE[0.5]": "eval_metrics/MSE[0.5]",
+}
 
 
 def main() -> None:
@@ -37,11 +43,29 @@ def main() -> None:
         ds = GiftDataset(args.data, name, "short")
         _, agg = evaluate_config(ds, SeasonalNaive(ds.season))
         pub = published[ds.config]
-        rel = {k: abs(agg[k] - float(pub[col])) / max(abs(float(pub[col])), 1e-12) for k, col in _POINT.items()}
+        rel = {
+            k: abs(agg[k] - float(pub[col])) / max(abs(float(pub[col])), 1e-12)
+            for k, col in _POINT.items()
+        }
         worst = {k: max(v, rel[k]) for k, v in worst.items()}
-        out_rows.append({"config": ds.config, "windows": ds.windows, "series": len(ds.series), **{f"rel_{k}": v for k, v in rel.items()}, **{f"ours_{k}": v for k, v in agg.items() if k in rel}})
-        print(f"{ds.config:40s} " + " ".join(f"{k} {v:.1e}" for k, v in rel.items()), flush=True)
-    print("Largest relative discrepancy:", {k: f"{v:.1e}" for k, v in worst.items()})
+        out_rows.append(
+            {
+                "config": ds.config,
+                "windows": ds.windows,
+                "series": len(ds.series),
+                **{f"rel_{k}": v for k, v in rel.items()},
+                **{f"ours_{k}": v for k, v in agg.items() if k in rel},
+            }
+        )
+        print(
+            f"{ds.config:40s} "
+            + " ".join(f"{k} {v:.1e}" for k, v in rel.items()),
+            flush=True,
+        )
+    print(
+        "Largest relative discrepancy:",
+        {k: f"{v:.1e}" for k, v in worst.items()},
+    )
     if args.out:
         args.out.mkdir(parents=True, exist_ok=True)
         with open(args.out / "naive_check.csv", "w", newline="") as f:

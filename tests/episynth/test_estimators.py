@@ -27,7 +27,8 @@ def test_build_returns_instance():
 
 
 def test_build_unknown_raises():
-    """An unknown name builder drops a KeyError with a list of available ones."""
+    """An unknown name builder drops a KeyError with a list of available ones.
+    """
     with pytest.raises(KeyError, match="prequential"):
         build("no_such_estimator")
 
@@ -51,11 +52,17 @@ def test_requential_factory():
 
 
 def test_prequential_from_run_dir_uses_heldout(tmp_path):
-    """The from_run_dir counts the area through the heldout_ema_1.f32 rather than through the tail of the run."""
+    """The from_run_dir counts the area through the heldout_ema_1.f32 rather
+    than through the tail of the run.
+    """
     import numpy as np
 
-    np.asarray([5.0, 4.0, 3.0, 2.0], dtype=np.float32).tofile(tmp_path / "window_loss.f32")
-    np.asarray([2.0, 2.0, 1.0, 3.0], dtype=np.float32).tofile(tmp_path / "heldout_ema_1.f32")
+    np.asarray([5.0, 4.0, 3.0, 2.0], dtype=np.float32).tofile(
+        tmp_path / "window_loss.f32"
+    )
+    np.asarray([2.0, 2.0, 1.0, 3.0], dtype=np.float32).tofile(
+        tmp_path / "heldout_ema_1.f32"
+    )
     est = build("prequential", variant="ema")
     res = est.from_run_dir(tmp_path)
     # model part = sum_loss - N*l_fin = 14 - 4*2 = 6 nats
@@ -70,19 +77,31 @@ def test_prequential_from_run_dir_uses_heldout(tmp_path):
 
 
 @pytest.mark.parametrize("device", [None, "cpu"])
-def test_estimator_cli_applies_only_explicit_device_override(tmp_path, monkeypatch, device):
-    """An explicit CPU request overrides CUDA in a config; omission preserves it."""
+def test_estimator_cli_applies_only_explicit_device_override(
+    tmp_path, monkeypatch, device
+):
+    """An explicit CPU request overrides CUDA in a config; omission preserves
+    it.
+    """
     from episynth.estimators import run as estimator_cli
     from episynth.model.moirai import MoiraiConfig
     from episynth.training import TrainConfig
     from episynth.windows import WindowSpec
 
     config_path = tmp_path / "config.json"
-    config_path.write_text(json.dumps({
-        "train": TrainConfig(n_windows=8, batch_size=4, device="cuda").model_dump(mode="json"),
-        "spec": WindowSpec().model_dump(mode="json"),
-        "model": MoiraiConfig().model_dump(mode="json"),
-    }))
+    config_path.write_text(
+        json.dumps(
+            {
+                "train": (
+                    TrainConfig(
+                        n_windows=8, batch_size=4, device="cuda"
+                    ).model_dump(mode="json")
+                ),
+                "spec": WindowSpec().model_dump(mode="json"),
+                "model": MoiraiConfig().model_dump(mode="json"),
+            }
+        )
+    )
     received = []
 
     def capture(model, generator, spec, config, out_dir):
@@ -90,10 +109,22 @@ def test_estimator_cli_applies_only_explicit_device_override(tmp_path, monkeypat
         Path(out_dir).mkdir()
         return {"n_windows": config.n_windows}
 
-    monkeypatch.setattr(estimator_cli, "build", lambda *args, **kwargs: SimpleNamespace(run=capture))
+    monkeypatch.setattr(
+        estimator_cli,
+        "build",
+        lambda *args, **kwargs: SimpleNamespace(run=capture),
+    )
     monkeypatch.setattr(estimator_cli, "build_model", lambda *args: object())
-    args = ["--estimator", "prequential", "--generator", "waveform", "--config-json", str(config_path),
-            "--out", str(tmp_path / "out")]
+    args = [
+        "--estimator",
+        "prequential",
+        "--generator",
+        "waveform",
+        "--config-json",
+        str(config_path),
+        "--out",
+        str(tmp_path / "out"),
+    ]
     if device is not None:
         args.extend(["--device", device])
     estimator_cli.main(args)

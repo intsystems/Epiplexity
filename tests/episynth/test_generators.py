@@ -1,4 +1,6 @@
-"""Invariants of generators: form, determinism, independence of series from the composition of the package."""
+"""Invariants of generators: form, determinism, independence of series from the
+composition of the package.
+"""
 
 import hashlib
 
@@ -22,7 +24,9 @@ def test_shape_dtype_finite(name):
 
 @pytest.mark.parametrize("name", list(GENERATORS))
 def test_deterministic_and_batch_independent(name):
-    """The series depends only on the seed: repeat, singly and in a different order give the same rows."""
+    """The series depends only on the seed: repeat, singly and in a different
+    order give the same rows.
+    """
     gen = GENERATORS[name](length=256)
     full = gen.generate(SEEDS)
     again = gen.generate(SEEDS)
@@ -35,26 +39,33 @@ def test_deterministic_and_batch_independent(name):
 
 @pytest.mark.parametrize("name", list(GENERATORS))
 def test_exact_mode_runs(name):
-    """The reproduction mode works and gives finite rows of the desired shape."""
+    """The reproduction mode works and gives finite rows of the desired shape.
+    """
     gen = GENERATORS[name](length=256)
     x = gen.generate(SEEDS[:2], exact=True)
     assert x.shape == (2, 256) and np.isfinite(x).all()
 
 
 def test_timesynth_batch_matches_rowwise():
-    """The TimeSynth packet recursions coincide with the line-by-bit implementation of regular and irregular grids."""
+    """The TimeSynth packet recursions coincide with the line-by-bit
+    implementation of regular and irregular grids.
+    """
     from episynth.generators.timesynth import TimeSynth
 
     for prob in (0.0, 1.0, 0.2):
         gen = TimeSynth(length=256, irregular_prob=prob)
         seeds = np.arange(900, 960)
         batch = gen.generate(seeds)
-        rows = np.stack([gen._one(int(s), prob) for s in seeds]).astype(np.float32)
+        rows = np.stack([gen._one(int(s), prob) for s in seeds]).astype(
+            np.float32
+        )
         assert np.array_equal(batch, rows)
 
 
 def test_arima_legacy_preserves_seeded_output_bits():
-    """The default retains the exact float32 stream recorded before adding corrected mode."""
+    """The default retains the exact float32 stream recorded before adding
+    corrected mode.
+    """
     default = ARIMA(length=256).generate(SEEDS)
     assert hashlib.sha256(default.astype("<f4").tobytes()).hexdigest() == (
         "d9a35b725e6feb9478d000cafb758dddb109dc99c75be38e676a464a5c1dc0e8"
@@ -67,7 +78,9 @@ def test_arima_legacy_preserves_seeded_output_bits():
 @pytest.mark.parametrize("sample", [_sample_ar, _sample_ma])
 @pytest.mark.parametrize("order", [1, 2, 3])
 def test_arima_legacy_uses_small_fallback_distribution(sample, order):
-    """The root-product obstruction rejects every legacy candidate before the fallback draw."""
+    """The root-product obstruction rejects every legacy candidate before the
+    fallback draw.
+    """
     for seed in range(8):
         expected_rng = np.random.default_rng(seed)
         candidates = expected_rng.uniform(-0.8, 0.8, size=(100, order))
@@ -83,15 +96,22 @@ def test_arima_legacy_uses_small_fallback_distribution(sample, order):
 
 @pytest.mark.parametrize("sample,sign", [(_sample_ar, -1), (_sample_ma, 1)])
 @pytest.mark.parametrize("order", [1, 2, 3])
-def test_arima_corrected_coefficients_have_valid_lag_roots(sample, sign, order):
+def test_arima_corrected_coefficients_have_valid_lag_roots(
+    sample, sign, order
+):
     for seed in range(64):
         coefficients = sample(order, np.random.default_rng(seed), "corrected")
         assert np.isfinite(coefficients).all()
         # Polynomial takes coefficients in ascending lag order, independently
         # checking AR stationarity / MA invertibility and the 1.05 margin.
-        roots = np.polynomial.Polynomial(np.r_[1.0, sign * coefficients]).roots()
+        roots = np.polynomial.Polynomial(
+            np.r_[1.0, sign * coefficients]
+        ).roots()
         assert (np.abs(roots) > 1.05).all()
-        np.testing.assert_array_equal(coefficients, sample(order, np.random.default_rng(seed), "corrected"))
+        np.testing.assert_array_equal(
+            coefficients,
+            sample(order, np.random.default_rng(seed), "corrected"),
+        )
 
 
 def test_arima_corrected_mode_is_finite_deterministic_and_batch_independent():

@@ -1,15 +1,17 @@
-"""Build PoC figures from the committed notebook and report; no training is rerun."""
+"""Build PoC figures from the committed notebook and report; no training is
+rerun.
+"""
 
 import base64
 import csv
 import json
+import shutil
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+plt.switch_backend("Agg")
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -39,12 +41,17 @@ for c in nb["cells"]:
         if o["output_type"] == "stream":
             t = "".join(o["text"])
             if '"total_bits"' in t:
-                result = json.loads(t[t.index("{") : t.rindex("}") + 1])
+                result = json.loads(t[t.index("{"): t.rindex("}") + 1])
 assert result is not None and result["n_windows"] == 64
-# This figure is deliberately schematic; it is not an experimental learning curve.
+# This figure is deliberately schematic; it is not an experimental learning
+# curve.
 x = np.linspace(1, 100, 400)
 floor = 1.1
-y = floor + 2.7 * np.exp(-(x - 1) / 24) - 0.60 * np.exp(-(((x - 76) / 12) ** 2))
+y = (
+    floor
+    + 2.7 * np.exp(-(x - 1) / 24)
+    - 0.60 * np.exp(-(((x - 76) / 12) ** 2))
+)
 fig, ax = plt.subplots(figsize=(10, 3.4))
 ax.plot(x, y, color="#124B68", lw=2.6, label="Loss before the weight update")
 ax.axhline(floor, color="#BD6A23", lw=2, ls="--", label="Final held-out loss")
@@ -68,7 +75,12 @@ ax.fill_between(
     alpha=0.5,
     label="Negative contribution",
 )
-ax.set(xlabel="Training windows", ylabel="NLL per window (nats)", xlim=(1, 100), ylim=(0.35, 4.25))
+ax.set(
+    xlabel="Training windows",
+    ylabel="NLL per window (nats)",
+    xlim=(1, 100),
+    ylim=(0.35, 4.25),
+)
 ax.xaxis.label.set_size(15)
 ax.yaxis.label.set_size(15)
 ax.set_yticks([])
@@ -95,8 +107,18 @@ for ax, series in zip(axs, ["1", "2"], strict=True):
     for r in rows:
         px, py = float(r["area_ema_mnats"]), float(r["crps_geo"])
         ax.scatter(px, py, s=38, color="#0C8179")
-        label = r["generator"].replace("stepfunction", "step").replace("kernelsynth", "kernel")
-        ax.annotate(label, (px, py), xytext=(4, 4), textcoords="offset points", fontsize=7.2)
+        label = (
+            r["generator"]
+            .replace("stepfunction", "step")
+            .replace("kernelsynth", "kernel")
+        )
+        ax.annotate(
+            label,
+            (px, py),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=7.2,
+        )
     ax.axhline(1, color="#BD6A23", lw=1.3, ls="--")
     corr = next(r for r in corrs if r["series"] == series)
     ax.set_title(
@@ -111,13 +133,31 @@ fig.tight_layout()
 fig.savefig(OUT / "large_series_context.pdf")
 fig.savefig(OUT / "large_series_context.png", dpi=170)
 plt.close(fig)
+coding_figures = [
+    ROOT / "publications/article/figures" / (stem + ".pdf")
+    for stem in (
+        "v_information_vs_crps",
+        "requential_vs_crps_2m",
+        "prequential_to_requential_crps_2m",
+    )
+]
+for figure in coding_figures:
+    shutil.copyfile(figure, OUT / figure.name)
+
 (HERE / "data/provenance.json").write_text(
     json.dumps(
         {
             "notebook": "experiments/demos/demo_estimators.ipynb",
-            "notebook_executed_code_cells": 6,
+            "notebook_executed_code_cells": sum(
+                c.get("execution_count") is not None for c in nb["cells"]
+            ),
+            "coding_figures": [
+                str(p.relative_to(ROOT)) for p in coding_figures
+            ],
             "demo_result_bits": result,
-            "illustrative_figure": "area_schematic is a synthetic illustration, not measured data",
+            "illustrative_figure": (
+                "area_schematic is a synthetic illustration, not measured data"
+            ),
             "report_runs": "publications/article/data/run_statistics.csv",
             "report_correlations": corrs,
         },
@@ -126,4 +166,7 @@ plt.close(fig)
     )
     + "\n"
 )
-print("Exported actual notebook plot, illustrative area diagram and saved-series context.")
+print(
+    "Exported actual notebook plot, illustrative area diagram and saved-series"
+    " context."
+)

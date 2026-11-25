@@ -9,12 +9,17 @@ _TYPES = ["sawtooth", "square", "triangle"]
 
 
 class Waveform(Generator):
-    """The sum of one or three non-smooth waves with random frequency, amplitude, phase and porosity.
+    """The sum of one or three non-smooth waves with random frequency,
+    amplitude, phase and porosity.
 
-    With the probability of 0,3, the amplitude is modulated by the sine, with the probability of
-    0,7, white noise is added, with the probability of 0,3 is a linear trend. The frequencies are
-    given by the number of periods per series, so the distribution of the shape is independent of
-    the length. The original is already vectored in time, the main mode coincides with the playback
+    With the probability of 0,3, the amplitude is modulated by the sine, with
+    the probability of
+    0,7, white noise is added, with the probability of 0,3 is a linear trend.
+    The frequencies are
+    given by the number of periods per series, so the distribution of the shape
+    is independent of
+    the length. The original is already vectored in time, the main mode
+    coincides with the playback
     mode.
 
     Args:
@@ -51,7 +56,9 @@ class Waveform(Generator):
             mod_freq = float(rng.uniform(0.5, 5))
             combined *= 1 + 0.5 * np.sin(2 * np.pi * mod_freq * t)
         if rng.random() < 0.7:
-            combined += rng.normal(0, float(rng.uniform(0.01, 0.3)), size=self.length)
+            combined += rng.normal(
+                0, float(rng.uniform(0.01, 0.3)), size=self.length
+            )
         if rng.random() < 0.3:
             combined += rng.uniform(-2, 2) * t
         return combined

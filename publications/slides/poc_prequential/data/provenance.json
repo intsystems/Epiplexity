@@ -1,6 +1,11 @@
 {
   "notebook": "experiments/demos/demo_estimators.ipynb",
-  "notebook_executed_code_cells": 6,
+  "notebook_executed_code_cells": 8,
+  "coding_figures": [
+    "publications/article/figures/v_information_vs_crps.pdf",
+    "publications/article/figures/requential_vs_crps_2m.pdf",
+    "publications/article/figures/prequential_to_requential_crps_2m.pdf"
+  ],
   "demo_result_bits": {
     "model_part_bits": 788.2840652217938,
     "data_part_bits": 5499.0586563787765,
@@ -8,7 +13,7 @@
     "n_windows": 64.0
   },
   "illustrative_figure": "area_schematic is a synthetic illustration, not measured data",
-  "report_runs": "publications/technical_report/data/run_statistics.csv",
+  "report_runs": "publications/article/data/run_statistics.csv",
   "report_correlations": [
     {
       "series": "1",

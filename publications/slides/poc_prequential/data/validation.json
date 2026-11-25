@@ -1,18 +1,20 @@
 {
-  "pages": 15,
-  "main_slides": 12,
-  "appendix_slides": 3,
-  "visual_review": "All 15 pages reviewed via rendered contact sheet; final overflowing frames corrected.",
+  "pages": 18,
+  "main_slides": 14,
+  "appendix_slides": 4,
+  "visual_review": "Rendered and inspected all 18 slides, including the three archived comparison figures.",
   "standalone_source_archive_compiles": true,
   "overfull_boxes": false,
   "missing_glyphs": false,
   "undefined_references": false,
-  "pdf_sha256": "0db177e98d44b0dfc24467fed2de6d77132a8c245cbcfde5d3e53feef7f8f288",
+  "pdf_sha256": "f30ab1e2258c5b769d5feb6a0934af0f08511b45bae04fd45b685ea8337254fa",
   "source_sha256": {
-    "main.tex": "a3974c32cce37f8ed263896b1c0c33fcd7cd5cfb5110a50298e099d40efa0398",
-    "figures/demo_notebook.png": "2d5d05c81b88f086a5f9d744c9fae956475beeba9c81f373e9e70394821fda52",
-    "figures/area_schematic.pdf": "a8a1e7ee59156297f6f52155d05e9947b20007ccf9224fbae62c0f6639fba0d0",
-    "figures/large_series_context.pdf": "f818b02e981e83f0433b62cee8e105892b946d2306f3a7634577f4c7f041d299"
-  },
-  "known_build_notice": "TeX installation has no Russian hyphenation patterns; no overflow occurs with the final explicit layout."
+    "main.tex": "320da7f4cd105ee21613fe2a2043b0f5177132e53531377e612fc86c42561705",
+    "figures/area_schematic.pdf": "f2781e1de7bc50c3c2f12e2b1f81ce947d4108cbb46c129739dcb398aba2997b",
+    "figures/demo_notebook.png": "84248b4998191c97fd1dc5f2d245f9bda114171cd5823685edda91203072fec3",
+    "figures/v_information_vs_crps.pdf": "024a47a4697e0bac584a555ef6cc9aeec8e739e6125bb741e6acdd4484747bae",
+    "figures/requential_vs_crps_2m.pdf": "43a1426c2cad3d962e03bc9f21664b45e7ce4af785275c35b97e8c7b8b83f3d6",
+    "figures/large_series_context.pdf": "14b802fb515d1f2521a07dc09925c337b96987a40683d2fd715686c8e737076f",
+    "figures/prequential_to_requential_crps_2m.pdf": "69029565137d300ae86f20b3e14f66e05d40f7c36f7c1913cefd2d1bdda4cef8"
+  }
 }

@@ -1,17 +1,23 @@
 r"""Running an epiplexity evaluator from the command line.
 
-    python -m episynth.estimators.run --estimator <name> --generator <name>
-        [--config-json runs/<run>/config.json] [--out <catalog>] [-n-windows N] \
-        [--batch-size B] [--device cuda] ...
+.. code-block:: bash
 
-By default, the model is built using :func:`episynth.training.build_model` from the `config.json`
-configuration (`model` and `train` fields). If `--config-json` is not specified, the
-`--n-windows`/`--batch-size` arguments (mandatory) and the default `TrainConfig` values are used.
+    python -m episynth.estimators.run --estimator prequential \
+        --generator waveform --n-windows 64 --batch-size 4 --device cpu
 
-`--estimator-config` is a JSON parameter object, such as `{"variant": "raw", "test_windows": 1000}`
+By default, the model is built using :func:`episynth.training.build_model` from
+the `config.json`
+configuration (`model` and `train` fields). If `--config-json` is not
+specified, the
+`--n-windows`/`--batch-size` arguments (mandatory) and the default
+`TrainConfig` values are used.
+
+`--estimator-config` is a JSON parameter object, such as `{"variant": "raw",
+"test_windows": 1000}`
 for V-information. The result is stored in `estimator_result.json`.
 
-The names of the available algorithms are :func:`episynth.estimators.available`.
+The names of the available algorithms are
+:func:`episynth.estimators.available`.
 """
 
 from __future__ import annotations
@@ -28,7 +34,9 @@ from .base import write_estimator_result
 from .registry import available, build
 
 
-def _build_from_config_json(path: Path) -> tuple[TrainConfig, WindowSpec, MoiraiConfig]:
+def _build_from_config_json(
+    path: Path,
+) -> tuple[TrainConfig, WindowSpec, MoiraiConfig]:
     """Restores configurations from `config.json` recorded by `Trainer.run`."""
     data = json.loads(path.read_text())
     return (
@@ -40,16 +48,50 @@ def _build_from_config_json(path: Path) -> tuple[TrainConfig, WindowSpec, Moirai
 
 def main(argv: list[str] | None = None) -> None:
     """CLI entry point: Launches the selected estimator."""
-    parser = argparse.ArgumentParser(description="Run an epiplexity estimator.")
-    parser.add_argument("--estimator", required=True, choices=available(), help="Estimator name.")
-    parser.add_argument("--generator", required=True, help="Series generator name.")
+    parser = argparse.ArgumentParser(
+        description="Run an epiplexity estimator."
+    )
+    parser.add_argument(
+        "--estimator",
+        required=True,
+        choices=available(),
+        help="Estimator name.",
+    )
+    parser.add_argument(
+        "--generator", required=True, help="Series generator name."
+    )
     parser.add_argument("--out", default="runs/epi", help="Output directory.")
-    parser.add_argument("--config-json", help="Path to a run's config.json; overrides the defaults.")
-    parser.add_argument("--n-windows", type=int, help="Training budget in windows (required without --config-json).")
-    parser.add_argument("--batch-size", type=int, help="Windows per step (required without --config-json).")
-    parser.add_argument("--device", help="Device, e.g. cuda or cpu; overrides the saved config when supplied.")
-    parser.add_argument("--init-seed", type=int, help="Weight initialization seed; overrides config train.init_seed.")
-    parser.add_argument("--estimator-config", default="{}", help="JSON object of estimator constructor arguments.")
+    parser.add_argument(
+        "--config-json",
+        help="Path to a run's config.json; overrides the defaults.",
+    )
+    parser.add_argument(
+        "--n-windows",
+        type=int,
+        help="Training budget in windows (required without --config-json).",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        help="Windows per step (required without --config-json).",
+    )
+    parser.add_argument(
+        "--device",
+        help=(
+            "Device, e.g. cuda or cpu; overrides the saved config when"
+            " supplied."
+        ),
+    )
+    parser.add_argument(
+        "--init-seed",
+        type=int,
+        help="Weight initialization seed; overrides config train.init_seed.",
+    )
+    parser.add_argument(
+        "--estimator-config",
+        default="{}",
+        help="JSON object of estimator constructor arguments.",
+    )
     args = parser.parse_args(argv)
     try:
         estimator_config = json.loads(args.estimator_config)
@@ -59,24 +101,48 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--estimator-config must be a JSON object")
 
     if args.config_json:
-        config, spec, model_cfg = _build_from_config_json(Path(args.config_json))
+        config, spec, model_cfg = _build_from_config_json(
+            Path(args.config_json)
+        )
     else:
         if args.n_windows is None or args.batch_size is None:
-            parser.error("--n-windows and --batch-size are required unless --config-json is given.")
+            parser.error(
+                "--n-windows and --batch-size are required unless"
+                " --config-json is given."
+            )
         spec = WindowSpec()
-        config = TrainConfig(n_windows=args.n_windows, batch_size=args.batch_size, init_seed=args.init_seed if args.init_seed is not None else 0)
-        model_cfg = MoiraiConfig(patch_sizes=(spec.patch_size,), components=("student_t", "normal_fixed", "log_normal"))
+        config = TrainConfig(
+            n_windows=args.n_windows,
+            batch_size=args.batch_size,
+            init_seed=args.init_seed if args.init_seed is not None else 0,
+        )
+        model_cfg = MoiraiConfig(
+            patch_sizes=(spec.patch_size,),
+            components=("student_t", "normal_fixed", "log_normal"),
+        )
 
     if args.device is not None:
         config = config.model_copy(update={"device": args.device})
     if args.init_seed is not None:
         config = config.model_copy(update={"init_seed": args.init_seed})
-    generator = build_generator(DataConfig(generator=args.generator), spec.series_length)
+    generator = build_generator(
+        DataConfig(generator=args.generator), spec.series_length
+    )
     model = build_model(model_cfg, config.init_seed)
     estimator = build(args.estimator, **estimator_config)
     result = estimator.run(model, generator, spec, config, args.out)
     write_estimator_result(args.out, result)
-    print(json.dumps({"estimator": args.estimator, "generator": args.generator, "result": result}, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "estimator": args.estimator,
+                "generator": args.generator,
+                "result": result,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":

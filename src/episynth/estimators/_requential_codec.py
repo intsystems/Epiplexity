@@ -10,9 +10,13 @@ import torch
 from ..model.moirai import Mixture
 
 
-def _keyed_seed(seed: int, stream: str, step: int, window: int, index: int) -> int:
+def _keyed_seed(
+    seed: int, stream: str, step: int, window: int, index: int
+) -> int:
     key = f"{seed}/{stream}/{step}/{window}/{index}".encode("ascii")
-    return int.from_bytes(hashlib.blake2b(key, digest_size=8).digest(), "little")
+    return int.from_bytes(
+        hashlib.blake2b(key, digest_size=8).digest(), "little"
+    )
 
 
 def seeded_draw(
@@ -24,7 +28,8 @@ def seeded_draw(
     index: int = 0,
     count: int = 1,
 ) -> torch.Tensor:
-    """Sample in original units while preserving the caller's random streams."""
+    """Sample in original units while preserving the caller's random streams.
+    """
     seed = _keyed_seed(seed, stream, step, window, index)
     device = law.logits.device
     devices = [device.index] if device.type == "cuda" else []
@@ -52,14 +57,22 @@ def window_law(law: Mixture, i: int) -> Mixture:
     )
 
 
-def proposal(law: Mixture, seed: int, step: int, window: int, index: int) -> torch.Tensor:
+def proposal(
+    law: Mixture, seed: int, step: int, window: int, index: int
+) -> torch.Tensor:
     return seeded_draw(law, seed, "proposal", step, window, index)[0]
 
 
-def ordered_index(log_ratios: Sequence[float], exponentials: Sequence[float]) -> int:
-    """Return the one-based winner of the finite ORC race (Theis and Yosri, Alg. 4)."""
+def ordered_index(
+    log_ratios: Sequence[float], exponentials: Sequence[float]
+) -> int:
+    """Return the one-based winner of the finite ORC race (Theis and Yosri,
+    Alg. 4).
+    """
     n = len(log_ratios)
-    arrivals = np.cumsum(np.asarray(exponentials, dtype=np.float64) * n / np.arange(n, 0, -1))
+    arrivals = np.cumsum(
+        np.asarray(exponentials, dtype=np.float64) * n / np.arange(n, 0, -1)
+    )
     return int(np.argmin(np.log(arrivals) - log_ratios)) + 1
 
 
@@ -70,7 +83,9 @@ def arrival_increment(seed: int, step: int, window: int, index: int) -> float:
 
 
 def pack_indices(indices: Sequence[int]) -> tuple[bytes, int]:
-    """Concatenate positive Elias-delta integers, MSB first, and zero-pad the last byte."""
+    """Concatenate positive Elias-delta integers, MSB first, and zero-pad the
+    last byte.
+    """
     codes = []
     for index in indices:
         if index < 1:
@@ -80,11 +95,17 @@ def pack_indices(indices: Sequence[int]) -> tuple[bytes, int]:
         codes.append("0" * (len(length) - 1) + length + value[1:])
     bits = "".join(codes)
     padded = bits + "0" * (-len(bits) % 8)
-    return bytes(int(padded[i : i + 8], 2) for i in range(0, len(padded), 8)), len(bits)
+    return bytes(
+        int(padded[i: i + 8], 2) for i in range(0, len(padded), 8)
+    ), len(bits)
 
 
-def unpack_indices(payload: bytes, bit_length: int, candidates: int) -> list[int]:
-    """Validate byte framing, zero padding, complete codewords, and pool bounds."""
+def unpack_indices(
+    payload: bytes, bit_length: int, candidates: int
+) -> list[int]:
+    """Validate byte framing, zero padding, complete codewords, and pool
+    bounds.
+    """
     if bit_length < 0 or len(payload) != (bit_length + 7) // 8:
         raise ValueError("invalid ORC payload length")
     bits = "".join(f"{byte:08b}" for byte in payload)

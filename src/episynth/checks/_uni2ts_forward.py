@@ -1,10 +1,14 @@
-"""Direct passage of the original `MoiraiModule` from uni2ts on saved entrances.
+"""Direct passage of the original `MoiraiModule` from uni2ts on saved
+entrances.
 
     python _uni2ts_forward.py <checkpoint directory> <inputs.npz> <out.npz>
 
-Launched by an interpreter with installed uni2ts 2.0.0Entrances: arrays `target`, `observed_mask`,
-`sample_id`, `time_id`, `variate_id`, `prediction_mask` scalar `patch_size`Exit: `loc`, `scale`,
-`weights_logits` and component parameters after mapping to the definition area, `log_prob` on
+Launched by an interpreter with installed uni2ts 2.0.0Entrances: arrays
+`target`, `observed_mask`,
+`sample_id`, `time_id`, `variate_id`, `prediction_mask` scalar
+`patch_size`Exit: `loc`, `scale`,
+`weights_logits` and component parameters after mapping to the definition area,
+`log_prob` on
 `target`.
 """
 
@@ -24,7 +28,10 @@ def main(ckpt_dir: str, inputs: str, out: str) -> None:
     target = torch.from_numpy(z["target"])
     width = max(module.patch_sizes)
     target = torch.nn.functional.pad(target, (0, width - target.shape[-1]))
-    observed = torch.nn.functional.pad(torch.from_numpy(z["observed_mask"]), (0, width - z["observed_mask"].shape[-1]))
+    observed = torch.nn.functional.pad(
+        torch.from_numpy(z["observed_mask"]),
+        (0, width - z["observed_mask"].shape[-1]),
+    )
     sample_id = torch.from_numpy(z["sample_id"])
     ps = torch.full_like(sample_id, patch_size)
     with torch.no_grad():
@@ -48,7 +55,10 @@ def main(ckpt_dir: str, inputs: str, out: str) -> None:
             for name in ("df", "loc", "scale", "total_count", "logits"):
                 if hasattr(comp, name):
                     val = getattr(comp, name)
-                    if torch.is_tensor(val) and val.shape == mixture.weights.logits.shape[:-1]:
+                    if (
+                        torch.is_tensor(val)
+                        and val.shape == mixture.weights.logits.shape[:-1]
+                    ):
                         result[f"comp{i}_{name}"] = val.numpy()
     np.savez(out, **result)
 

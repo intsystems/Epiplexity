@@ -1,6 +1,6 @@
 # episynth: Proof of Concept / Prequential
 
-The TM2 presentation has **12 main slides and 3 appendix slides** and is
+The TM2 presentation has **14 main slides and 4 appendix slides** and is
 designed for a 12–15 minute talk.
 
 - [Compiled PDF](episynth_poc_prequential.pdf)
@@ -11,7 +11,8 @@ designed for a 12–15 minute talk.
 The main slides cover the research question, architecture, blockwise prequential
 coding, excess area above the final held-out EMA loss, implementation, CPU demo
 configuration and results, the plugin interface, and generated API documentation.
-The appendix covers uncertainty, the larger runs, and references.
+The main talk also compares predictive V-information and requential KL with archived forecast CRPS.
+The appendix pairs prequential and requential measurements at 2M windows and covers uncertainty, the larger runs, and references.
 
 ## Build
 

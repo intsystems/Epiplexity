@@ -8,6 +8,11 @@ run. It includes CPU and archived Waveform examples, the two-budget GIFT-Eval
 comparison, a validation table linked to the tests, and runnable generator
 and estimator examples in Section 8.
 
+Section 4 describes prequential coding, predictive V-information, and requential coding.
+The [meeting notebook] runs all three on CPU and includes the archived CRPS comparisons.
+
+[meeting notebook]: ../../experiments/demos/demo_estimators.ipynb
+
 ## Build the PDF
 
 With pdfLaTeX and BibTeX installed, run from this directory:

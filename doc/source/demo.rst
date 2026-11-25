@@ -1,10 +1,9 @@
 CPU demonstration and generated API
 ===================================
 
-The notebook uses a one-layer model with width 64, a waveform generator and
-64 training windows. It selects the prequential estimator through the same
-registry used by the large runs, computes the decomposition in bits and plots
-the losses. It also demonstrates registering a custom estimator.
+The notebook runs three implemented estimators on a one-layer waveform model with 64 training windows.
+Prequential coding decomposes the training loss, predictive V-information measures the context gain in bits per window, and requential coding transmits a student’s update choices as indices.
+The embedded figures compare the archived measurements against downstream CRPS.
 
 :download:`Download the notebook <../../experiments/demos/demo_estimators.ipynb>`
 or open ``experiments/demos/demo_estimators.ipynb`` from the repository root:
@@ -39,4 +38,4 @@ The parameter and return descriptions come from docstrings, and type information
 comes from annotations in the source. The class has a source-code link.
 
 Use ``available()`` to list the registered names and ``build("prequential")`` to construct the estimator used in this notebook.
-For a CPU requential run, see :doc:`measurements`.
+For separate CPU runs and the output units of each estimator, see :doc:`measurements`.

@@ -57,7 +57,10 @@ The four-method library scope is described in the
    wrapper remains proposed.
 
 Seeded task generation, AdamW/EMA training, and GIFT-Eval scoring provide shared
-infrastructure. The saved transfer experiments use the prequential method.
+infrastructure.
+The `meeting slides <publications/slides/poc_prequential/episynth_poc_prequential.pdf>`_
+and `CPU notebook <experiments/demos/demo_estimators.ipynb>`_ show all three implemented
+estimators and compare their measurements with the original forecasters’ archived CRPS.
 
 Research publications
 =====================

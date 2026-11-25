@@ -53,7 +53,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -U torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -U -e . pytest pytest-cov
+          pip install -U -e . pytest pytest-cov matplotlib
 
       - name: Testing
         run: |

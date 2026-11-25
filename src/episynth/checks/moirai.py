@@ -1,13 +1,14 @@
-r"""Verification of the Moirai port with the original uni2ts on one checkpoint and one input.
+r"""Compare the Moirai port and uni2ts on the same checkpoint and inputs.
 
-    python -m episynth.checks.moirai --checkpoint <catalogue with model.safetensors and config.json>
-        --uni2ts-python <interpreter with uni2ts 2.0.0> [-out result.json]
+.. code-block:: bash
 
-Builds windows of three generators for patch sizes 8, 32 and 64, considers the original as a
-separate interpreter (`_uni2ts_forward.py`) and transfer in the current, compares rationing, weight
-logs, component parameters and log density. Prints the greatest absolute discrepancies; the log
-density is expected rounding error level float32 (different attention cores in different versions of
-torch).
+    python -m episynth.checks.moirai --checkpoint "$MOIRAI_SMALL_DIR" \
+        --uni2ts-python "$UNI2TS_PYTHON" --out result.json
+
+The check uses three generators and patch sizes 8, 32, and 64.
+It compares normalization, mixture logits, component parameters, and log
+densities against uni2ts in a separate interpreter. Different attention
+kernels can produce differences at float32 precision.
 """
 
 import argparse
@@ -27,9 +28,15 @@ from episynth.windows import WindowSpec, make_windows
 _HELPER = Path(__file__).with_name("_uni2ts_forward.py")
 
 
-def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict[str, float]:
-    """The greatest difference between the port and the original for the same patch size."""
-    spec = WindowSpec(patch_size=patch_size, context_lengths=(200, 512), dequantize_width=0.0)
+def compare(
+    ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6
+) -> dict[str, float]:
+    """The greatest difference between the port and the original for the same
+    patch size.
+    """
+    spec = WindowSpec(
+        patch_size=patch_size, context_lengths=(200, 512), dequantize_width=0.0
+    )
     rows, seeds = [], np.arange(n)
     for name in ("sde", "waveform", "ets"):
         rows.append(GENERATORS[name](length=1024).generate(seeds))
@@ -51,8 +58,15 @@ def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict
                 ours[f"comp{i}_{key}"] = val.numpy()
     with tempfile.TemporaryDirectory() as tmp:
         inp, out = Path(tmp) / "inputs.npz", Path(tmp) / "out.npz"
-        np.savez(inp, patch_size=patch_size, **{k: v.numpy() for k, v in batch.model_inputs().items()})
-        subprocess.run([uni2ts_python, "-I", str(_HELPER), str(ckpt), str(inp), str(out)], check=True)
+        np.savez(
+            inp,
+            patch_size=patch_size,
+            **{k: v.numpy() for k, v in batch.model_inputs().items()},
+        )
+        subprocess.run(
+            [uni2ts_python, "-I", str(_HELPER), str(ckpt), str(inp), str(out)],
+            check=True,
+        )
         ref = dict(np.load(out))
     real = batch.sample_id.numpy().astype(bool)
     diffs = {}
@@ -60,7 +74,12 @@ def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict
         if key not in ours:
             continue
         mine = ours[key]
-        if mine.ndim == 3 and mine.shape[-1] >= patch_size and key != "loc" and key != "scale":
+        if (
+            mine.ndim == 3
+            and mine.shape[-1] >= patch_size
+            and key != "loc"
+            and key != "scale"
+        ):
             mine, theirs = mine[..., :patch_size], theirs[..., :patch_size]
         if mine.ndim == 4:
             theirs = theirs[..., : mine.shape[-2], :]
@@ -70,7 +89,9 @@ def compare(ckpt: Path, uni2ts_python: str, patch_size: int, n: int = 6) -> dict
 
 
 def main() -> None:
-    """Analysis of arguments, reconciliation of the size of the patch, printing and recording the result."""
+    """Analysis of arguments, reconciliation of the size of the patch, printing
+    and recording the result.
+    """
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--uni2ts-python", required=True)
@@ -78,9 +99,15 @@ def main() -> None:
     args = parser.parse_args()
     result = {}
     for patch_size in (8, 32, 64):
-        result[patch_size] = compare(args.checkpoint, args.uni2ts_python, patch_size)
+        result[patch_size] = compare(
+            args.checkpoint, args.uni2ts_python, patch_size
+        )
         worst = max(result[patch_size].items(), key=lambda kv: kv[1])
-        print(f"patch {patch_size:3d}: log_prob max abs diff {result[patch_size]['log_prob']:.2e}; worst {worst[0]} {worst[1]:.2e}")
+        print(
+            f"patch {patch_size:3d}: log_prob max abs diff"
+            f" {result[patch_size]['log_prob']:.2e}; worst {worst[0]}"
+            f" {worst[1]:.2e}"
+        )
     if args.out:
         args.out.write_text(json.dumps(result, indent=1))
 

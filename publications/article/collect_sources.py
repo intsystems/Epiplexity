@@ -25,20 +25,36 @@ SOURCES = {
 def fetch(item):
     key, url = item
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "Epiplexity-article/1.0"})
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "Epiplexity-article/1.0"}
+        )
         with urllib.request.urlopen(request, timeout=35) as response:
             html = response.read().decode("utf-8")
         (OUT / (key + ".html")).write_text(html, encoding="utf-8")
-        metadata = re.findall(r'<meta\s+name="(citation_[^"]+)"\s+content="([^"]*)"', html)
-        return {"key": key, "url": url, "metadata": metadata, "status": "retrieved"}
+        metadata = re.findall(
+            r'<meta\s+name="(citation_[^"]+)"\s+content="([^"]*)"', html
+        )
+        return {
+            "key": key,
+            "url": url,
+            "metadata": metadata,
+            "status": "retrieved",
+        }
     except Exception as exc:
-        return {"key": key, "url": url, "status": "unavailable", "error": str(exc)}
+        return {
+            "key": key,
+            "url": url,
+            "status": "unavailable",
+            "error": str(exc),
+        }
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         records = list(pool.map(fetch, SOURCES.items()))
-    (OUT / "metadata.json").write_text(json.dumps(records, indent=2), encoding="utf-8")
+    (OUT / "metadata.json").write_text(
+        json.dumps(records, indent=2), encoding="utf-8"
+    )
     for record in records:
         print(json.dumps(record, ensure_ascii=True))

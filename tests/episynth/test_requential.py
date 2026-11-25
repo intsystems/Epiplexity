@@ -21,10 +21,20 @@ from episynth.windows import WindowSpec, window_batch
 
 def experiment():
     spec = WindowSpec(
-        series_length=32, context_max=16, context_lengths=(16,), horizon=4, patch_size=4
+        series_length=32,
+        context_max=16,
+        context_lengths=(16,),
+        horizon=4,
+        patch_size=4,
     )
     model = build_model(
-        MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4, 8), components=("student_t",)), 0
+        MoiraiConfig(
+            d_model=64,
+            num_layers=1,
+            patch_sizes=(4, 8),
+            components=("student_t",),
+        ),
+        0,
     )
     train = TrainConfig(
         n_windows=32,
@@ -37,12 +47,17 @@ def experiment():
         eval_batch_size=4,
         checkpoint_fractions=(1.0,),
     )
-    source = build_generator(DataConfig(generator="waveform"), spec.series_length)
+    source = build_generator(
+        DataConfig(generator="waveform"), spec.series_length
+    )
     return model, source, spec, train
 
 
 def test_delta_stream():
-    from episynth.estimators._requential_codec import pack_indices, unpack_indices
+    from episynth.estimators._requential_codec import (
+        pack_indices,
+        unpack_indices,
+    )
 
     # Codes for 1, 2, 3, 4, 8: 1 | 0100 | 0101 | 01100 | 00100000
     payload, bits = pack_indices([1, 2, 3, 4, 8])
@@ -87,7 +102,10 @@ def test_gaussian_bits_masks_and_public_targets():
     batch.target[batch.prediction_mask] = float("nan")
     public = _public(batch)
     assert torch.isfinite(public.target).all()
-    assert torch.equal(public.target[~batch.prediction_mask], batch.target[~batch.prediction_mask])
+    assert torch.equal(
+        public.target[~batch.prediction_mask],
+        batch.target[~batch.prediction_mask],
+    )
     assert torch.count_nonzero(public.target[batch.prediction_mask]) == 0
     b, s, _ = batch.target.shape
     logits = torch.zeros(b, s, 8, 1)
@@ -95,7 +113,12 @@ def test_gaussian_bits_masks_and_public_targets():
 
     def gaussian(mu):
         return Mixture(
-            logits, [{"loc": torch.full((b, s, 8), mu)}], ["normal_fixed"], 1.0, loc, loc + 1
+            logits,
+            [{"loc": torch.full((b, s, 8), mu)}],
+            ["normal_fixed"],
+            1.0,
+            loc,
+            loc + 1,
         )
 
     p, q = gaussian(0.0), gaussian(1.0)
@@ -109,9 +132,17 @@ def test_gaussian_bits_masks_and_public_targets():
     public.observed_mask[:, -1, 2:] = False
     half = _with_draw(public, torch.ones_like(draw))
     assert (half.target[:, -1, 2:] == 0).all()
-    assert _ratio_bits(p, q, half, 4, 0).sum().item() == pytest.approx(b / math.log(2), rel=1e-6)
+    assert _ratio_bits(p, q, half, 4, 0).sum().item() == pytest.approx(
+        b / math.log(2), rel=1e-6
+    )
     with pytest.raises(FloatingPointError, match="step 17"):
-        _ratio_bits(p, q, replace(half, target=torch.full_like(half.target, float("nan"))), 4, 17)
+        _ratio_bits(
+            p,
+            q,
+            replace(half, target=torch.full_like(half.target, float("nan"))),
+            4,
+            17,
+        )
 
 
 def test_direct_training_and_matched_windows(tmp_path, monkeypatch):
@@ -129,7 +160,9 @@ def test_direct_training_and_matched_windows(tmp_path, monkeypatch):
     est = build("requential", projection_steps=[], mc_repeats=4)
     result = est.run(model, source, spec, train, tmp_path / "req")
     assert real == list(range(32))
-    assert all(torch.equal(v, initial[k]) for k, v in model.state_dict().items())
+    assert all(
+        torch.equal(v, initial[k]) for k, v in model.state_dict().items()
+    )
     real.clear()
     build("prequential").run(model, source, spec, train, tmp_path / "pre")
     assert real == list(range(32))
@@ -138,7 +171,9 @@ def test_direct_training_and_matched_windows(tmp_path, monkeypatch):
     assert "realized_message_bits" not in result
     assert result["estimated_overhead_mc_se_bits"] > 0
     assert result["steps"][0]["estimated_kl_bits"] == 0
-    assert result["steps"][0]["estimated_overhead_bits"] == pytest.approx(4 * 5.21)
+    assert result["steps"][0]["estimated_overhead_bits"] == pytest.approx(
+        4 * 5.21
+    )
     assert result["estimated_kl_bits"] == pytest.approx(
         sum(x["estimated_kl_bits"] for x in result["steps"])
     )
@@ -151,38 +186,55 @@ def test_direct_training_and_matched_windows(tmp_path, monkeypatch):
             ("final_eval", 72, 8),
         ]
     }
-    assert json.loads((tmp_path / "req/estimator_result.json").read_text()) == result
+    assert (
+        json.loads((tmp_path / "req/estimator_result.json").read_text())
+        == result
+    )
     json.dumps(result, allow_nan=False)
 
 
 def test_repeated_run_preserves_previous_student(tmp_path):
     model, source, spec, train = experiment()
     train = train.model_copy(update={"n_windows": 4})
-    first = build("requential", mc_repeats=2).run(model, source, spec, train, tmp_path)
+    first = build("requential", mc_repeats=2).run(
+        model, source, spec, train, tmp_path
+    )
     checkpoint = Path(first["artifacts"]["student_checkpoint"])
     saved = checkpoint.read_bytes()
     second = build("requential", sampling_seed=8, mc_repeats=2).run(
         model, source, spec, train, tmp_path
     )
     assert checkpoint.read_bytes() == saved
-    assert json.loads((tmp_path / "estimator_result.json").read_text()) == second
+    assert (
+        json.loads((tmp_path / "estimator_result.json").read_text()) == second
+    )
 
 
 def test_invalid_setup(tmp_path):
     model, source, spec, train = experiment()
-    for kwargs, match in [({"kl_scale": 2}, "kl_scale"), ({"public_first_seed": 0}, "overlap")]:
+    for kwargs, match in [
+        ({"kl_scale": 2}, "kl_scale"),
+        ({"public_first_seed": 0}, "overlap"),
+    ]:
         with pytest.raises(ValueError, match=match):
-            build("requential", **kwargs).run(model, source, spec, train, tmp_path)
+            build("requential", **kwargs).run(
+                model, source, spec, train, tmp_path
+            )
     model.config.components = ("negative_binomial", "student_t")
     with pytest.raises(ValueError, match="continuous"):
         build("requential").run(model, source, spec, train, tmp_path)
 
 
-@pytest.mark.parametrize(("lower_endpoint", "valid"), [(-8.0, True), (10.0, False)])
+@pytest.mark.parametrize(
+    ("lower_endpoint", "valid"), [(-8.0, True), (10.0, False)]
+)
 def test_log_normal_support(tmp_path, lower_endpoint, valid):
     model, source, spec, train = experiment()
     config = model.config.model_copy(
-        update={"components": ("log_normal",), "fixed_scaling": (lower_endpoint, 1.0)}
+        update={
+            "components": ("log_normal",),
+            "fixed_scaling": (lower_endpoint, 1.0),
+        }
     )
     model = build_model(config, 3)
     train = train.model_copy(update={"n_windows": 8})
@@ -191,7 +243,9 @@ def test_log_normal_support(tmp_path, lower_endpoint, valid):
         result = est.run(model, source, spec, train, tmp_path)
         assert math.isfinite(result["estimated_kl_bits"])
     else:
-        with pytest.raises(FloatingPointError, match="teacher training NLL at step 1"):
+        with pytest.raises(
+            FloatingPointError, match="teacher training NLL at step 1"
+        ):
             est.run(model, source, spec, train, tmp_path)
 
 
@@ -214,15 +268,22 @@ def test_projection_copies_optimizer_and_clocks():
     teacher.project(student)
     assert teacher.clock == student.clock == 1
     for a, b in zip(
-        teacher.optimizer.state.values(), student.optimizer.state.values(), strict=True
+        teacher.optimizer.state.values(),
+        student.optimizer.state.values(),
+        strict=True,
     ):
         for key in ("step", "exp_avg", "exp_avg_sq"):
-            assert torch.equal(a[key], b[key]) and a[key].data_ptr() != b[key].data_ptr()
+            assert (
+                torch.equal(a[key], b[key])
+                and a[key].data_ptr() != b[key].data_ptr()
+            )
     teacher.update(batch, 2)
     assert teacher.clock == 2 and student.clock == 1
     assert any(
         not torch.equal(t, s)
-        for t, s in zip(teacher.raw.parameters(), student.raw.parameters(), strict=True)
+        for t, s in zip(
+            teacher.raw.parameters(), student.raw.parameters(), strict=True
+        )
     )
 
 
@@ -239,16 +300,26 @@ def _capture_updates(monkeypatch, horizons):
     monkeypatch.setattr(_Learner, "update", capture)
 
 
-@pytest.mark.parametrize(("sampling_seed", "recovered"), [(1, True), (2, False)])
-def test_orc_fresh_process_replay(tmp_path, monkeypatch, sampling_seed, recovered):
+@pytest.mark.parametrize(
+    ("sampling_seed", "recovered"), [(1, True), (2, False)]
+)
+def test_orc_fresh_process_replay(
+    tmp_path, monkeypatch, sampling_seed, recovered
+):
     model, source, spec, train = experiment()
     settings = dict(
-        mode="orc", candidates=5, mc_repeats=3, projection_steps=[2], sampling_seed=sampling_seed
+        mode="orc",
+        candidates=5,
+        mc_repeats=3,
+        projection_steps=[2],
+        sampling_seed=sampling_seed,
     )
     horizons = []
     _capture_updates(monkeypatch, horizons)
     rng = torch.get_rng_state()
-    result = build("requential", **settings).run(model, source, spec, train, tmp_path)
+    result = build("requential", **settings).run(
+        model, source, spec, train, tmp_path
+    )
     assert torch.equal(rng, torch.get_rng_state())
     (event,) = result["projections"]
     assert event["student_step"] == 2 and event["message_count"] == 8
@@ -260,8 +331,14 @@ def test_orc_fresh_process_replay(tmp_path, monkeypatch, sampling_seed, recovere
         assert result["student_steps"] > 2
     assert result["student_steps"] + event["recovery_windows"] // 4 == 8
     assert len(horizons) * 4 == result["message_count"]
-    assert result["realized_message_bits"] <= 8 * Path(result["artifacts"]["stream"]).stat().st_size
-    subprocess.run([sys.executable, str(Path(__file__).resolve()), str(tmp_path)], check=True)
+    assert (
+        result["realized_message_bits"]
+        <= 8 * Path(result["artifacts"]["stream"]).stat().st_size
+    )
+    subprocess.run(
+        [sys.executable, str(Path(__file__).resolve()), str(tmp_path)],
+        check=True,
+    )
     decoded = torch.load(tmp_path / "decoded.pt", weights_only=True)
     assert torch.equal(torch.stack(horizons), decoded["horizons"])
     from episynth.evaluation.run import _load_model
@@ -275,8 +352,13 @@ def test_orc_fresh_process_replay(tmp_path, monkeypatch, sampling_seed, recovere
             )
         )
         weights = restored.state_dict()
-        assert any(not torch.equal(model.state_dict()[k], v) for k, v in weights.items())
-        assert all(torch.equal(v, decoded[variant][k]) for k, v in weights.items())
+        assert any(
+            not torch.equal(model.state_dict()[k], v)
+            for k, v in weights.items()
+        )
+        assert all(
+            torch.equal(v, decoded[variant][k]) for k, v in weights.items()
+        )
 
 
 def test_cli_matches_direct_api(tmp_path, monkeypatch):
@@ -285,7 +367,9 @@ def test_cli_matches_direct_api(tmp_path, monkeypatch):
 
     model, source, spec, train = experiment()
     settings = {"projection_steps": [], "mc_repeats": 3}
-    expected = build("requential", **settings).run(model, source, spec, train, tmp_path / "api")
+    expected = build("requential", **settings).run(
+        model, source, spec, train, tmp_path / "api"
+    )
     path = tmp_path / "cpu.json"
     path.write_text(
         json.dumps(
@@ -300,7 +384,9 @@ def test_cli_matches_direct_api(tmp_path, monkeypatch):
         )
     )
     monkeypatch.setattr(
-        sys, "argv", ["train", "--config", str(path), "--out", str(tmp_path / "train")]
+        sys,
+        "argv",
+        ["train", "--config", str(path), "--out", str(tmp_path / "train")],
     )
     train_main()
     estimator_main(
@@ -318,7 +404,9 @@ def test_cli_matches_direct_api(tmp_path, monkeypatch):
         ]
     )
     for name in ("train", "cli"):
-        actual = json.loads((tmp_path / name / "estimator_result.json").read_text())
+        actual = json.loads(
+            (tmp_path / name / "estimator_result.json").read_text()
+        )
         assert {k: v for k, v in actual.items() if k != "artifacts"} == {
             k: v for k, v in expected.items() if k != "artifacts"
         }
@@ -358,6 +446,10 @@ if __name__ == "__main__":
             result["message_count"],
         )
     torch.save(
-        dict(horizons=torch.stack(horizons), raw=raw.state_dict(), ema=ema.state_dict()),
+        dict(
+            horizons=torch.stack(horizons),
+            raw=raw.state_dict(),
+            ema=ema.state_dict(),
+        ),
         root / "decoded.pt",
     )

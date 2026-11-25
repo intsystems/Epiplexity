@@ -1,4 +1,6 @@
-"""Signal mixes in the spirit of the TimeSynth library without the library itself."""
+"""Signal mixes in the spirit of the TimeSynth library without the library
+itself.
+"""
 
 import numpy as np
 
@@ -12,16 +14,25 @@ _NOISE_BANK = [("gaussian", s, None) for s in (0.02, 0.05, 0.1, 0.2, 0.3)] + [
 
 
 class TimeSynth(Generator):
-    """The sum or product of 1-3 signals of TimeSynth (sinus, CAR, NARMA, pseudoperiodic, AR) with noise.
+    """The sum or product of 1-3 signals of TimeSynth (sinus, CAR, NARMA,
+    pseudoperiodic, AR) with noise.
 
-    Signals and their parameters are played out as in a generator. TimeSynth From Mix, Don't Pick,
-    the signals themselves and the noise (white or red) are implemented here using library code.
-    TimeSynth (github.com/TimeSynth/TimeSynth, MIT), so depending on her and on her `jitcdde`
-    Periods play out from the length of the row, with probability. `irregular_prob` The time grid is
-    irregular (thinning and shifting), the row is then interpolated to the regular one. The original
-    draws the noise from the global numpy generator seeded with the row seed, and the row seat is
-    the case seat plus the row number. `irregular_prob` It plays out from the hull seed. Here, the
-    same flow is reproduced separately. `RandomState`, and the main mode coincides with the
+    Signals and their parameters are played out as in a generator. TimeSynth
+    From Mix, Don't Pick,
+    the signals themselves and the noise (white or red) are implemented here
+    using library code.
+    TimeSynth (github.com/TimeSynth/TimeSynth, MIT), so depending on her and on
+    her `jitcdde`
+    Periods play out from the length of the row, with probability.
+    `irregular_prob` The time grid is
+    irregular (thinning and shifting), the row is then interpolated to the
+    regular one. The original
+    draws the noise from the global numpy generator seeded with the row seed,
+    and the row seat is
+    the case seat plus the row number. `irregular_prob` It plays out from the
+    hull seed. Here, the
+    same flow is reproduced separately. `RandomState`, and the main mode
+    coincides with the
     reproduction mode at equal `irregular_prob`.
 
     Args:
@@ -31,17 +42,24 @@ class TimeSynth(Generator):
 
     name = "timesynth"
 
-    def __init__(self, length: int = 1024, irregular_prob: float = 0.2) -> None:
+    def __init__(
+        self, length: int = 1024, irregular_prob: float = 0.2
+    ) -> None:
         super().__init__(length)
         self.irregular_prob = irregular_prob
 
     def _batch(self, seeds: np.ndarray) -> np.ndarray:
-        """The same rows as the `_one`, but the recursions of CAR, AR, NARMA and red noise are considered a packet over rows.
+        """The same rows as the `_one`, but the recursions of CAR, AR, NARMA
+        and red noise are considered a packet over rows.
 
-        The first pass through the rows makes all calls to random number generators in the original
-        order and remembers the parameters; recursions in time go vectorly along the rows (recursion
-        noises are taken in advance by one vector, the `RandomState` flux does not change from
-        this); the second pass collects a series of components in the original order of operations.
+        The first pass through the rows makes all calls to random number
+        generators in the original
+        order and remembers the parameters; recursions in time go vectorly
+        along the rows (recursion
+        noises are taken in advance by one vector, the `RandomState` flux does
+        not change from
+        this); the second pass collects a series of components in the original
+        order of operations.
         """
         plans = [self._plan(int(seed), self.irregular_prob) for seed in seeds]
         rec: dict[int, list] = {}
@@ -49,17 +67,42 @@ class TimeSynth(Generator):
             for j, comp in enumerate(plan["signals"]):
                 if comp["kind"] in ("car", "narma", "autoregressive"):
                     rec.setdefault(i, []).append(j)
-        self._solve_car([(plans[i], j) for i in rec for j in rec[i] if plans[i]["signals"][j]["kind"] == "car"])
-        self._solve_ar([(plans[i], j) for i in rec for j in rec[i] if plans[i]["signals"][j]["kind"] == "autoregressive"])
-        self._solve_narma([(plans[i], j) for i in rec for j in rec[i] if plans[i]["signals"][j]["kind"] == "narma"])
-        self._solve_red([plan for plan in plans if plan["noise"]["kind"] == "red"])
+        self._solve_car(
+            [
+                (plans[i], j)
+                for i in rec
+                for j in rec[i]
+                if plans[i]["signals"][j]["kind"] == "car"
+            ]
+        )
+        self._solve_ar(
+            [
+                (plans[i], j)
+                for i in rec
+                for j in rec[i]
+                if plans[i]["signals"][j]["kind"] == "autoregressive"
+            ]
+        )
+        self._solve_narma(
+            [
+                (plans[i], j)
+                for i in rec
+                for j in rec[i]
+                if plans[i]["signals"][j]["kind"] == "narma"
+            ]
+        )
+        self._solve_red(
+            [plan for plan in plans if plan["noise"]["kind"] == "red"]
+        )
         out = np.empty((len(seeds), self.length))
         for i, plan in enumerate(plans):
             out[i] = self._assemble(plan)
         return out
 
     def _plan(self, seed: int, irregular_prob: float) -> dict:
-        """All drawings of the same series are in the order of `_one`; vector signals are counted immediately, recursions are postponed."""
+        """All drawings of the same series are in the order of `_one`; vector
+        signals are counted immediately, recursions are postponed.
+        """
         L = self.length
         legacy = np.random.RandomState(seed)
         rng = np.random.default_rng(seed)
@@ -73,8 +116,12 @@ class TimeSynth(Generator):
             keep = float(rng.uniform(80, 95))
             times = np.linspace(0, stop_time, L)
             resolution = float(stop_time - 0) / L
-            index = np.sort(legacy.choice(L, size=int(keep * L / 100), replace=False))
-            times = np.sort(times[index] + legacy.normal(0.0, resolution, size=len(index)))
+            index = np.sort(
+                legacy.choice(L, size=int(keep * L / 100), replace=False)
+            )
+            times = np.sort(
+                times[index] + legacy.normal(0.0, resolution, size=len(index))
+            )
         T = len(times)
         signals = []
         for k, kind in enumerate(selected):
@@ -84,7 +131,9 @@ class TimeSynth(Generator):
                 amplitude = float(rng.uniform(0.5, 3.0))
                 frequency = float((L / p) / (L / 1.0))
                 ftype = rng.choice([np.sin, np.cos])
-                comp["values"] = amplitude * ftype(2 * np.pi * frequency * times)
+                comp["values"] = amplitude * ftype(
+                    2 * np.pi * frequency * times
+                )
             elif kind == "car":
                 comp["ar"] = float(rng.uniform(0.1, 0.95))
                 comp["sigma"] = float(rng.uniform(0.1, 0.8))
@@ -93,7 +142,14 @@ class TimeSynth(Generator):
             elif kind == "narma":
                 order = int(rng.integers(5, 15))
                 comp["order"] = order
-                comp["a"] = np.array([float(rng.uniform(0.6, 0.9)), float(rng.uniform(0.02, 0.08)), float(rng.uniform(1.0, 2.0)), float(rng.uniform(0.05, 0.15))])
+                comp["a"] = np.array(
+                    [
+                        float(rng.uniform(0.6, 0.9)),
+                        float(rng.uniform(0.02, 0.08)),
+                        float(rng.uniform(1.0, 2.0)),
+                        float(rng.uniform(0.05, 0.15)),
+                    ]
+                )
                 comp["inits"] = np.array(rng.normal(0, 0.1, size=order))
             elif kind == "pseudoperiodic":
                 p = int(rng.integers(6, max(12, L // 10)))
@@ -103,16 +159,22 @@ class TimeSynth(Generator):
                 ftype = rng.choice([np.sin, np.cos])
                 freq_arr = legacy.normal(loc=int(p), scale=freq_sd, size=T)
                 amp_arr = legacy.normal(loc=amplitude, scale=amp_sd, size=T)
-                comp["values"] = np.multiply(amp_arr, ftype(np.multiply(freq_arr, times)))
+                comp["values"] = np.multiply(
+                    amp_arr, ftype(np.multiply(freq_arr, times))
+                )
             else:
                 p = int(rng.integers(1, 4))
                 phi = rng.uniform(-0.6, 0.6, size=p)
                 while np.sum(np.abs(phi)) > 0.9:
                     phi = rng.uniform(-0.6, 0.6, size=p)
                 comp["sigma"] = float(rng.uniform(0.1, 0.7))
-                comp["prev"] = np.array(rng.normal(0, 0.2, size=p), dtype=float)
+                comp["prev"] = np.array(
+                    rng.normal(0, 0.2, size=p), dtype=float
+                )
                 comp["phi_rev"] = phi.tolist()[::-1]
-                comp["noise"] = legacy.normal(loc=0.0, scale=comp["sigma"], size=T)
+                comp["noise"] = legacy.normal(
+                    loc=0.0, scale=comp["sigma"], size=T
+                )
             comp["w"] = float(rng.uniform(0.4, 1.2))
             comp["add"] = True if k == 0 else bool(rng.random() < 0.8)
             signals.append(comp)
@@ -126,7 +188,9 @@ class TimeSynth(Generator):
 
     @staticmethod
     def _dt_matrix(items: list, L: int) -> np.ndarray:
-        """Time steps of `(B, L-1)` series with addition of zeros to total length."""
+        """Time steps of `(B, L-1)` series with addition of zeros to total
+        length.
+        """
         dt = np.zeros((len(items), L - 1))
         for b, times in enumerate(items):
             d = np.diff(times)
@@ -134,14 +198,18 @@ class TimeSynth(Generator):
         return dt
 
     def _solve_car(self, items: list) -> None:
-        """CAR: `prev = ar^dt * prev + sigma * sqrt(1 - ar^dt) * noise` vectorly in rows."""
+        """CAR: `prev = ar^dt * prev + sigma * sqrt(1 - ar^dt) * noise`
+            vectorly in rows.
+        """
         if not items:
             return
         L = self.length
         B = len(items)
         dt = self._dt_matrix([plan["times"] for plan, _ in items], L)
         ar = np.array([plan["signals"][j]["ar"] for plan, j in items])[:, None]
-        sigma = np.array([plan["signals"][j]["sigma"] for plan, j in items])[:, None]
+        sigma = np.array([plan["signals"][j]["sigma"] for plan, j in items])[
+            :, None
+        ]
         noise = np.zeros((B, L - 1))
         for b, (plan, j) in enumerate(items):
             nz = plan["signals"][j]["noise"]
@@ -158,7 +226,8 @@ class TimeSynth(Generator):
             plan["signals"][j]["values"] = out[b, : len(plan["times"])]
 
     def _solve_red(self, plans: list) -> None:
-        """Red noise: `prev = tau/(tau+dt) * (dt * w + prev)` vectorly in rows."""
+        """Red noise: `prev = tau/(tau+dt) * (dt * w + prev)` vectorly in rows.
+        """
         if not plans:
             return
         L = self.length
@@ -179,16 +248,29 @@ class TimeSynth(Generator):
             plan["noise"]["values"] = out[b, : len(plan["times"])]
 
     def _solve_ar(self, items: list) -> None:
-        """AR(p), p = 1..3: sum of terms in the order of the original, then noise; vector over rows of one p."""
+        """AR(p), p = 1..3: sum of terms in the order of the original, then
+        noise; vector over rows of one p.
+        """
         for p in (1, 2, 3):
-            group = [(plan, j) for plan, j in items if len(plan["signals"][j]["phi_rev"]) == p]
+            group = [
+                (plan, j)
+                for plan, j in items
+                if len(plan["signals"][j]["phi_rev"]) == p
+            ]
             if not group:
                 continue
             T = self.length
             B = len(group)
-            phi = np.array([plan["signals"][j]["phi_rev"] for plan, j in group])
-            noise = np.stack([plan["signals"][j]["noise"] for plan, j in group])
-            prev = [np.array([plan["signals"][j]["prev"][q] for plan, j in group]) for q in range(p)]
+            phi = np.array(
+                [plan["signals"][j]["phi_rev"] for plan, j in group]
+            )
+            noise = np.stack(
+                [plan["signals"][j]["noise"] for plan, j in group]
+            )
+            prev = [
+                np.array([plan["signals"][j]["prev"][q] for plan, j in group])
+                for q in range(p)
+            ]
             out = np.zeros((B, T))
             for i in range(T):
                 s = prev[0] * phi[:, 0]
@@ -201,14 +283,22 @@ class TimeSynth(Generator):
                 plan["signals"][j]["values"] = out[b]
 
     def _solve_narma(self, items: list) -> None:
-        """NARMA of order n: recursion of the original with the same `values[t-n:n]` slice (non-zero only at t < 2n)."""
+        """NARMA of order n: recursion of the original with the same
+        `values[t-n:n]` slice (non-zero only at t < 2n).
+        """
         T = self.length
         for n in range(5, 15):
-            group = [(plan, j) for plan, j in items if plan["signals"][j]["order"] == n]
+            group = [
+                (plan, j)
+                for plan, j in items
+                if plan["signals"][j]["order"] == n
+            ]
             if not group:
                 continue
             own = np.random.RandomState(42)
-            rands = np.concatenate((own.uniform(0, 0.5, size=n), own.uniform(0, 0.5, size=T)))
+            rands = np.concatenate(
+                (own.uniform(0, 0.5, size=n), own.uniform(0, 0.5, size=T))
+            )
             B = len(group)
             a = np.array([plan["signals"][j]["a"] for plan, j in group])
             values = np.zeros((B, n + T))
@@ -217,15 +307,22 @@ class TimeSynth(Generator):
                 inits = plan["signals"][j]["inits"]
                 values[b, :n] = inits
                 for t in range(n, 2 * n):
-                    slice_sum[b, t] = np.sum(inits[t - n : n])
+                    slice_sum[b, t] = np.sum(inits[t - n: n])
             for t in range(n, n + T):
                 s = slice_sum[:, t] if t < 2 * n else 0.0
-                values[:, t] = a[:, 0] * values[:, t - 1] + a[:, 1] * values[:, t - 1] * s + a[:, 2] * rands[t - n] * rands[t] + a[:, 3]
+                values[:, t] = (
+                    a[:, 0] * values[:, t - 1]
+                    + a[:, 1] * values[:, t - 1] * s
+                    + a[:, 2] * rands[t - n] * rands[t]
+                    + a[:, 3]
+                )
             for b, (plan, j) in enumerate(group):
                 plan["signals"][j]["values"] = values[b, n:]
 
     def _assemble(self, plan: dict) -> np.ndarray:
-        """Assembling a series of components and noise in order of operations `_one`."""
+        """Assembling a series of components and noise in order of operations
+        `_one`.
+        """
         L = self.length
         times = plan["times"]
         combined = None
@@ -240,14 +337,17 @@ class TimeSynth(Generator):
                 combined = combined * (1 + 0.05 * w * values)
         samples = combined + plan["noise"]["values"]
         if len(samples) != L:
-            samples = np.interp(np.linspace(times[0], times[-1], L), times, samples)
+            samples = np.interp(
+                np.linspace(times[0], times[-1], L), times, samples
+            )
         return np.asarray(samples, dtype=np.float32).astype(np.float64)
 
     def _exact(self, seed: int) -> np.ndarray:
         return self._one(seed, self.irregular_prob)
 
     def reproduce(self, random_seed: int, n: int) -> np.ndarray:
-        """The housing `(n, length)` float32 original: row seats `random_seed + i`, the probability of irregular grid from `random_seed`.
+        """The housing `(n, length)` float32 original: row seats `random_seed +
+        i`, the probability of irregular grid from `random_seed`.
 
         Args:
             random_seed: Corpus seed.
@@ -257,7 +357,9 @@ class TimeSynth(Generator):
             np.ndarray: `(n, length)` float32 series.
         """
         prob = float(np.random.default_rng(random_seed).uniform(0.1, 0.3))
-        return np.stack([self._one(random_seed + i, prob) for i in range(n)]).astype(np.float32)
+        return np.stack(
+            [self._one(random_seed + i, prob) for i in range(n)]
+        ).astype(np.float32)
 
     def _one(self, seed: int, irregular_prob: float) -> np.ndarray:
         L = self.length
@@ -273,11 +375,17 @@ class TimeSynth(Generator):
             keep = float(rng.uniform(80, 95))
             times = np.linspace(0, stop_time, L)
             resolution = float(stop_time - 0) / L
-            index = np.sort(legacy.choice(L, size=int(keep * L / 100), replace=False))
-            times = np.sort(times[index] + legacy.normal(0.0, resolution, size=len(index)))
+            index = np.sort(
+                legacy.choice(L, size=int(keep * L / 100), replace=False)
+            )
+            times = np.sort(
+                times[index] + legacy.normal(0.0, resolution, size=len(index))
+            )
         combined = None
         for kind in selected:
-            comp = np.asarray(self._signal(kind, rng, legacy, times), dtype=np.float32)
+            comp = np.asarray(
+                self._signal(kind, rng, legacy, times), dtype=np.float32
+            )
             w = float(rng.uniform(0.4, 1.2))
             if combined is None:
                 combined = w * comp
@@ -298,10 +406,18 @@ class TimeSynth(Generator):
                 noise[i] = prev[0]
         samples = combined + noise
         if len(samples) != L:
-            samples = np.interp(np.linspace(times[0], times[-1], L), times, samples)
+            samples = np.interp(
+                np.linspace(times[0], times[-1], L), times, samples
+            )
         return np.asarray(samples, dtype=np.float32).astype(np.float64)
 
-    def _signal(self, kind: str, rng: np.random.Generator, legacy: np.random.RandomState, times: np.ndarray):
+    def _signal(
+        self,
+        kind: str,
+        rng: np.random.Generator,
+        legacy: np.random.RandomState,
+        times: np.ndarray,
+    ):
         L = self.length
         if kind == "sinusoidal":
             p = int(rng.integers(4, max(8, L // 8)))
@@ -318,7 +434,9 @@ class TimeSynth(Generator):
             for i in range(1, len(times)):
                 dt = times[i] - times[i - 1]
                 noise = legacy.normal(loc=0.0, scale=1.0, size=1)
-                prev = (np.power(ar, dt)) * prev + sigma * np.sqrt(1 - np.power(ar, dt)) * noise
+                prev = (np.power(ar, dt)) * prev + sigma * np.sqrt(
+                    1 - np.power(ar, dt)
+                ) * noise
                 out[i] = prev[0]
             return out
         if kind == "narma":
@@ -334,11 +452,18 @@ class TimeSynth(Generator):
             inits = np.array(rng.normal(0, 0.1, size=order))
             own = np.random.RandomState(42)
             rand_inits = own.uniform(0, 0.5, size=order)
-            rands = np.concatenate((rand_inits, own.uniform(0, 0.5, size=len(times))))
+            rands = np.concatenate(
+                (rand_inits, own.uniform(0, 0.5, size=len(times)))
+            )
             values = np.concatenate((inits, np.zeros(len(times))))
             n = order
             for t in range(order, len(values)):
-                values[t] = a[0] * values[t - 1] + a[1] * values[t - 1] * np.sum(values[t - n : n]) + a[2] * rands[t - n] * rands[t] + a[3]
+                values[t] = (
+                    a[0] * values[t - 1]
+                    + a[1] * values[t - 1] * np.sum(values[t - n: n])
+                    + a[2] * rands[t - n] * rands[t]
+                    + a[3]
+                )
             return values[order:]
         if kind == "pseudoperiodic":
             p = int(rng.integers(6, max(12, L // 10)))
@@ -346,8 +471,12 @@ class TimeSynth(Generator):
             amp_sd = float(rng.uniform(0.05, 0.25))
             freq_sd = float(rng.uniform(0.01, 0.15) * p)
             ftype = rng.choice([np.sin, np.cos])
-            freq_arr = legacy.normal(loc=int(p), scale=freq_sd, size=len(times))
-            amp_arr = legacy.normal(loc=amplitude, scale=amp_sd, size=len(times))
+            freq_arr = legacy.normal(
+                loc=int(p), scale=freq_sd, size=len(times)
+            )
+            amp_arr = legacy.normal(
+                loc=amplitude, scale=amp_sd, size=len(times)
+            )
             return np.multiply(amp_arr, ftype(np.multiply(freq_arr, times)))
         p = int(rng.integers(1, 4))
         phi = rng.uniform(-0.6, 0.6, size=p)

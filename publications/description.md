@@ -43,15 +43,11 @@ analysis + GIFT-Eval evaluation → tables, plots, generator comparisons
 
 ## Measurement-method scope
 
-The [measurement contracts](../doc/source/measurements.rst) propose four methods:
-prequential coding (implemented), requential coding (registered stub), predictive
-V-information (implemented with paired test scoring), and Bayesian predictive log-loss using
-the implemented OU reference (public wrapper proposed). They specify the quantity,
-inputs, outputs, units and readiness of each method. Generation, training and
-forecast scoring are shared operations; the saved experiments use prequential
-coding. The method-specific result contract identifies the measured quantity:
-V-information is a predictive-loss reduction; prequential returns a model/data
-code decomposition. Both use the shared registry with method-specific outputs.
+The [measurement contracts](../doc/source/measurements.rst) describe three implemented estimators.
+Prequential coding decomposes accumulated loss into model and data costs in bits.
+Requential coding estimates cumulative teacher–student KL in bits and supports encoding and replay with finite ordered random coding.
+Predictive V-information measures the paired test loss reduction from providing forecast context, in bits per window.
+The OU reference computes Bayesian predictive log-loss for a known process.
 
 ## Public API and annotations
 
@@ -88,9 +84,8 @@ in bits per window, plus split, normalization, fitting and selection metadata.
 It is available as `build("v_information")` or `estimator=v_information`; constructor
 settings go in `estimator_config`. See `experiments/demos/v_information.json`.
 
-Prequential and V-information are implemented. Requential is a registered skeleton whose `run`
-raises `NotImplementedError`. Bayesian codes and proxies in the older research
-plans are future directions; no old model/sampler registries are part of this API.
+Use `build("requential")` for direct estimation or `build("requential", mode="orc")` to write a replayable stream.
+The [CPU example](../experiments/demos/requential.json) supplies a small waveform training budget.
 
 ## Stack
 

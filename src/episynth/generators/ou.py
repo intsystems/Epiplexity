@@ -1,4 +1,6 @@
-r"""The Ornstein-Ulenbeck process with a prior on the coefficient: a benchmark with a well-known Bayesian forecast."""
+r"""The Ornstein-Ulenbeck process with a prior on the coefficient: a benchmark
+with a well-known Bayesian forecast.
+"""
 
 import numpy as np
 
@@ -6,13 +8,18 @@ from .base import Generator
 
 
 class OU(Generator):
-    r"""AR(1) with zero average and unit stationary variance, :math:`\varphi = \sin u`, :math:`u \sim U[u_{\min}, u_{\max}]`.
+    r"""AR(1) with zero average and unit stationary variance, :math:`\varphi =
+    \sin u`, :math:`u \sim U[u_{\min}, u_{\max}]`.
 
     :math:`x_0 \sim N(0, 1)`, :math:`x_t = \varphi x_{t-1} + \sqrt{1 -
-    \varphi^2}\,\varepsilon_t`Prior on :math:`u` taken from E0`prior_diversity`): :math:`\varphi \in
-    [0{,}01;\,0{,}995]`Parameter and noise are taken from the same stream. `default_rng(seed)`:first
-    :math:`u`, then :math:`L` The distribution does not depend on the length of the series, serves
-    as a test of learning: the exact Bayesian loss of a window is considered to be a priori square.
+    \varphi^2}\,\varepsilon_t`Prior on :math:`u` taken from
+    E0`prior_diversity`): :math:`\varphi \in
+    [0{,}01;\,0{,}995]`Parameter and noise are taken from the same stream.
+    `default_rng(seed)`:first
+    :math:`u`, then :math:`L` The distribution does not depend on the length of
+    the series, serves
+    as a test of learning: the exact Bayesian loss of a window is considered to
+    be a priori square.
     `episynth.checks.ou_bayes`.
 
     Args:

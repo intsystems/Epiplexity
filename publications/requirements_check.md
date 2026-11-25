@@ -1,6 +1,7 @@
 # episynth requirements audit (October 21, 2026)
 
-> Historical audit dated October 21. Current materials are in the
+> The October 21 audit below records the implementation at that date.
+> The current library implements both requential coding and predictive V-information. Current materials are in the
 > [technical report](technical_report/README.md) and the
 > [research article](article/README.md).
 
@@ -44,12 +45,10 @@ The saved figures show per-window loss with a held-out baseline and the
 model and data parts. The run demonstrates the interface. Estimator
 convergence and large-run results require separate experiments.
 
-## Remaining work for final submission
+## Remaining work as of October 21
 
-- **Future algorithms.** Prequential is implemented. `RequentialEstimator.run`
-  raises `NotImplementedError`. Bayesian estimators and proxies from the
-  original plan remain research directions. The planned API can be documented
-  before those algorithms are implemented, and TM2 can use the working estimator.
+- **Algorithms at the time of this audit.** The prequential estimator ran at this revision.
+  Requential coding and predictive V-information were implemented in subsequent revisions.
 - **Coverage.** The last complete local check of `5148f88` reported 72 passed,
   2 skipped, and 76% coverage for `episynth`. The original team plan set a
   goal above 90%. The audit had yet to meet this historical goal, which had

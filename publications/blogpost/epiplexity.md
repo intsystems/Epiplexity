@@ -42,7 +42,7 @@ The library supplies that shared setup:
 | Generate | Seeded series from eleven prior families, precomputed corpora, or mixtures |
 | Form tasks | Context–future windows, padding, masks, and dequantization |
 | Train | A probabilistic Moirai model, pre-update loss logging, EMA weights, checkpoints, and resumption |
-| Measure | Prequential loss and its signed decomposition into residual and structural-proxy terms |
+| Measure | Prequential loss decomposition, requential coding cost, and predictive gain from context |
 | Evaluate | GIFT-Eval forecasts, per-window metrics, and configuration summaries |
 
 You can use the generators independently or run the full pipeline. The current training integration uses the library's [Moirai](https://arxiv.org/abs/2402.02592v2) port. Its measurements describe a specified learner and training procedure; using them to choose data still requires validation against your downstream tasks.
@@ -152,8 +152,13 @@ The [measurement contracts](https://github.com/intsystems/Epiplexity/blob/main/d
 | :-- | :-- | :-- |
 | Prequential coding | Measure accumulated predictive cost and signed excess | Implemented; used in our transfer study |
 | Bayesian predictive log-loss | Compare a learned forecaster with a known-prior reference | OU/AR(1) quadrature functions implemented in `checks.ou_bayes` |
-| Requential coding | Describe learned predictions through teacher-selected samples | Registered stub; `run` raises `NotImplementedError` |
-| Predictive V-information | Measure the predictive benefit of observing context | Proposed; no estimator implemented |
+| Requential coding | Describe learned predictions through teacher-selected samples | Implemented as `requential`: estimates cumulative KL in bits and can encode and replay a finite proposal stream |
+| Predictive V-information | Measure the predictive benefit of observing context | Implemented as `v_information`: reports paired test loss reduction and its standard error in bits per forecast window |
+
+The [meeting notebook] runs all three estimators on CPU.
+Its archived figures pair the original forecaster’s CRPS ratio with V-information at 2M and 40M training windows and with estimated requential KL at 2M windows.
+
+[meeting notebook]: https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb
 
 The OU reference is useful for checking whether a trained model approaches the predictive loss implied by a known generative process. It provides joint and pointwise scores; use the pointwise reference when comparing with Moirai's forecast factorization. Custom estimators can implement `EpiplexityEstimator` and register a name with `@register`.
 
@@ -197,6 +202,6 @@ These results cover one architecture and mostly one initialization per prior. Bu
 
 A practical first experiment is to compare your candidate generator with KernelSynth and ETS under a common task and budget. Save the learning measurements, fix the endpoint convention, then evaluate downstream forecasts. If you want to select priors using area alone, validate that rule on new generator families and repeat initializations before using it to allocate larger budgets.
 
-`episynth` provides the pieces for that experiment: reproducible synthetic tasks, training logs that support recomputation, an implemented prequential estimator, and a forecasting benchmark interface. Our completed comparison identifies useful priors under one protocol and shows why measuring learning progress must be paired with checking its relevance to the target task.
+`episynth` provides the pieces for that experiment: reproducible synthetic tasks, training logs that support recomputation, prequential, requential, and predictive V-information estimators, and a forecasting benchmark interface. Our completed comparison identifies useful priors under one protocol and shows why measuring learning progress must be paired with checking its relevance to the target task.
 
 Start with the [demo notebook](https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb) or the examples above. The [report and reproduction scripts](https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report) provide the experimental evidence behind the results.

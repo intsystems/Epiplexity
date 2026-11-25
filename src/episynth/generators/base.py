@@ -23,10 +23,13 @@ import numpy as np
 
 
 def original_seeds(random_seed: int, n: int) -> np.ndarray:
-    """Recreate the per-series seeds for a corpus of `n` series with seed `random_seed`.
+    """Recreate the per-series seeds for a corpus of `n` series with seed
+    `random_seed`.
 
-    The original samples these with `default_rng(random_seed).integers(0, 2**31, n)`.
-    See the `reproduce` methods of TSI and TimeSynth for their own seed schemes.
+    The original samples these with `default_rng(random_seed).integers(0,
+    2**31, n)`.
+    See the `reproduce` methods of TSI and TimeSynth for their own seed
+    schemes.
 
     Args:
         random_seed: Corpus seed.
@@ -53,10 +56,13 @@ class Generator(ABC):
     def __init__(self, length: int = 1024) -> None:
         self.length = length
 
-    def generate(self, seeds: Sequence[int] | np.ndarray, exact: bool = False) -> np.ndarray:
+    def generate(
+        self, seeds: Sequence[int] | np.ndarray, exact: bool = False
+    ) -> np.ndarray:
         """Generate one float32 series per seed.
 
-        With `exact=True`, match the reference implementation for the same seed.
+        With `exact=True`, match the reference implementation for the same
+        seed.
         The result is bitwise-identical when NumPy evaluates operations in the
         same order and agrees up to rounding otherwise. Nonfinite series are
         replaced according to the original implementation's fallback.
@@ -91,8 +97,12 @@ class Generator(ABC):
 
     @abstractmethod
     def _batch(self, seeds: np.ndarray) -> np.ndarray:
-        """`(n, length)` float64 series of the main mode for the array of seats."""
+        """`(n, length)` float64 series of the main mode for the array of
+        seats.
+        """
 
     def _exact(self, seed: int) -> np.ndarray:
-        """The `(length,)` float64 series of reproduction modes; by default, the main mode is it."""
+        """The `(length,)` float64 series of reproduction modes; by default,
+        the main mode is it.
+        """
         return self._batch(np.array([seed], dtype=np.int64))[0]

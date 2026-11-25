@@ -11,13 +11,19 @@ _LEVEL_CEIL = 1e6
 
 
 class ETS(Generator):
-    r"""ETS with a random combination of error (A, M), trend (N, A, fading) and seasonality (N, A, M).
+    r"""ETS with a random combination of error (A, M), trend (N, A, fading) and
+    seasonality (N, A, M).
 
-    The anti-aliasing parameters and initial states are uniform, the period from :math:`\{4, 7, 12,
-    24, 52\}`; the level is limited from above and below, the seasonal indexes of the multiplicative
-    model are sandwiched in :math:`[0{,}1;\,10]`. The series that went beyond :math:`10^8` or lost a
-    limb is replaced by a simple additive model, as in the original. The distribution does not
-    depend on the length of the series. The recursion of states is considered to be a packet of the
+    The anti-aliasing parameters and initial states are uniform, the period
+    from :math:`\{4, 7, 12,
+    24, 52\}`; the level is limited from above and below, the seasonal indexes
+    of the multiplicative
+    model are sandwiched in :math:`[0{,}1;\,10]`. The series that went beyond
+    :math:`10^8` or lost a
+    limb is replaced by a simple additive model, as in the original. The
+    distribution does not
+    depend on the length of the series. The recursion of states is considered
+    to be a packet of the
     same operations as the original, so the main mode matches.
 
     Args:
@@ -62,12 +68,16 @@ class ETS(Generator):
             per = int(rng.choice([4, 7, 12, 24, 52])) if season != "N" else 1
             alpha[i] = float(rng.uniform(0.01, 0.3))
             beta[i] = float(rng.uniform(0.001, 0.1)) if trend != "N" else 0.0
-            gamma[i] = float(rng.uniform(0.001, 0.15)) if season != "N" else 0.0
+            gamma[i] = (
+                float(rng.uniform(0.001, 0.15)) if season != "N" else 0.0
+            )
             phi[i] = float(rng.uniform(0.8, 0.98)) if trend == "Ad" else 1.0
             if error == "M":
                 sigma[i] = float(rng.uniform(0.005, 0.05))
             else:
-                sigma[i] = float(np.exp(rng.uniform(np.log(0.01), np.log(0.3))))
+                sigma[i] = float(
+                    np.exp(rng.uniform(np.log(0.01), np.log(0.3)))
+                )
             level[i] = float(rng.uniform(10, 50))
             b[i] = float(rng.uniform(-0.1, 0.1)) if trend != "N" else 0.0
             if season == "A":
@@ -93,30 +103,54 @@ class ETS(Generator):
                 idx = t % period
                 si = s[rows, idx]
                 base = level + phi * b
-                yhat = np.where(season_m, base * si, np.where(season_a, base + si, base))
-                e = np.where(err_a, (sigma * np.abs(level)) * z[:, t], sigma * z[:, t])
+                yhat = np.where(
+                    season_m, base * si, np.where(season_a, base + si, base)
+                )
+                e = np.where(
+                    err_a, (sigma * np.abs(level)) * z[:, t], sigma * z[:, t]
+                )
                 y[:, t] = np.where(err_a, yhat + e, yhat * (1 + e))
-                err_term = np.where(err_a, e, np.where(np.abs(yhat) > 1e-10, e * yhat, e))
+                err_term = np.where(
+                    err_a, e, np.where(np.abs(yhat) > 1e-10, e * yhat, e)
+                )
                 level_old = level
                 level = np.where(
                     season_m,
-                    level + phi * b + alpha * err_term / np.maximum(np.abs(si), 1e-10),
+                    level
+                    + phi * b
+                    + alpha * err_term / np.maximum(np.abs(si), 1e-10),
                     level + phi * b + alpha * err_term,
                 )
                 level = np.clip(level, -_LEVEL_CEIL, _LEVEL_CEIL)
                 small = (np.abs(level) < _LEVEL_FLOOR) & ~err_a
-                level = np.where(small, np.where(level != 0, np.sign(level) * _LEVEL_FLOOR, _LEVEL_FLOOR), level)
-                b = np.where(trend_n, b, np.clip(phi * b + beta * (level - level_old), -10.0, 10.0))
+                level = np.where(
+                    small,
+                    np.where(
+                        level != 0, np.sign(level) * _LEVEL_FLOOR, _LEVEL_FLOOR
+                    ),
+                    level,
+                )
+                b = np.where(
+                    trend_n,
+                    b,
+                    np.clip(phi * b + beta * (level - level_old), -10.0, 10.0),
+                )
                 denom = np.maximum(np.abs(level_old + phi * b), 1e-10)
                 s_new = np.where(
                     season_a,
                     si + gamma * err_term,
-                    np.where(season_m, np.clip(si + gamma * err_term / denom, 0.1, 10.0), si),
+                    np.where(
+                        season_m,
+                        np.clip(si + gamma * err_term / denom, 0.1, 10.0),
+                        si,
+                    ),
                 )
                 s[rows, idx] = s_new
         out = y[:, _BURN_IN:].copy()
         with np.errstate(all="ignore"):
-            bad = ~np.all(np.isfinite(out), axis=1) | (np.nanmax(np.abs(out), axis=1) > 1e8)
+            bad = ~np.all(np.isfinite(out), axis=1) | (
+                np.nanmax(np.abs(out), axis=1) > 1e8
+            )
         for i in np.flatnonzero(bad):
             out[i] = self._fallback(rngs[i])
         return out

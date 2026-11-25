@@ -9,14 +9,21 @@ _LEVEL_MODES = ["uniform", "random_walk", "clustered"]
 
 
 class StepFunction(Generator):
-    """A series of a random number of constant level segments with transitions between them.
+    """A series of a random number of constant level segments with transitions
+    between them.
 
-    Number of segments geometric, segment lengths from the Dirichlet distribution, levels uniform,
-    random wandering or clusters; transition sharp, linear or sigmoid (probabilities) 0,5, 0,3, 0,2)
-    width 1–5 % of the length of the row; with probability 0,7 It adds white noise. The width of the
-    junction is given by fractions of the length, so at a different length, the shape of the
-    junction changes at the points. The degenerate series is replaced by zeros, like in the
-    original. The generation is cheap, the main mode is the same as the reproduction mode.
+    Number of segments geometric, segment lengths from the Dirichlet
+    distribution, levels uniform,
+    random wandering or clusters; transition sharp, linear or sigmoid
+    (probabilities) 0,5, 0,3, 0,2)
+    width 1–5 % of the length of the row; with probability 0,7 It adds white
+    noise. The width of the
+    junction is given by fractions of the length, so at a different length, the
+    shape of the
+    junction changes at the points. The degenerate series is replaced by zeros,
+    like in the
+    original. The generation is cheap, the main mode is the same as the
+    reproduction mode.
 
     Args:
         length: The length of the row.
@@ -30,9 +37,13 @@ class StepFunction(Generator):
             out[i] = self._one(np.random.default_rng(int(seed)))
         return out
 
-    def _segment_lengths(self, n_seg: int, rng: np.random.Generator) -> np.ndarray:
+    def _segment_lengths(
+        self, n_seg: int, rng: np.random.Generator
+    ) -> np.ndarray:
         proportions = rng.dirichlet(rng.uniform(0.5, 2.0) * np.ones(n_seg))
-        lengths = np.maximum(np.floor(proportions * self.length).astype(int), 2)
+        lengths = np.maximum(
+            np.floor(proportions * self.length).astype(int), 2
+        )
         deficit = self.length - lengths.sum()
         if deficit > 0:
             for idx in rng.choice(n_seg, size=deficit, replace=True):
@@ -57,7 +68,9 @@ class StepFunction(Generator):
             )
         n_clusters = rng.integers(2, min(6, n_seg + 1))
         centers = rng.uniform(-5, 5, size=n_clusters)
-        return centers[rng.choice(n_clusters, size=n_seg)] + rng.normal(0, 0.1, size=n_seg)
+        return centers[rng.choice(n_clusters, size=n_seg)] + rng.normal(
+            0, 0.1, size=n_seg
+        )
 
     def _transitions(self, series, cps, levels, ttype, rng) -> np.ndarray:
         if ttype == "hard":

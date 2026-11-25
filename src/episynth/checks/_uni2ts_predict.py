@@ -1,8 +1,10 @@
 """Prediction `MoiraiForecast` from uni2ts on saved windows.
 
-    python _uni2ts_predict.py <checkpoint directory> <windows.npz> <out.npy> <patch> <context> <n_samples>
+    python _uni2ts_predict.py <checkpoint directory> <windows.npz> <out.npy>
+    <patch> <context> <n_samples>
 
-Launched by an interpreter with uni2ts 2.0.0 and gluonts. Entrances: `h<i>` arrays (history) and `h`
+Launched by an interpreter with uni2ts 2.0.0 and gluonts. Entrances: `h<i>`
+arrays (history) and `h`
 scalar (horizon). Output: medians of `(B, h)` predictions.
 """
 
@@ -13,15 +15,32 @@ import pandas as pd
 import torch
 
 
-def main(ckpt_dir: str, windows: str, out: str, patch: int, context: int, n_samples: int) -> None:
+def main(
+    ckpt_dir: str,
+    windows: str,
+    out: str,
+    patch: int,
+    context: int,
+    n_samples: int,
+) -> None:
     """It counts the medians of forecasts and stores them in `out`."""
     from gluonts.dataset.common import ListDataset
     from uni2ts.model.moirai import MoiraiForecast, MoiraiModule
 
     z = np.load(windows)
     horizon = int(z["h"])
-    hist = [z[k] for k in sorted(z.files, key=lambda s: (len(s), s)) if k.startswith("h") and k != "h"]
-    ds = ListDataset([{"start": pd.Period("2000-01-01", freq="D"), "target": x} for x in hist], freq="D")
+    hist = [
+        z[k]
+        for k in sorted(z.files, key=lambda s: (len(s), s))
+        if k.startswith("h") and k != "h"
+    ]
+    ds = ListDataset(
+        [
+            {"start": pd.Period("2000-01-01", freq="D"), "target": x}
+            for x in hist
+        ],
+        freq="D",
+    )
     model = MoiraiForecast(
         module=MoiraiModule.from_pretrained(ckpt_dir),
         prediction_length=horizon,
@@ -33,7 +52,10 @@ def main(ckpt_dir: str, windows: str, out: str, patch: int, context: int, n_samp
         past_feat_dynamic_real_dim=0,
     )
     torch.manual_seed(0)
-    medians = [f.quantile(0.5) for f in model.create_predictor(batch_size=len(hist)).predict(ds)]
+    medians = [
+        f.quantile(0.5)
+        for f in model.create_predictor(batch_size=len(hist)).predict(ds)
+    ]
     np.save(out, np.stack(medians))
 
 

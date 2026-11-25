@@ -1,11 +1,14 @@
-r"""Verification of Moirai forecasts in the protocol of the GIFT-Eval notebook with `MoiraiForecast` from uni2ts on the windows of the dataset.
+r"""Compare Moirai forecast medians with uni2ts on GIFT-Eval windows.
 
-    python -m episynth.checks.moirai_forecast --data <GiftEval image> --checkpoint <checkpoint directory>
-        --uni2ts-python <interpreter with uni2ts> [-dataset us_births/D] [-n-windows 4]
+.. code-block:: bash
 
-Takes the first windows of the dataset, considers the forecast medians our forecaster and the
-original (a separate interpreter), and prints the MAE of both against the truth and the average
-median difference. The difference should be at the level of sampling noise.
+    python -m episynth.checks.moirai_forecast --data "$GIFT_EVAL_DIR" \
+        --checkpoint "$MOIRAI_SMALL_DIR" --uni2ts-python "$UNI2TS_PYTHON" \
+        --dataset us_births/D --n-windows 4
+
+Both forecasters use the first windows of the same dataset. The check
+prints their MAEs against the observed targets and the mean difference
+between forecast medians. Sampling introduces variation in the medians.
 """
 
 import argparse
@@ -41,13 +44,37 @@ def main() -> None:
     model = MoiraiModule(small())
     load_uni2ts_checkpoint(model, str(args.checkpoint / "model.safetensors"))
     torch.manual_seed(0)
-    fc = MoiraiForecaster(model, args.patch_size, "notebook", args.context, n_samples=args.n_samples, batch_size=len(inst))
-    ours = np.median(fc.predict([x.history for x in inst], ds.prediction_length).samples, axis=0)
+    fc = MoiraiForecaster(
+        model,
+        args.patch_size,
+        "notebook",
+        args.context,
+        n_samples=args.n_samples,
+        batch_size=len(inst),
+    )
+    ours = np.median(
+        fc.predict([x.history for x in inst], ds.prediction_length).samples,
+        axis=0,
+    )
     with tempfile.TemporaryDirectory() as tmp:
         inp, out = Path(tmp) / "windows.npz", Path(tmp) / "medians.npy"
-        np.savez(inp, h=ds.prediction_length, **{f"h{i}": x.history for i, x in enumerate(inst)})
+        np.savez(
+            inp,
+            h=ds.prediction_length,
+            **{f"h{i}": x.history for i, x in enumerate(inst)},
+        )
         subprocess.run(
-            [args.uni2ts_python, "-I", str(_HELPER), str(args.checkpoint), str(inp), str(out), str(args.patch_size), str(args.context), str(args.n_samples)],
+            [
+                args.uni2ts_python,
+                "-I",
+                str(_HELPER),
+                str(args.checkpoint),
+                str(inp),
+                str(out),
+                str(args.patch_size),
+                str(args.context),
+                str(args.n_samples),
+            ],
             check=True,
             capture_output=True,
         )
@@ -55,8 +82,12 @@ def main() -> None:
     for i, x in enumerate(inst):
         valid = np.isfinite(x.label)
         print(
-            f"Window {i}: our MAE {np.abs(ours[i] - x.label)[valid].mean():.4g}, uni2ts {np.abs(theirs[i] - x.label)[valid].mean():.4g}; "
-            f"mean difference between medians {np.abs(ours[i] - theirs[i]).mean():.4g}, ground-truth scale {np.abs(x.label[valid]).mean():.4g}"
+            f"Window {i}: our MAE"
+            f" {np.abs(ours[i] - x.label)[valid].mean():.4g}, uni2ts"
+            f" {np.abs(theirs[i] - x.label)[valid].mean():.4g}; mean"
+            " difference between medians"
+            f" {np.abs(ours[i] - theirs[i]).mean():.4g}, ground-truth scale"
+            f" {np.abs(x.label[valid]).mean():.4g}"
         )
 
 

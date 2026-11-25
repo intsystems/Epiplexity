@@ -17,8 +17,23 @@ from .waveform import Waveform
 
 GENERATORS: dict[str, type[Generator]] = {
     cls.name: cls
-    for cls in (KernelSynth, ETS, Waveform, SDE, StepFunction, TSI, ARIMA, FBM, GARCH, Chaotic, TimeSynth, OU)
+    for cls in (
+        KernelSynth,
+        ETS,
+        Waveform,
+        SDE,
+        StepFunction,
+        TSI,
+        ARIMA,
+        FBM,
+        GARCH,
+        Chaotic,
+        TimeSynth,
+        OU,
+    )
 }
-"""Generator classes by name; eleven names coincide with the register Mix, Don't Pick, `ou` - the benchmark with the well-known Bayesian forecast."""
+"""Generator classes by name; eleven names coincide with the register
+Mix, Don't Pick, `ou` - the benchmark with the well-known Bayesian forecast.
+"""
 
 __all__ = ["GENERATORS", "Generator", "Mixture", "original_seeds"]

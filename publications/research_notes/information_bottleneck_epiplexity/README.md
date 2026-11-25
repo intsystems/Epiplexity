@@ -1,6 +1,7 @@
 # Epiplexity and the information bottleneck: project proposal
 
 Prepared on 9 October 2026 from the collaborator correspondence, the repository's existing literature review, and primary-source checks.
+The proposal predates the library’s implementations of requential coding and predictive V-information for time series.
 
 - [PDF](proposal.pdf)
 - [LaTeX source](proposal.tex)

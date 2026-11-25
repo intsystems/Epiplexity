@@ -1,8 +1,11 @@
 r"""Register of Epiplexity Estimators.
 
-The estimators are registered by name by the decorator :func:`register` and created by the factory
-:func:`build`. The user adds his algorithm with one module: determines the class that implements
-:class:`~episynth.estimators.base.EpiplexityEstimator`, and marks it with ``@register("name")``.
+The estimators are registered by name by the decorator :func:`register` and
+created by the factory
+:func:`build`. The user adds his algorithm with one module: determines the
+class that implements
+:class:`~episynth.estimators.base.EpiplexityEstimator`, and marks it with
+``@register("name")``.
 """
 
 from __future__ import annotations
@@ -14,7 +17,9 @@ from .base import EpiplexityEstimator
 _REGISTRY: dict[str, type[EpiplexityEstimator]] = {}
 
 
-def register(name: str) -> Callable[[type[EpiplexityEstimator]], type[EpiplexityEstimator]]:
+def register(
+    name: str,
+) -> Callable[[type[EpiplexityEstimator]], type[EpiplexityEstimator]]:
     """Registers an estimator class under `name`.
 
     Args:
@@ -24,7 +29,9 @@ def register(name: str) -> Callable[[type[EpiplexityEstimator]], type[Epiplexity
         Decorator, returning the class unchanged.
     """
 
-    def _decorator(cls: type[EpiplexityEstimator]) -> type[EpiplexityEstimator]:
+    def _decorator(
+        cls: type[EpiplexityEstimator],
+    ) -> type[EpiplexityEstimator]:
         if name in _REGISTRY:
             raise ValueError(f"Estimator {name!r} is already registered.")
         cls.name = name  # type: ignore[attr-defined]
@@ -48,7 +55,10 @@ def build(name: str, **config: object) -> EpiplexityEstimator:
         KeyError: If the algorithm with that name is not registered.
     """
     if name not in _REGISTRY:
-        raise KeyError(f"No epiplexity estimator registered under {name!r}. Available: {sorted(_REGISTRY)}.")
+        raise KeyError(
+            f"No epiplexity estimator registered under {name!r}. Available:"
+            f" {sorted(_REGISTRY)}."
+        )
     return _REGISTRY[name](**config)
 
 

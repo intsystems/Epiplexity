@@ -57,7 +57,7 @@
 {\LARGE\bfseries A Library for Studying Information\\in Synthetic Time Series\par}
 \vspace{8pt}
 Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
-{\small Moscow Institute of Physics and Technology \hfill 13 November 2026\par}
+{\small Moscow Institute of Physics and Technology \hfill 25 November 2026\par}
 \vspace{7pt}
 {\color{reportrule}\hrule height 0.5pt}
 \vspace{7pt}
@@ -65,10 +65,7 @@ Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
 {\large\bfseries\color{reportnavy} Abstract\par}
 \texttt{episynth} is a Python library for comparing probabilistic forecasters
 trained on synthetic time series. A run configuration specifies the generator,
-forecast window, model, and training budget. The library records the evidence
-needed to recompute prequential excess loss and predictive
-$\mathcal V$-information, and provides a Bayesian likelihood reference for a
-known process. A CPU experiment verifies the measurement pipeline. In the
+forecast window, model, and training budget. The library implements prequential coding, requential coding, and predictive $\mathcal V$-information, with a Bayesian likelihood reference for a known process. A CPU experiment verifies the measurement pipeline. In the
 archived comparison of eleven generators, excess prequential loss had a weak
 rank association with forecast quality on GIFT-Eval at both training budgets.
 
@@ -98,7 +95,7 @@ Method & Measurement & Interface\\
 Prequential coding & Total, endpoint, and excess loss in bits & \texttt{prequential} estimator\\
 Predictive $\mathcal V$-information & Paired NLL reduction and standard error in bits per window & \texttt{v\_information} estimator\\
 OU Bayes reference & Joint and pointwise predictive NLL in nats per window & Reference functions\\
-Requential coding & Cumulative teacher--student KL and coding overhead & Registered stub\\
+Requential coding & Cumulative teacher--student KL and coding overhead & \texttt{requential} estimator\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -277,9 +274,10 @@ teacher-generated targets~\cite{qiu2026}. The leading term of the expected
 code length is the sum of the teacher-to-student Kullback--Leibler
 divergences in bits at the updates. The expected code length also includes
 overhead for encoding the indices of selected samples as binary messages.
-The \texttt{requential} registry entry
-exposes the intended interface and raises \texttt{NotImplementedError}
-when called. \repolink{doc/source/measurements.rst}{Measurement guide.}
+The \texttt{requential} estimator measures cumulative KL in bits from teacher samples.
+Its optional finite ordered random coder writes a stream of proposal indices and replays the student updates from shared seeds.
+\testlink{requential}{Encoder and decoder tests.}
+\repolink{doc/source/measurements.rst}{Measurement guide.}
 
 \clearpage
 \section{Worked measurements}\label{sec:examples}

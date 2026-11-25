@@ -72,21 +72,24 @@ class PrequentialEstimator(EpiplexityEstimator):
             out_dir: Run directory.
 
         Returns:
-            dict[str, float]: ``model_part_bits``, ``data_part_bits``, ``total_bits`` and
-                ``n_windows``.
+            dict[str, float]: ``model_part_bits``, ``data_part_bits``,
+                ``total_bits``, and ``n_windows``.
         """
         out = Path(out_dir)
         Trainer(model, generator, spec, config, out).run()
         return self.from_run_dir(out)
 
     def from_run_dir(self, out_dir: str | Path) -> dict[str, float]:
-        """Compute the estimate from a completed `Trainer` run using `analysis.run_area`.
+        """Compute the estimate from a completed `Trainer` run using
+        `analysis.run_area`.
 
         Args:
-            out_dir: Run directory with `window_loss.f32` and `heldout_<variant>_1.f32`.
+            out_dir: Run directory with `window_loss.f32` and
+                `heldout_<variant>_1.f32`.
 
         Returns:
-            dict[str, float]: `model_part_bits`, `data_part_bits`, `total_bits`,
+            dict[str, float]: `model_part_bits`, `data_part_bits`,
+            `total_bits`,
             and `n_windows`.
         """
         area = run_area(out_dir, self.variant)

@@ -7,8 +7,9 @@ methods below support the investigation of generator-selection signals.
 
 The proposed four-method library scope is **prequential coding**, **requential
 coding**, **predictive V-information**, and **Bayesian predictive log-loss**.
-Prequential coding is the method used in the saved transfer experiments. The
-Bayesian method uses the existing OU reference and has narrower applicability.
+The archived comparisons pair the original forecasters’ CRPS with prequential excess loss,
+predictive V-information, and estimated requential KL at matched training budgets.
+The Bayesian method uses the OU reference.
 The registry implements prequential coding, requential coding, and predictive V-information.
 
 Method status
@@ -132,7 +133,7 @@ Variation across training runs requires independent seeds.
 Finite Monte Carlo sampling gives an estimate of the expected-length bound, without a certified upper bound.
 
 **Replay.** Finite ordered random coding uses a fixed pool of student proposals for each horizon.
-The encoder chooses a proposal by its ordered exponential arrival time and likelihood ratio, then writes its one-based Elias-delta index to ``indices.bin`.
+The encoder chooses a proposal by its ordered exponential arrival time and likelihood ratio, then writes its one-based Elias-delta index to ``indices.bin``.
 The selected horizons approximate the teacher law, so the encoder uses separate direct teacher draws for the KL estimate.
 The finite race is Algorithm 4 of `Theis and Yosri (2022) <https://proceedings.mlr.press/v162/theis22a.html>`_.
 Large message KL can require exponentially many proposals.

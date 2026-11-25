@@ -1,9 +1,12 @@
-"""The body of the original Mix generator, Don't Pick, counted by a separate interpreter.
+"""The body of the original Mix generator, Don't Pick, counted by a separate
+interpreter.
 
     python _original_corpus.py <clone> <name> <length> <side> <n> <out.npy>
 
-Prints in stdout the generation time in seconds. Runs the interpreter with versions of the
-dependencies of the original (numpy 1.26): under the numpy 2, part of the original code falls and
+Prints in stdout the generation time in seconds. Runs the interpreter with
+versions of the
+dependencies of the original (numpy 1.26): under the numpy 2, part of the
+original code falls and
 silently replaced by spare rows.
 """
 
@@ -30,8 +33,12 @@ MODULES = {
 }
 
 
-def main(repo: Path, name: str, length: int, seed: int, n: int, out: Path) -> None:
-    """Counts the body of the original, saves it to `out` and prints the generation time."""
+def main(
+    repo: Path, name: str, length: int, seed: int, n: int, out: Path
+) -> None:
+    """Counts the body of the original, saves it to `out` and prints the
+    generation time.
+    """
     pkg = types.ModuleType("mdpgen")
     pkg.__path__ = [str(repo / "generators")]
     sys.modules["mdpgen"] = pkg

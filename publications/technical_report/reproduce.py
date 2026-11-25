@@ -28,11 +28,15 @@ def write_check_summary(result):
         failed = counts["failure"] + counts["error"]
         cells = f"{counts['passed']} & {counts['skipped']} & {failed}"
         lines.append(rf"\newcommand{{\Checks{group}}}{{{cells}}}")
-    (HERE / "data" / "check_summary.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (HERE / "data" / "check_summary.tex").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8"
+    )
 
 
 def run_checks():
-    """Execute the author's existing tests, preserving results and skip reasons."""
+    """Execute the author's existing tests, preserving results and skip
+    reasons.
+    """
     work = ROOT / "build" / "publication_split_checks"
     work.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -48,10 +52,19 @@ def run_checks():
         "-q", "-rs", "--junitxml=" + str(work / "junit.xml"),
         "--basetemp=" + str(work / "pytest_tmp"),
     ]
-    proc = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8")
+    proc = subprocess.run(
+        command,
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
     print(proc.stdout, end="", flush=True)
     print(proc.stderr, end="", flush=True)
-    (HERE / "data" / "pytest_output.txt").write_text(proc.stdout + proc.stderr, encoding="utf-8")
+    (HERE / "data" / "pytest_output.txt").write_text(
+        proc.stdout + proc.stderr, encoding="utf-8"
+    )
     if not (work / "junit.xml").exists():
         raise RuntimeError("pytest did not produce a test report")
     tree = ET.parse(work / "junit.xml")
@@ -64,20 +77,43 @@ def run_checks():
             if child is not None:
                 status, details = result, child.get("message", "")
                 break
-        cases.append({"name": node.get("name"), "module": node.get("classname"), "status": status, "details": details})
-    result = {"provenance": "Fresh report rerun of existing tests, not an archived author run", "cases": cases}
-    result["counts"] = {s: sum(c["status"] == s for c in cases) for s in ("passed", "skipped", "failure", "error")}
-    (HERE / "data" / "test_results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+        cases.append(
+            {
+                "name": node.get("name"),
+                "module": node.get("classname"),
+                "status": status,
+                "details": details,
+            }
+        )
+    result = {
+        "provenance": (
+            "Fresh report rerun of existing tests, not an archived author run"
+        ),
+        "cases": cases,
+    }
+    result["counts"] = {
+        s: sum(c["status"] == s for c in cases)
+        for s in ("passed", "skipped", "failure", "error")
+    }
+    (HERE / "data" / "test_results.json").write_text(
+        json.dumps(result, indent=2), encoding="utf-8"
+    )
     write_check_summary(result)
     if proc.returncode:
-        raise RuntimeError("Existing test suite failed; see data/pytest_output.txt")
+        raise RuntimeError(
+            "Existing test suite failed; see data/pytest_output.txt"
+        )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-checks", action="store_true")
     args = parser.parse_args()
-    subprocess.run([sys.executable, str(HERE / "run_examples.py")], cwd=ROOT, check=True)
+    subprocess.run(
+        [sys.executable, str(HERE / "run_examples.py")], cwd=ROOT, check=True
+    )
     if not args.skip_checks:
         run_checks()
-    subprocess.run([sys.executable, str(HERE / "make_plots.py")], cwd=HERE, check=True)
+    subprocess.run(
+        [sys.executable, str(HERE / "make_plots.py")], cwd=HERE, check=True
+    )

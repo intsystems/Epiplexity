@@ -1,7 +1,7 @@
 # episynth proof of concept: speaker notes
 
-Slides 1–12 take about 12–15 minutes, including a short demonstration of the
-notebook and API. Slides 13–15 are optional appendix slides.
+Slides 1–14 cover the CPU demonstration and archived comparisons.
+Slides 15–18 are optional.
 
 ## 1. Title slide (20 seconds)
 
@@ -94,7 +94,7 @@ Open the [executed notebook](https://github.com/intsystems/Epiplexity/blob/main/
 
 Show the configuration, the call that runs the estimator, and the saved
 plots. The model part is 788.284 bits, the data part is 5499.059 bits, and
-the total is 6287.343 bits. All six code cells ran. The slide uses the plot
+the total is 6287.343 bits. All eight code cells ran. The slide uses the plot
 from those saved outputs.
 
 The shading highlights regions above the baseline. The model part uses
@@ -110,8 +110,8 @@ Register a new estimator and select it through `build` or the configuration.
 Any algorithm-specific operations belong in its `run` implementation,
 which can use the shared components.
 
-The current requential estimator is a registered stub. The notebook's
-`ConstantEstimator` demonstrates class registration.
+The registry implements all three estimators.
+The notebook demonstrates registering a fourth class, `ConstantEstimator`.
 
 ## 11. Generated API documentation and checks (60 seconds)
 
@@ -122,11 +122,24 @@ open `doc/source/api/analysis.rst` and point out that `automodule` obtains
 this information from Python. This demonstrates an automatically documented
 function.
 
-The baseline verification reported 72 passed and 2 skipped. The skipped
+The suite checks V-information against a Gaussian reference and verifies requential decoder replay in a fresh process. The skipped
 tests require external weights and GIFT-Eval data. The docs build automatically
 and site publication is manual.
 
-## 12. Conclusion (40 seconds)
+## 12. Predictive V-information (40 seconds)
+
+Read the horizontal axis as the gain from context in bits per window.
+The vertical axis is the archived forecaster’s CRPS ratio across 55 GIFT-Eval tasks, with lower values indicating better forecasts.
+Each panel covers 11 generators, and the 40M panel includes a second Waveform initialization.
+
+## 13. Requential coding (40 seconds)
+
+The horizontal axis is cumulative teacher–student KL in millions of bits per student.
+The 11 points use the 2M training budget.
+The smallest estimated KL belongs to fBm, while KernelSynth has the lowest forecast error.
+The appendix arrows show how the same generators move horizontally when we change the coding measure.
+
+## 14. Conclusion (40 seconds)
 
 “The proof of concept confirms that the base estimator is integrated. The
 shared interface covers generation, training, recording pre-update losses,

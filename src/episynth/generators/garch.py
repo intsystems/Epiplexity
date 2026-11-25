@@ -9,13 +9,19 @@ _E_ABS_Z = np.sqrt(2 / np.pi)
 
 
 class GARCH(Generator):
-    r"""Yields GARCH(1,1), GJR-GARCH or EGARCH, with probability 0,5 accumulated in prices.
+    r"""Yields GARCH(1,1), GJR-GARCH or EGARCH, with probability 0,5
+    accumulated in prices.
 
-    Innovation Normal or Student with 3–10 degrees of freedom (normalized to unit variance), mean
-    zero, constant or AR(1Unconditional volatility is log-equal from :math:`[0{,}005;\,0{,}5]`; 500
-    Acceleration points are discarded. The distribution does not depend on the length of the row.
-    Recursion is considered a packet in rows, elementally the same operations as the original (the
-    square is taken as the scalar one). `**` Python), so the main mode is the same as the playback
+    Innovation Normal or Student with 3–10 degrees of freedom (normalized to
+    unit variance), mean
+    zero, constant or AR(1Unconditional volatility is log-equal from
+    :math:`[0{,}005;\,0{,}5]`; 500
+    Acceleration points are discarded. The distribution does not depend on the
+    length of the row.
+    Recursion is considered a packet in rows, elementally the same operations
+    as the original (the
+    square is taken as the scalar one). `**` Python), so the main mode is the
+    same as the playback
     mode.
 
     Args:
@@ -25,21 +31,27 @@ class GARCH(Generator):
     name = "garch"
 
     @staticmethod
-    def _innovations(n: int, kind: str, doff: float, rng: np.random.Generator) -> np.ndarray:
+    def _innovations(
+        n: int, kind: str, doff: float, rng: np.random.Generator
+    ) -> np.ndarray:
         if kind == "normal":
             return rng.standard_normal(n)
         return rng.standard_t(doff, size=n) / np.sqrt(doff / (doff - 2.0))
 
     @staticmethod
     def _garch11(omega, alpha, beta, mu, phi, z) -> np.ndarray:
-        """Recursion GARCH(1,1); parameters - arrays in rows, `z` form `(n, T)`."""
+        """Recursion GARCH(1,1); parameters - arrays in rows, `z` form `(n,
+        T)`.
+        """
         T = z.shape[1]
         sigma2 = omega / (1 - alpha - beta)
         eps = np.sqrt(sigma2) * z[:, 0]
         r = np.empty_like(z)
         r[:, 0] = mu + eps
         for t in range(1, T):
-            sigma2 = np.maximum(omega + alpha * np.float_power(eps, 2.0) + beta * sigma2, 1e-8)
+            sigma2 = np.maximum(
+                omega + alpha * np.float_power(eps, 2.0) + beta * sigma2, 1e-8
+            )
             eps = np.sqrt(sigma2) * z[:, t]
             r[:, t] = mu + phi * (r[:, t - 1] - mu) + eps
         return r
@@ -53,7 +65,12 @@ class GARCH(Generator):
         r[:, 0] = mu + eps
         for t in range(1, T):
             ind = np.where(eps < 0, 1.0, 0.0)
-            sigma2 = np.maximum(omega + (alpha + gamma * ind) * np.float_power(eps, 2.0) + beta * sigma2, 1e-8)
+            sigma2 = np.maximum(
+                omega
+                + (alpha + gamma * ind) * np.float_power(eps, 2.0)
+                + beta * sigma2,
+                1e-8,
+            )
             eps = np.sqrt(sigma2) * z[:, t]
             r[:, t] = mu + phi * (r[:, t - 1] - mu) + eps
         return r
@@ -67,7 +84,14 @@ class GARCH(Generator):
         r[:, 0] = mu + eps
         for t in range(1, T):
             zp = z[:, t - 1]
-            log_s2 = np.clip(omega + alpha * (np.abs(zp) - _E_ABS_Z) + gamma * zp + beta * log_s2, -20, 20)
+            log_s2 = np.clip(
+                omega
+                + alpha * (np.abs(zp) - _E_ABS_Z)
+                + gamma * zp
+                + beta * log_s2,
+                -20,
+                20,
+            )
             eps = np.sqrt(np.exp(log_s2)) * z[:, t]
             r[:, t] = mu + phi * (r[:, t - 1] - mu) + eps
         return r
@@ -91,8 +115,12 @@ class GARCH(Generator):
             innov = rng.choice(["normal", "student_t"])
             mean_type = rng.choice(["zero", "constant", "ar1"])
             z[i] = self._innovations(T, innov, float(rng.uniform(3, 10)), rng)
-            mu[i] = float(rng.normal(0, 0.05)) if mean_type == "constant" else 0.0
-            phi[i] = float(rng.uniform(-0.3, 0.3)) if mean_type == "ar1" else 0.0
+            mu[i] = (
+                float(rng.normal(0, 0.05)) if mean_type == "constant" else 0.0
+            )
+            phi[i] = (
+                float(rng.uniform(-0.3, 0.3)) if mean_type == "ar1" else 0.0
+            )
             sigma_unc = float(np.exp(rng.uniform(np.log(0.005), np.log(0.5))))
             if model[i] == "garch11":
                 pers = float(rng.uniform(0.70, 0.97))
@@ -118,18 +146,41 @@ class GARCH(Generator):
                 if len(idx) == 0:
                     continue
                 if kind == "garch11":
-                    r[idx] = self._garch11(omega[idx], a[idx], b[idx], mu[idx], phi[idx], z[idx])
+                    r[idx] = self._garch11(
+                        omega[idx], a[idx], b[idx], mu[idx], phi[idx], z[idx]
+                    )
                 elif kind == "gjr_garch":
-                    r[idx] = self._gjr(omega[idx], a[idx], b[idx], g[idx], mu[idx], phi[idx], z[idx])
+                    r[idx] = self._gjr(
+                        omega[idx],
+                        a[idx],
+                        b[idx],
+                        g[idx],
+                        mu[idx],
+                        phi[idx],
+                        z[idx],
+                    )
                 else:
-                    r[idx] = self._egarch(omega[idx], a[idx], b[idx], g[idx], mu[idx], phi[idx], z[idx])
+                    r[idx] = self._egarch(
+                        omega[idx],
+                        a[idx],
+                        b[idx],
+                        g[idx],
+                        mu[idx],
+                        phi[idx],
+                        z[idx],
+                    )
         out = np.empty((n, L))
         for i in range(n):
             ri = r[i, _BURN_IN:]
             if not np.all(np.isfinite(ri)):
                 z_safe = self._innovations(T, "normal", 5.0, rngs[i])
                 ri = self._garch11(
-                    np.array([1e-4]), np.array([0.05]), np.array([0.90]), np.array([0.0]), np.array([0.0]), z_safe[None]
+                    np.array([1e-4]),
+                    np.array([0.05]),
+                    np.array([0.90]),
+                    np.array([0.0]),
+                    np.array([0.0]),
+                    z_safe[None],
                 )[0, _BURN_IN:]
             if rngs[i].random() < 0.5:
                 ri = np.cumsum(ri)

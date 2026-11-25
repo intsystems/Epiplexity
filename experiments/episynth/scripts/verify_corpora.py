@@ -32,9 +32,15 @@ def main() -> None:
                 continue
             corpus = Corpus(d)
             seeds = m["first_seed"] + np.sort(rng.integers(0, m["n"], n_rows))
-            fresh = GENERATORS[m["generator"]](length=m["length"]).generate(seeds)
+            fresh = GENERATORS[m["generator"]](length=m["length"]).generate(
+                seeds
+            )
             same = np.array_equal(corpus.generate(seeds), fresh)
-            print(f"{d}: {'OK' if same else 'ROWS DO NOT MATCH'} ({n_rows} sampled, {m['n']} total)", flush=True)
+            print(
+                f"{d}: {'OK' if same else 'ROWS DO NOT MATCH'} ({n_rows}"
+                f" sampled, {m['n']} total)",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":

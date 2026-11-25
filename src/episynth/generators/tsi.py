@@ -1,4 +1,5 @@
-"""The decomposition of trend-season-irregularity in eight combination schemes."""
+"""The decomposition of trend-season-irregularity in eight combination schemes.
+"""
 
 import numpy as np
 from scipy.signal import lfilter
@@ -12,9 +13,11 @@ _MODELS = list(range(1, 9))
 
 
 class TSI(Generator):
-    """Combine trend, seasonality, and an irregular component in one of eight ways.
+    """Combine trend, seasonality, and an irregular component in one of eight
+    ways.
 
-    The trend is linear, nonlinear, or zero. Seasonality is sinusoidal, stepped,
+    The trend is linear, nonlinear, or zero. Seasonality is sinusoidal,
+    stepped,
     triangular, pulsed, or zero, with a period up to :math:`L/8` sampled from
     the series length. The irregular component is AR(1) noise, a normalized
     cumulative sum, or white noise. The original draws all series sequentially
@@ -33,7 +36,12 @@ class TSI(Generator):
         if kind == "linear":
             return rng.uniform(-2, 2) * t + rng.uniform(-1, 1)
         if kind == "nonlinear":
-            a, b, c, d = rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-2, 2), rng.uniform(-1, 1)
+            a, b, c, d = (
+                rng.uniform(-1, 1),
+                rng.uniform(-1, 1),
+                rng.uniform(-2, 2),
+                rng.uniform(-1, 1),
+            )
             return (a * t + b) * np.sin(2 * np.pi * t) + c * t + d
         return np.zeros(self.length)
 
@@ -42,7 +50,9 @@ class TSI(Generator):
         t = np.arange(L)
         if kind == "sinusoidal":
             period = rng.integers(4, max(8, L // 8))
-            return float(rng.uniform(0.5, 2.0)) * np.sin(2 * np.pi / period * t + rng.uniform(0, 2 * np.pi))
+            return float(rng.uniform(0.5, 2.0)) * np.sin(
+                2 * np.pi / period * t + rng.uniform(0, 2 * np.pi)
+            )
         if kind == "step":
             period = int(rng.integers(4, max(8, L // 8)))
             amp = float(rng.uniform(0.5, 2.0))
@@ -51,7 +61,9 @@ class TSI(Generator):
             period = int(rng.integers(4, max(8, L // 8)))
             amp = float(rng.uniform(0.5, 2.0))
             cp = t % (2 * period)
-            return np.where(cp < period, amp * (cp / period), amp * (2 - cp / period))
+            return np.where(
+                cp < period, amp * (cp / period), amp * (2 - cp / period)
+            )
         if kind == "impulsive":
             period = int(rng.integers(4, max(8, L // 8)))
             amp = float(rng.uniform(0.5, 2.0))
@@ -102,7 +114,8 @@ class TSI(Generator):
         return out
 
     def reproduce(self, random_seed: int, n: int) -> np.ndarray:
-        """The housing `(n, length)` float32 original: all rows in a row from one generator from `random_seed`.
+        """The housing `(n, length)` float32 original: all rows in a row from
+        one generator from `random_seed`.
 
         Args:
             random_seed: Corpus seed.

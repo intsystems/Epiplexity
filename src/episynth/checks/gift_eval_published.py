@@ -1,10 +1,13 @@
-"""Comparison of the `summary.csv` of our run with the published model table in GIFT-Eval.
+r"""Compare a run's summary with the published GIFT-Eval model table.
 
-    python -m episynth.checks.gift_eval_published --summary <summary.csv> --published <all_results.csv>
+.. code-block:: bash
 
-Prints by configuration published and our value MASE, sMAPE, ND and CRPS leaderboard
-(`mean_weighted_sum_quantile_loss`) and relative discrepancy; sampling models are expected to
-diverge in the level of sampling noise.
+    python -m episynth.checks.gift_eval_published --summary summary.csv \
+        --published all_results.csv
+
+Report the two scores and their relative difference for each configuration
+and metric (MASE, sMAPE, ND, and the leaderboard's quantile-loss CRPS).
+Sampling introduces variation in probabilistic forecasts.
 """
 
 import argparse
@@ -15,7 +18,9 @@ _COLS = {
     "MASE[0.5]": "eval_metrics/MASE[0.5]",
     "sMAPE[0.5]": "eval_metrics/sMAPE[0.5]",
     "ND[0.5]": "eval_metrics/ND[0.5]",
-    "mean_weighted_sum_quantile_loss": "eval_metrics/mean_weighted_sum_quantile_loss",
+    "mean_weighted_sum_quantile_loss": (
+        "eval_metrics/mean_weighted_sum_quantile_loss"
+    ),
 }
 
 
@@ -37,7 +42,10 @@ def main() -> None:
         parts = []
         for k, col in _COLS.items():
             a, b = float(r[k]), float(pub[col])
-            parts.append(f"{k.split('[')[0][:5]:5s} {b:.4f} -> {a:.4f} ({(a - b) / max(abs(b), 1e-12):+.1%})")
+            parts.append(
+                f"{k.split('[')[0][:5]:5s} {b:.4f} -> {a:.4f}"
+                f" ({(a - b) / max(abs(b), 1e-12):+.1%})"
+            )
         print(f"{r['config']:40s} " + " | ".join(parts))
 
 

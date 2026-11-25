@@ -1,4 +1,6 @@
-"""Moirai transfer: number of parameters, checkpoint load, formula components of the mixture, direct passage."""
+"""Moirai transfer: number of parameters, checkpoint load, formula components
+of the mixture, direct passage.
+"""
 
 import math
 import os
@@ -16,13 +18,17 @@ CKPT = os.environ.get("MOIRAI_SMALL_DIR")
 
 
 def test_param_count_matches_published_small():
-    """The small configuration with four components and five patches gives the 13 827 528 parameters."""
+    """The small configuration with four components and five patches gives the
+    13 827 528 parameters.
+    """
     model = MoiraiModule(small())
     assert sum(p.numel() for p in model.parameters()) == 13_827_528
 
 
 def test_component_log_probs_match_torch_distributions():
-    """The formulas of the components coincide with the `torch.distributions` on random parameters."""
+    """The formulas of the components coincide with the `torch.distributions`
+    on random parameters.
+    """
     g = torch.Generator().manual_seed(0)
     shape = (2, 3, 5)
     df = 2 + torch.rand(shape, generator=g) * 5
@@ -38,7 +44,12 @@ def test_component_log_probs_match_torch_distributions():
         {"loc": loc, "scale": scale},
     ]
     mix = Mixture(
-        torch.zeros(*shape, 4), params, small().components, 1e-3, torch.zeros(2, 3, 1), torch.ones(2, 3, 1)
+        torch.zeros(*shape, 4),
+        params,
+        small().components,
+        1e-3,
+        torch.zeros(2, 3, 1),
+        torch.ones(2, 3, 1),
     )
     ref = [
         torch.distributions.StudentT(df, loc, scale).log_prob(z),
@@ -54,7 +65,9 @@ def test_component_log_probs_match_torch_distributions():
     k = torch.round(z)
     nb_int = mix._component_log_prob("negative_binomial", params[2], k)
     ref_nb = torch.distributions.NegativeBinomial(r, logits=logits).log_prob(k)
-    assert torch.allclose(nb_int, ref_nb, atol=1e-5) and torch.isfinite(nb).all()
+    assert (
+        torch.allclose(nb_int, ref_nb, atol=1e-5) and torch.isfinite(nb).all()
+    )
     neg = mix._component_log_prob("negative_binomial", params[2], -z)
     assert torch.isinf(neg).all()
     total = mix.log_prob(z)
@@ -62,32 +75,69 @@ def test_component_log_probs_match_torch_distributions():
 
 
 def test_forward_shapes_and_finite_nll():
-    """Direct passage on the windows of the generator gives the final log density of the desired shape."""
-    spec = WindowSpec(series_length=256, context_max=128, horizon=32, patch_size=16, context_lengths=(64, 128))
+    """Direct passage on the windows of the generator gives the final log
+    density of the desired shape.
+    """
+    spec = WindowSpec(
+        series_length=256,
+        context_max=128,
+        horizon=32,
+        patch_size=16,
+        context_lengths=(64, 128),
+    )
     gen = GENERATORS["sde"](length=256)
     seeds = np.arange(4)
     batch = make_windows(gen.generate(seeds), seeds, spec)
-    model = MoiraiModule(small(patch_sizes=(16,), components=("student_t", "normal_fixed", "log_normal")))
+    model = MoiraiModule(
+        small(
+            patch_sizes=(16,),
+            components=("student_t", "normal_fixed", "log_normal"),
+        )
+    )
     mix = model(**batch.model_inputs(), patch_size=16)
     lp = mix.log_prob(batch.target)
-    assert lp.shape == (4, spec.n_tokens, 16) and torch.isfinite(lp[batch.sample_id.bool()]).all()
+    assert (
+        lp.shape == (4, spec.n_tokens, 16)
+        and torch.isfinite(lp[batch.sample_id.bool()]).all()
+    )
     samples = mix.sample(3)
     assert samples.shape == (3, 4, spec.n_tokens, 16)
 
 
 @pytest.mark.parametrize("payload", [99.0, float("nan"), float("inf")])
-@pytest.mark.parametrize("scaling,fixed_scaling", [(True, None), (False, None), (True, (2.0, 3.0))])
-def test_missing_and_forecast_input_payloads_do_not_change_predictions(payload, scaling, fixed_scaling):
-    """A partial context patch ignores unavailable values and preserves the caller's labels."""
-    spec = WindowSpec(series_length=32, context_max=12, horizon=4, patch_size=4,
-                      context_lengths=(5,), dequantize_width=0)
+@pytest.mark.parametrize(
+    "scaling,fixed_scaling", [(True, None), (False, None), (True, (2.0, 3.0))]
+)
+def test_missing_and_forecast_input_payloads_do_not_change_predictions(
+    payload, scaling, fixed_scaling
+):
+    """A partial context patch ignores unavailable values and preserves the
+    caller's labels.
+    """
+    spec = WindowSpec(
+        series_length=32,
+        context_max=12,
+        horizon=4,
+        patch_size=4,
+        context_lengths=(5,),
+        dequantize_width=0,
+    )
     values = np.arange(1, 65, dtype=np.float32).reshape(2, 32)
     batch = make_windows(values, [0, 1], spec)
     observed_per_patch = batch.observed_mask.sum(-1)
-    assert ((observed_per_patch > 0) & (observed_per_patch < spec.patch_size)).any()
-    model = MoiraiModule(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4,),
-                                     components=("student_t", "normal_fixed"),
-                                     scaling=scaling, fixed_scaling=fixed_scaling)).eval()
+    assert (
+        (observed_per_patch > 0) & (observed_per_patch < spec.patch_size)
+    ).any()
+    model = MoiraiModule(
+        MoiraiConfig(
+            d_model=64,
+            num_layers=1,
+            patch_sizes=(4,),
+            components=("student_t", "normal_fixed"),
+            scaling=scaling,
+            fixed_scaling=fixed_scaling,
+        )
+    ).eval()
     original = batch.target.clone()
     inputs = batch.model_inputs()
     unavailable = ~batch.observed_mask | batch.prediction_mask.unsqueeze(-1)
@@ -99,25 +149,58 @@ def test_missing_and_forecast_input_payloads_do_not_change_predictions(payload, 
     torch.testing.assert_close(actual.logits, reference.logits, rtol=0, atol=0)
     torch.testing.assert_close(actual.loc, reference.loc, rtol=0, atol=0)
     torch.testing.assert_close(actual.scale, reference.scale, rtol=0, atol=0)
-    for actual_params, expected_params in zip(actual.params, reference.params, strict=True):
+    for actual_params, expected_params in zip(
+        actual.params, reference.params, strict=True
+    ):
         for name in expected_params:
-            torch.testing.assert_close(actual_params[name], expected_params[name], rtol=0, atol=0)
+            torch.testing.assert_close(
+                actual_params[name], expected_params[name], rtol=0, atol=0
+            )
     scored = batch.observed_mask & batch.prediction_mask.unsqueeze(-1)
     actual_log_prob = actual.log_prob(batch.target)[scored]
     assert torch.isfinite(actual_log_prob).all()
-    torch.testing.assert_close(actual_log_prob, reference.log_prob(batch.target)[scored], rtol=0, atol=0)
-    torch.testing.assert_close(inputs["target"], supplied, rtol=0, atol=0, equal_nan=True)
+    torch.testing.assert_close(
+        actual_log_prob,
+        reference.log_prob(batch.target)[scored],
+        rtol=0,
+        atol=0,
+    )
+    torch.testing.assert_close(
+        inputs["target"], supplied, rtol=0, atol=0, equal_nan=True
+    )
     torch.testing.assert_close(batch.target, original, rtol=0, atol=0)
 
 
-def test_fixed_scaling_matches_external_transform_with_partial_context_patches():
-    """Missing entries stay canonical in normalized units, including inside active patches."""
-    spec = WindowSpec(series_length=32, context_max=12, horizon=4, patch_size=4,
-                      context_lengths=(5,), dequantize_width=0)
-    batch = make_windows(np.arange(1, 65, dtype=np.float32).reshape(2, 32), [0, 1], spec)
-    fixed = MoiraiModule(MoiraiConfig(d_model=64, num_layers=1, patch_sizes=(4,),
-                                     components=("student_t", "normal_fixed"), fixed_scaling=(2.0, 3.0))).eval()
-    identity = MoiraiModule(fixed.config.model_copy(update={"fixed_scaling": None, "scaling": False})).eval()
+def test_fixed_scaling_matches_external_transform_with_partial_context_patches(
+):
+    """Missing entries stay canonical in normalized units, including inside
+    active patches.
+    """
+    spec = WindowSpec(
+        series_length=32,
+        context_max=12,
+        horizon=4,
+        patch_size=4,
+        context_lengths=(5,),
+        dequantize_width=0,
+    )
+    batch = make_windows(
+        np.arange(1, 65, dtype=np.float32).reshape(2, 32), [0, 1], spec
+    )
+    fixed = MoiraiModule(
+        MoiraiConfig(
+            d_model=64,
+            num_layers=1,
+            patch_sizes=(4,),
+            components=("student_t", "normal_fixed"),
+            fixed_scaling=(2.0, 3.0),
+        )
+    ).eval()
+    identity = MoiraiModule(
+        fixed.config.model_copy(
+            update={"fixed_scaling": None, "scaling": False}
+        )
+    ).eval()
     identity.load_state_dict(fixed.state_dict())
     transformed = batch.model_inputs()
     transformed["target"] = (batch.target - 2) / 3
@@ -125,29 +208,45 @@ def test_fixed_scaling_matches_external_transform_with_partial_context_patches()
         actual = fixed(**batch.model_inputs(), patch_size=4)
         expected = identity(**transformed, patch_size=4)
     torch.testing.assert_close(actual.logits, expected.logits, rtol=0, atol=0)
-    torch.testing.assert_close(actual.log_prob(batch.target),
-                               expected.log_prob(transformed["target"]) - math.log(3), atol=1e-5, rtol=1e-5)
+    torch.testing.assert_close(
+        actual.log_prob(batch.target),
+        expected.log_prob(transformed["target"]) - math.log(3),
+        atol=1e-5,
+        rtol=1e-5,
+    )
 
 
 @pytest.mark.skipif(CKPT is None, reason="MOIRAI_SMALL_DIR is unset")
 def test_pretrained_checkpoint_loads_and_fits_sine_better_than_noise():
-    """Published checkpoint loads and gives the sine a noticeably smaller loss than white noise.
+    """Published checkpoint loads and gives the sine a noticeably smaller loss
+    than white noise.
 
     Accurate translation with the original - `episynth.checks.moirai`.
     """
     model = MoiraiModule(small())
     load_uni2ts_checkpoint(model, os.path.join(CKPT, "model.safetensors"))
     model.eval()
-    spec = WindowSpec(series_length=1024, context_max=512, horizon=64, patch_size=32, dequantize_width=0.0)
+    spec = WindowSpec(
+        series_length=1024,
+        context_max=512,
+        horizon=64,
+        patch_size=32,
+        dequantize_width=0.0,
+    )
     t = np.arange(1024, dtype=np.float32)
     sine = np.sin(2 * np.pi * t / 48)[None]
-    noise = np.random.default_rng(0).standard_normal((1, 1024)).astype(np.float32)
+    noise = (
+        np.random.default_rng(0).standard_normal((1, 1024)).astype(np.float32)
+    )
     out = {}
     for name, series in (("sine", sine), ("noise", noise)):
         batch = make_windows(series, [1], spec)
         with torch.no_grad():
             mix = model(**batch.model_inputs(), patch_size=32)
             nll = -mix.log_prob(batch.target)[..., :32]
-            mask = batch.prediction_mask.unsqueeze(-1) & batch.observed_mask[..., :32]
+            mask = (
+                batch.prediction_mask.unsqueeze(-1)
+                & batch.observed_mask[..., :32]
+            )
             out[name] = float((nll * mask).sum() / mask.sum())
     assert out["noise"] - out["sine"] > 0.8 and 1.0 < out["noise"] < 2.0, out
