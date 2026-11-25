@@ -44,9 +44,10 @@ The `research article <https://github.com/intsystems/Epiplexity/blob/main/public
 covers coding theory and experiments, with its own
 `analysis scripts <https://github.com/intsystems/Epiplexity/tree/main/publications/article>`_.
 
-The `generator catalog <https://github.com/intsystems/Epiplexity/blob/main/doc/source/generators.rst>`_
-includes Chaotic, which produces trajectories from Lorenz and Mackey–Glass
-dynamics. The library implements three estimators.
+We implemented synthetic generators in ``episynth``, including **Chaotic**,
+which produces trajectories from Lorenz and Mackey–Glass dynamics. The
+`generator catalog <https://github.com/intsystems/Epiplexity/blob/main/doc/source/generators.rst>`_
+describes the available sources. We also implemented three estimators.
 
 * **Prequential coding** measures how much extra log-loss accumulates during
   training relative to the final predictor's loss rate.
@@ -55,7 +56,7 @@ dynamics. The library implements three estimators.
 * **Predictive V-information** estimates the reduction in test log-loss
   when the predictor has access to the forecast context.
 
-The library also provides a Bayesian log-loss reference for the OU generator.
+The library also provides a Bayesian log-loss reference for the **OU** generator.
 See the `measurement guide <https://intsystems.github.io/Epiplexity/measurements.html>`_
 for units, inputs, and commands. The
 `CPU notebook <https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb>`_
