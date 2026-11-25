@@ -147,6 +147,7 @@ def test_staged_conditional_matches_serial_fit(tmp_path):
     from episynth.train import RunConfig, build_generator
     from episynth.training import build_model
 
+    pytest.importorskip("fcntl", reason="Staged V-information fit uses POSIX file locking")
     workflow = runpy.run_path(str(SCRIPT))
     raw = json.loads(
         (workflow["REPO"] / "experiments/demos/v_information.json").read_text()

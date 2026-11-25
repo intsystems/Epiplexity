@@ -1,7 +1,6 @@
 """Run the Figure 4 sweep on an allocated GPU node. Relaunch to resume."""
 
 import argparse
-import fcntl
 import json
 import math
 import os
@@ -335,6 +334,12 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--hours", type=float, default=12)
     args = parser.parse_args()
+    if os.name != "posix":
+        parser.error(
+            "The V-information GPU sweep requires POSIX file locking and process groups."
+        )
+    import fcntl
+
     if args.workers < 0 or not math.isfinite(args.hours) or args.hours <= 0:
         parser.error(
             "Use a nonnegative worker count and a positive wall-time allowance"

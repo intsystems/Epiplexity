@@ -1,10 +1,13 @@
-........................................................................ [ 23%]
-...........................................................s............ [ 46%]
-....................................................s................... [ 69%]
-........................................................................ [ 92%]
-......................                                                   [100%]
-- generated xml file: D:\GitHubD\Epiplexity\build\publication_split_checks\junit.xml -
+........................................................................ [ 21%]
+..............................................................s......... [ 42%]
+.......................................................s................ [ 63%]
+..s..................................................................... [ 84%]
+...........s.....s.................................                      [100%]
+- generated xml file: D:\GitHubD\Epiplexity\build\publication_split_checks\check-_mfh53vm\junit.xml -
 =========================== short test summary info ===========================
-SKIPPED [1] tests\episynth\test_evaluation.py:367: GIFT_EVAL_DIR is unset
-SKIPPED [1] tests\episynth\test_model.py:132: MOIRAI_SMALL_DIR is unset
-308 passed, 2 skipped in 36.16s
+SKIPPED [1] tests\episynth\test_evaluation.py:645: GIFT_EVAL_DIR is unset
+SKIPPED [1] tests\episynth\test_model.py:219: MOIRAI_SMALL_DIR is unset
+SKIPPED [1] tests\episynth\test_requential_transfer.py:18: Requential sweep uses POSIX file locking
+SKIPPED [1] tests\episynth\test_v_information.py:726: could not import 'fcntl': No module named 'fcntl'
+SKIPPED [1] tests\episynth\test_v_information_transfer.py:150: Staged V-information fit uses POSIX file locking
+334 passed, 5 skipped in 49.30s

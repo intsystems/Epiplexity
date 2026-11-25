@@ -1,6 +1,4 @@
-"""Chaotic systems: the coordinate of the Lorentz attractor and the McKee-Glass
-equation.
-"""
+"""Generate scalar observations from Lorenz and Mackey–Glass dynamics."""
 
 import numpy as np
 
@@ -10,20 +8,16 @@ _BURN_IN = 2000
 
 
 class Chaotic(Generator):
-    """The coordinate of the Lorentz system (RK4) or the solution of the
-    McKee-Glass equation (Eyler) is equal.
+    """Generate one coordinate of a Lorenz trajectory or a Mackey–Glass series.
 
-    The system parameters, the integration step and the initial conditions are
-    random; the first
-    2000 points are discarded as a transient. No observational noise: the
-    series are determined
-    under known parameters and initial conditions. Integrating into rows is
-    piecemeal with the same
-    operations as the original, so the main mode coincides with the
-    reproduction mode to the bit.
+    The seed selects the system, its parameters, the integration step, and
+    the initial conditions. Lorenz uses fourth-order Runge–Kutta and
+    Mackey–Glass uses forward Euler. Both discard the first 2,000 points
+    and add no observation noise. A nonfinite output is replaced by
+    Gaussian noise. Batched and exact modes agree for the same seed.
 
     Args:
-        length: The length of the row.
+        length: Number of returned observations per series.
     """
 
     name = "chaotic"
@@ -58,7 +52,7 @@ class Chaotic(Generator):
 
     @staticmethod
     def _lorenz(sigma, rho, beta, dt, n_steps, x0) -> np.ndarray:
-        """RK4 for the Lorentz system; parameters can be arrays in rows."""
+        """Integrate the Lorenz system with RK4 and row-wise parameters."""
         x, y, z = (np.array(v, dtype=float) for v in x0)
         traj = np.empty((n_steps,) + np.shape(x) + (3,))
         for i in range(n_steps):

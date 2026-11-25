@@ -5,17 +5,17 @@ The practical goal is to select synthetic-data generators that improve forecasti
 on real datasets under a fixed training-data budget. The measurement
 methods below support the investigation of generator-selection signals.
 
-The proposed four-method library scope is **prequential coding**, **requential
-coding**, **predictive V-information**, and **Bayesian predictive log-loss**.
-The archived comparisons pair the original forecasters’ CRPS with prequential excess loss,
-predictive V-information, and estimated requential KL at matched training budgets.
-The Bayesian method uses the OU reference.
-The registry implements prequential coding, requential coding, and predictive V-information.
+The library implements synthetic generators, including :ref:`Chaotic
+<chaotic-generator>`. It implements three estimation algorithms, **prequential
+coding**, **requential coding**, and **predictive V-information**. The archived
+comparisons pair these measurements with the original forecasters' CRPS at
+matched training budgets. The library also provides a Bayesian predictive
+log-loss reference for the OU generator.
 
 Method status
 -------------
 
-.. list-table:: Current code and proposed public methods
+.. list-table:: Implemented estimators and reference
    :header-rows: 1
    :widths: 22 27 28 23
 
@@ -235,8 +235,8 @@ Tests in ``test_v_information.py`` cover Gaussian analytical information,
 independence, null-input invariance, train-only normalization, validation-only
 selection, split coverage/isolation, interruption recovery and both CLIs.
 
-4. Bayesian predictive log-loss by OU quadrature
-------------------------------------------------
+Bayesian predictive log-loss by OU quadrature
+---------------------------------------------
 
 **Inputs.** A CPU ``WindowBatch`` from the OU prior, its ``WindowSpec``, and
 quadrature nodes from ``phi_nodes(n_nodes)``. The node count controls numerical
@@ -290,7 +290,7 @@ quantity definition, units and normalization, predictive family/prior, data
 split and seed identifiers, compute/optimization budget, and artifact paths.
 The estimator protocol accepts method-specific JSON-compatible results. Existing
 prequential fields remain unchanged; V-information has the result contract above.
-A unified schema for all four methods and wrappers for the remaining methods
+A unified schema for the estimators and a wrapper for the OU reference
 remain proposals.
 
 A released method should have an executable example and a check against its

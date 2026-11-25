@@ -128,7 +128,9 @@ Each of the 23 measurements pairs two new Moirai fits with the published CRPS ra
 The conditional and context-free predictors share training windows and target normalization.
 The CSV reports predictive V-information in bits per window and the paired test standard error conditional on the selected fits.
 
-From the repository root, run the sweep on the allocated GPUs with the remaining wall-time allowance:
+Run the GPU sweep on Linux from the repository root. The launcher relies on
+POSIX file locks and process groups. Set the wall-time allowance to match
+your allocation:
 
 ```bash
 export PYTHONPATH=src
@@ -144,6 +146,7 @@ Once the queue drains, an idle GPU can fit the conditional 40M fBm branch alongs
 The runner publishes the completed branch under the run directory with an exclusive symlink and records its actual CPU worker count in the branch config.
 Run the same command with the remaining allocation to resume from completed shards and checkpoints.
 To regenerate the figure from the paired losses, run `python experiments/episynth/scripts/v_information_transfer.py plot --root "$ROOT"`.
+The `prepare` and `plot` commands also work on Windows.
 
 ## Requential model length versus archived CRPS
 
@@ -153,7 +156,9 @@ Both panels use the archive's initialization, generator, window distribution, an
 Projection recovery counts toward that budget and sends zero messages.
 The eight repeated teacher draws per message supply the Monte Carlo standard error and the separate plug-in overhead in the CSV.
 
-Set `REQ_ROOT` to the requential experiment directory and `VINFO_ROOT` to the archive containing the original KernelSynth corpus.
+Run requential sweep fits on Linux because the resume protocol uses POSIX
+file locks. Set `REQ_ROOT` to the requential experiment directory and
+`VINFO_ROOT` to the archive containing the original KernelSynth corpus.
 Public contexts start at seed 100,000,000.
 For KernelSynth, place contiguous corpus shards covering 39,999,488 public seeds under `$REQ_ROOT/data/kernelsynth/<first_seed>` using the archived settings (length 1024, five kernels, chunk 64, CUDA factorization).
 Projection validation and final evaluation each use 100,000 fixed windows starting at 1,000,000,000 and 2,000,000,000, respectively.
@@ -168,7 +173,9 @@ Run one fit per generator with its archived `s2_` name, including the separate `
 Use `series_kernelsynth --through 1999872` for the small KernelSynth point and `s2_kernelsynth` for the large point.
 Each other seed-zero trajectory supplies both budget milestones.
 The worker can resume from `runs/<run>/resume.pt`, including during recovery.
-The plot command joins the 23 completed measurements to the archive and writes the PNG, PDF, and source CSV under `results/`.
+The plot command also works on Windows. It joins the 23 completed
+measurements to the archive and writes the PNG, PDF, and source CSV
+under `results/`.
 
 ## Gotchas
 

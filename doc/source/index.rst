@@ -22,6 +22,7 @@ signals. The current experiments use a small Moirai model. The project repositor
    :caption: Design and experiments
 
    architecture
+   generators
    measurements
    stack
    extending

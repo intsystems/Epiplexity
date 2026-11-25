@@ -2,15 +2,18 @@
 
 [Read the report](main.pdf) · [LaTeX source](main.tex) · [Research article](../article/README.md)
 
-The eight-page report documents the forecast-window and training contracts,
-the implemented measurement methods, and the artifacts needed to check a
-run. It includes CPU examples for prequential coding, requential coding, and
-V-information, plus the archived GIFT-Eval comparison and a validation table.
-It provides runnable generator
-and estimator examples in Section 8.
+Can a learning curve help choose a synthetic generator for forecast pretraining?
+Sections 1–2 introduce epiplexity and work through the prequential estimate
+on 256 Waveform windows. Section 3 shows how predictive V-information
+measures the gain from seeing the past and how requential coding measures
+the cost of teaching a student. Section 4 compares all three measurements
+with real forecasting performance across eleven generators.
 
-Section 4 describes prequential coding, predictive V-information, and requential coding.
-The [meeting notebook] runs all three on CPU and includes the archived CRPS comparisons.
+Section 5 introduces the implemented generators and shows how to run
+the example on Chaotic (Lorenz and Mackey–Glass trajectories).
+Sections 6–8 cover matched training runs, the Ornstein–Uhlenbeck likelihood
+reference, validation, and how to evaluate a generator of your own.
+The [meeting notebook] runs all three estimators on CPU and includes the archived CRPS comparisons.
 
 [meeting notebook]: ../../experiments/demos/demo_estimators.ipynb
 
@@ -25,6 +28,7 @@ python build_report.py
 The build reads the committed figures and test counts. It checks the
 eight-page budget, cross-references, and text overflow, and records source
 and PDF hashes in [data/build_verification.json](data/build_verification.json).
+Source hashes use LF line endings so that LF and CRLF checkouts agree.
 The report shares the prequential transfer figure and the cross-method
 correlation table with the research article.
 
@@ -48,9 +52,10 @@ under `build/report_demo`.
 
 The reproduction script runs the [library tests](../../tests/episynth/) and
 regenerates the three report figures. Add `--skip-checks` to retain the
-recorded test outcomes while refreshing the examples and figures. To run the
-two external integration checks, supply `GIFT_EVAL_DIR` or `MOIRAI_SMALL_DIR`
-as appropriate and invoke `pytest tests/episynth` directly.
+recorded test outcomes while refreshing the examples and figures. Tests for
+POSIX file locks and staged fits run on Linux and are skipped on Windows.
+To run the two external integration checks, supply `GIFT_EVAL_DIR` or
+`MOIRAI_SMALL_DIR` as appropriate and invoke `pytest tests/episynth` directly.
 
 | Artifact | Evidence |
 | --- | --- |

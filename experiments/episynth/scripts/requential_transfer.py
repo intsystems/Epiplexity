@@ -2,9 +2,9 @@
 
 import argparse
 import csv
-import fcntl
 import json
 import math
+import os
 import time
 from contextlib import ExitStack, closing
 from pathlib import Path
@@ -59,6 +59,8 @@ def measure(
     """Continue the same protocol across real-window milestones, including
     during recovery.
     """
+    import fcntl
+
     cfg, spec = config.train, config.spec
     if (
         config.estimator != "requential"
@@ -444,6 +446,11 @@ def main() -> None:
     if args.plot:
         plot(args.root.resolve(), args.through)
     else:
+        if os.name != "posix":
+            parser.error(
+                "Requential sweep fits require POSIX file locking. "
+                "Use --plot to render saved runs."
+            )
         fit(
             args.root.resolve(),
             args.source_root,

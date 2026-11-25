@@ -15,6 +15,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 
 def test_restart_matches_estimator(tmp_path):
+    pytest.importorskip("fcntl", reason="Requential sweep uses POSIX file locking")
     from requential_transfer import measure
 
     base = json.loads(

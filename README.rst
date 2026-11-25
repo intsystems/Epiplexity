@@ -37,43 +37,30 @@ Current implementation details are in ``src/episynth/README.md`` and
 Technical report and measurement methods
 ========================================
 
-Read the `technical report PDF <publications/technical_report/main.pdf>`_ for
+Read the `technical report PDF <https://github.com/intsystems/Epiplexity/blob/main/publications/technical_report/main.pdf>`_ for
 architecture, interfaces, and examples, with
-`reproduction instructions <publications/technical_report/README.md>`_. The
-`research article <publications/article/main.pdf>`_ covers coding theory and
-experiments, with its own `analysis scripts <publications/article/README.md>`_.
-The four-method library scope is described in the
-`measurement contracts <doc/source/measurements.rst>`_:
+`reproduction instructions <https://github.com/intsystems/Epiplexity/tree/main/publications/technical_report>`_.
+The `research article <https://github.com/intsystems/Epiplexity/blob/main/publications/article/main.pdf>`_
+covers coding theory and experiments, with its own
+`analysis scripts <https://github.com/intsystems/Epiplexity/tree/main/publications/article>`_.
 
-1. **Prequential coding (implemented):** measure the predictive cost of the training
-   sequence; return total, residual-data and signed model-proxy costs in bits.
-2. **Requential coding (implemented):** estimate the bits needed to teach a student from conditional forecast samples.
-   Set ``RUN_ROOT`` to your experiment storage directory and run ``python -m episynth.train --config experiments/demos/requential.json --out "$RUN_ROOT/requential_cpu"``.
-3. **Predictive V-information (implemented):** fit predictors with and without context,
-   select on validation, then estimate paired test log-loss reduction in bits per window.
-   CPU example: ``python -m episynth.train --config experiments/demos/v_information.json --out runs/v_information_cpu``.
-4. **Bayesian predictive log-loss (OU reference implemented):** marginalize the known
-   AR(1) prior to obtain joint and pointwise forecast-loss references. A common public
-   wrapper remains proposed.
+The `generator catalog <https://github.com/intsystems/Epiplexity/blob/main/doc/source/generators.rst>`_
+includes Chaotic, which produces trajectories from Lorenz and Mackey–Glass
+dynamics. The library implements three estimators.
 
-Seeded task generation, AdamW/EMA training, and GIFT-Eval scoring provide shared
-infrastructure.
-The `meeting slides <publications/slides/poc_prequential/episynth_poc_prequential.pdf>`_
-and `CPU notebook <experiments/demos/demo_estimators.ipynb>`_ show all three implemented
-estimators and compare their measurements with the original forecasters’ archived CRPS.
+* **Prequential coding** measures how much extra log-loss accumulates during
+  training relative to the final predictor's loss rate.
+* **Requential coding** estimates the cost of teaching a student from
+  conditional forecasts sampled from a teacher.
+* **Predictive V-information** estimates the reduction in test log-loss
+  when the predictor has access to the forecast context.
 
-Research publications
-=====================
-1.
-
-Presentations at conferences on the topic of research
-=====================================================
-1.
-
-Software modules developed as part of the study
-===============================================
-1. The python package *episynth* with all implementation `here <https://github.com/intsystems/Epiplexity/tree/main/src/episynth>`_.
-2. Runnable demo notebook `here <https://github.com/intsystems/Epiplexity/tree/main/experiments/demos>`_.
+The library also provides a Bayesian log-loss reference for the OU generator.
+See the `measurement guide <https://intsystems.github.io/Epiplexity/measurements.html>`_
+for units, inputs, and commands. The
+`CPU notebook <https://github.com/intsystems/Epiplexity/blob/main/experiments/demos/demo_estimators.ipynb>`_
+and `meeting slides <https://github.com/intsystems/Epiplexity/blob/main/publications/slides/poc_prequential/episynth_poc_prequential.pdf>`_
+show the three estimators and compare their measurements with archived CRPS.
 
 Repository layout
 =================
@@ -88,10 +75,8 @@ Repository layout
                        series (configs, training curves, held-out losses, GIFT-Eval summaries,
                        analysis tables, figures, scripts)
     doc/               Sphinx documentation (autodoc); GitHub Pages publication is manual
-    publications/      non-code material for the article and project: paper/ (arXiv manuscript),
-                       blogpost/, notes/ (literature review), research_notes/, slides/, plan/,
-                       figures/, technical_report/ (article and reproducible analysis), journal/ (research
-                       journal of the time-series track: landscape and experiment, journal.pdf), description.md
+    publications/      article/ and technical_report/ with sources and reproduction scripts,
+                       plus blogpost/, slides/, journal/, and research_notes/
     pyproject.toml     package metadata (name = episynth)
     README.rst         this file
 

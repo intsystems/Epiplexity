@@ -38,6 +38,13 @@ def build(folder: Path, max_pages: int):
             f" {warnings}"
         )
     bibliography = (folder / "main.bbl").read_text(encoding="utf-8")
+    hashes = {}
+    for name in ("main.pdf", "main.tex", "references.bib"):
+        content = (folder / name).read_bytes()
+        if name != "main.pdf":
+            # Match the Git text representation regardless of checkout settings.
+            content = content.replace(b"\r\n", b"\n")
+        hashes[name] = hashlib.sha256(content).hexdigest()
     record = {
         "pages": pages,
         "max_pages": max_pages,
@@ -45,10 +52,7 @@ def build(folder: Path, max_pages: int):
         "bibliography_entries": len(re.findall(r"\\bibitem", bibliography)),
         "unresolved_references": False,
         "overfull_boxes": False,
-        "sha256": {
-            name: hashlib.sha256((folder / name).read_bytes()).hexdigest()
-            for name in ("main.pdf", "main.tex", "references.bib")
-        },
+        "sha256": hashes,
     }
     (folder / "data" / "build_verification.json").write_text(
         json.dumps(record, indent=2) + "\n", encoding="utf-8"

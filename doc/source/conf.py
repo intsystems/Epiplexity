@@ -12,6 +12,7 @@ copyright = "2026, Epiplexity team"
 author = "Epiplexity team"
 version = release = episynth.__version__
 root_doc = "index"
+language = "en"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
@@ -35,3 +36,12 @@ html_context = {
     "github_version": "main",
     "conf_py_path": "/doc/source/",
 }
+
+
+def _hide_generated_source_link(_app, _page, _template, context, doctree):
+    if doctree is None:
+        context["display_vcs_links"] = False
+
+
+def setup(app):
+    app.connect("html-page-context", _hide_generated_source_link)

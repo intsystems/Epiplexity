@@ -1,5 +1,6 @@
 {
-  "provenance": "Fresh report rerun of existing tests, not an archived author run",
+  "provenance": "Fresh CPU run of tests/episynth for the technical report",
+  "platform": "win32",
   "cases": [
     {
       "name": "test_run_area_and_curve",
@@ -338,6 +339,24 @@
       "details": ""
     },
     {
+      "name": "test_lorenz_matches_reference_with_fourth_order_convergence",
+      "module": "tests.episynth.test_chaotic",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_mackey_glass_matches_analytic_first_interval_with_euler_convergence",
+      "module": "tests.episynth.test_chaotic",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_mackey_glass_reuses_computed_values_after_the_delay",
+      "module": "tests.episynth.test_chaotic",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_corpus_rows_equal_generator",
       "module": "tests.episynth.test_corpus",
       "status": "passed",
@@ -524,7 +543,7 @@
       "details": ""
     },
     {
-      "name": "test_requential_is_skeleton",
+      "name": "test_requential_factory",
       "module": "tests.episynth.test_estimators",
       "status": "passed",
       "details": ""
@@ -1208,6 +1227,102 @@
       "details": ""
     },
     {
+      "name": "test_delta_stream",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_ordered_race",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_gaussian_bits_masks_and_public_targets",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_direct_training_and_matched_windows",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_repeated_run_preserves_previous_student",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_setup",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_log_normal_support[-8.0-True]",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_log_normal_support[10.0-False]",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_invalid_predictive_parameters_identify_step",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_projection_copies_optimizer_and_clocks",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_orc_fresh_process_replay[1-True]",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_orc_fresh_process_replay[2-False]",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_cli_matches_direct_api",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_projection_schedule",
+      "module": "tests.episynth.test_requential",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_restart_matches_estimator",
+      "module": "tests.episynth.test_requential_transfer",
+      "status": "skipped",
+      "details": "Requential sweep uses POSIX file locking"
+    },
+    {
+      "name": "test_plot_joins_archived_crps_and_preserves_units",
+      "module": "tests.episynth.test_requential_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
       "name": "test_mixture_routes_seeds_round_robin",
       "module": "tests.episynth.test_train_cli",
       "status": "passed",
@@ -1401,6 +1516,18 @@
     },
     {
       "name": "test_resume_discards_step_rows_after_checkpoint",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_restores_step_log_header[headerless_rows0]",
+      "module": "tests.episynth.test_training",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_resume_restores_step_log_header[headerless_rows1]",
       "module": "tests.episynth.test_training",
       "status": "passed",
       "details": ""
@@ -1664,6 +1791,54 @@
       "details": ""
     },
     {
+      "name": "test_prepared_normalization_is_reused",
+      "module": "tests.episynth.test_v_information",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_wait_for_reserved_conditional_fit",
+      "module": "tests.episynth.test_v_information",
+      "status": "skipped",
+      "details": "could not import 'fcntl': No module named 'fcntl'"
+    },
+    {
+      "name": "test_production_matrix",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_corpus_coverage",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_plot_rejects_missing_measurements",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_render_signed_information_and_repeat",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_sweep_dispatches_each_fit_once",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "passed",
+      "details": ""
+    },
+    {
+      "name": "test_staged_conditional_matches_serial_fit",
+      "module": "tests.episynth.test_v_information_transfer",
+      "status": "skipped",
+      "details": "Staged V-information fit uses POSIX file locking"
+    },
+    {
       "name": "test_layout_and_masks",
       "module": "tests.episynth.test_windows",
       "status": "passed",
@@ -1863,8 +2038,8 @@
     }
   ],
   "counts": {
-    "passed": 308,
-    "skipped": 2,
+    "passed": 334,
+    "skipped": 5,
     "failure": 0,
     "error": 0
   }

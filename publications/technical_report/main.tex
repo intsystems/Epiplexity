@@ -12,7 +12,7 @@
 \definecolor{reportcode}{HTML}{F3F6F8}
 \usepackage[colorlinks=true,linkcolor=reportnavy,citecolor=reportnavy,urlcolor=reportnavy]{hyperref}
 \hypersetup{
-  pdftitle={episynth: A Library for Studying Information in Synthetic Time Series},
+  pdftitle={episynth: Evaluating Synthetic Time-Series Generators for Forecasting},
   pdfauthor={Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy}
 }
 \titleformat{\section}{\Large\bfseries\color{reportnavy}}{\thesection}{0.65em}{}
@@ -54,7 +54,7 @@
 {\sffamily\bfseries\small\color{reportmuted} Technical report\par}
 \vspace{9pt}
 {\fontsize{35}{38}\selectfont\bfseries\color{reportnavy} episynth\par}
-{\LARGE\bfseries A Library for Studying Information\\in Synthetic Time Series\par}
+{\LARGE\bfseries Evaluating Synthetic Time-Series\\Generators for Forecasting\par}
 \vspace{8pt}
 Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
 {\small Moscow Institute of Physics and Technology \hfill 25 November 2026\par}
@@ -62,14 +62,41 @@ Danila Chernousov, Mark Ikonnikov, Daniil Kazachkov, Alexey Kravatskiy\\
 {\color{reportrule}\hrule height 0.5pt}
 \vspace{7pt}
 
-{\large\bfseries\color{reportnavy} Abstract\par}
-\texttt{episynth} is a Python library for comparing probabilistic forecasters
-trained on synthetic time series. A run configuration specifies the generator,
-forecast window, model, and training budget. The library records the evidence
-needed to compute prequential excess loss, requential coding costs, and
-predictive $\mathcal V$-information. It also provides a Bayesian likelihood
-reference for a known process. Across eleven generators, all three measures
-had weak rank associations with GIFT-Eval CRPS at their reported budgets.
+\section{Choosing a generator for pretraining}\label{sec:scope}
+Suppose you can afford to train a forecaster on two million synthetic
+examples. Should you train on repeating waves from Waveform or on curves
+drawn from Gaussian processes by KernelSynth? What matters is how well
+the resulting model forecasts real series. Can we anticipate that choice
+from what happens during training on each generator?
+
+\emph{Epiplexity} gives one reason to try such an experiment. Consider a
+wave with a repeating shape and fresh noise on each cycle. A forecaster
+that learns the shape can reuse it on later cycles. Even with the shape
+known, the individual noise values still cost bits to describe. Finzi et
+al.\ formalize this intuition by asking which predictive program, within a
+given time budget, minimizes the length of the program plus the expected
+cost of encoding the data with it at a fixed precision. Epiplexity is the
+length in bits of the program in this best two-part description~\cite{finzi2026}.
+
+\texttt{episynth} lets us try the idea with a particular learner. In
+\emph{prequential coding}, the forecaster predicts each new batch before it
+learns from it. We add up its prediction losses and ask how much smaller
+the total would have been at the final model's average loss rate. This
+excess is a practical proxy for epiplexity. It follows one model and one
+training procedure, so it depends on how quickly that learner improves.
+Whether the acquired regularities help on real series is a question we can
+test separately.
+
+We work through the calculation on Waveform, then compare eleven generators
+by both their training measurements and their real forecasting scores. At
+the two budgets we studied, the prequential proxy alone gave little
+guidance about which generator would transfer best.
+
+For a comparison of your own, choose the target series and forecast horizon
+first. Train on each candidate under the same settings, record its excess
+loss, then score the frozen models on the same target windows. Repeating
+this comparison across initializations lets you see how much the ranking
+depends on a particular training run.
 
 \begingroup
 \small
@@ -77,119 +104,255 @@ had weak rank associations with GIFT-Eval CRPS at their reported budgets.
 \tableofcontents
 \endgroup
 
-\section{Scope}\label{sec:scope}
-Prequential excess loss estimates the loss accumulated during learning relative
-to the trained predictor's loss rate~\cite{finzi2026}. Predictive
-$\mathcal V$-information quantifies the improvement available from the
-forecast context~\cite{xu2020}. Downstream evaluation scores trained
-predictors on external forecasting tasks. The
-\href{https://github.com/intsystems/Epiplexity/tree/main/publications/article}{companion article}
-develops the statistical interpretation of the generator comparison.
-
-\begin{table}[H]
-\centering\small
-\caption{Measurement methods and implementation status.}
-\label{tab:methods}
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{34mm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{41mm}@{}}
-\toprule
-Method & Measurement & Interface\\
-\midrule
-Prequential coding & Total, endpoint, and excess loss in bits & \texttt{prequential} estimator\\
-Predictive $\mathcal V$-information & Paired NLL reduction and standard error in bits per window & \texttt{v\_information} estimator\\
-OU Bayes reference & Joint and pointwise predictive NLL in nats per window & Reference functions\\
-Requential coding & Cumulative teacher--student KL and coding overhead in bits & \texttt{requential} estimator\\
-\bottomrule
-\end{tabularx}
-\end{table}
-
 \clearpage
-\section{Data and predictive model}\label{sec:data}
-\subsection{Series and forecast windows}
-For a fixed generator and length $L$, \texttt{Generator.generate} maps
-$B$ seeds to a $B\times L$ array of univariate series. The same seed
-specifies the same series independently of the batch. A \texttt{Corpus}
-retrieves precomputed series by seed, and a \texttt{Mixture} maps each seed
-to a component and a component seed. Both use the same interface as an
-online generator. \repolink{src/episynth/generators/base.py}{Generator interface.}
+\section{Reading a learning curve on Waveform}\label{sec:waveform-example}
+Waveform combines periodic waves with randomly drawn frequencies, amplitudes,
+and phases. In the CPU example, the forecaster sees 16 or 32 past values
+(the \emph{context}) and predicts the next 16 (the \emph{target}). Each such
+pair is one forecast window. After installing \texttt{episynth}, run this
+command from the repository root to train on 256 windows.
+\begin{lstlisting}
+python -m episynth.train --config publications/technical_report/examples/prequential.json --out build/report_demo/prequential
+\end{lstlisting}
 
-\texttt{WindowSpec} defines the series length, the distribution over context
-lengths $c$, and the forecast horizon $h$. The horizon is the number of
-observations to predict immediately after the context.
-Given a series $x_{1:L}$,
-\texttt{make\_windows} uses the seed to draw $c$ and a valid start index
-$r\in\{1,\ldots,L-c-h+1\}$. The context and forecast target are
+\subsection{What the area measures}\label{sec:prequential}
+For each window $i$, the model assigns a density to the observed target
+before training on that batch. Its negative log-likelihood (NLL), $\ell_i$,
+is smaller when the model assigns a higher density. After training, we score
+the final model on 128 fresh Waveform windows to estimate its average loss
+$\bar\ell_f$. Using natural logs gives losses in nats. Dividing by $\ln 2$
+converts them to bits. For $N$ training windows the library returns
 \begin{equation}
- C=x_{r:r+c-1}, \qquad Y=x_{r+c:r+c+h-1}.
+ L=\frac{\sum_{i=1}^{N}\ell_i}{\ln 2},\qquad
+ H=\frac{N\bar\ell_f}{\ln 2},\qquad S=L-H .
+ \label{eq:area}
 \end{equation}
-Optional uniform dequantization also uses the series seed.
-\texttt{WindowStream} preserves window identity and ordering at different
-batch sizes and worker counts. \repolink{src/episynth/windows.py}{Window construction.}
+$L$ is the cost accumulated while learning. $H$ is what the same number
+of windows would cost at the final loss rate. Here their difference $S$
+is 1,484.53 bits, or about 5.80 extra bits per training window.
+Figure~\ref{fig:demo} shows how the difference builds up. Two learners
+with the same final loss can have different areas if one takes longer to
+reach it.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{figures/architecture.pdf}
-\caption{Complete Waveform series regenerated from seed 0 before dequantization.
-The colored segments mark the context and forecast target of each selected
-window. The archived panel shows one draw from the saved context-length distribution.}
+\includegraphics[width=.88\linewidth]{figures/demo_loss.pdf}
+\caption{Waveform at two budgets. In each upper panel the dashed line is the
+final held-out loss. Batches above it add to the cumulative excess below,
+and batches below it subtract. The archived curve averages 80 groups for
+display. The totals use every batch.}
+\label{fig:demo}
+\end{figure}
+
+Recover $S$ from the loss files using the final exponential moving average
+(EMA) of the model weights.
+\begin{lstlisting}[language=Python]
+from episynth.estimators.prequential import PrequentialEstimator
+run = "build/report_demo/prequential"
+print(PrequentialEstimator(variant="ema").from_run_dir(run)["model_part_bits"])
+\end{lstlisting}
+\path{total_bits} and \path{data_part_bits} give $L$ and $H$. A negative
+$S$ is possible. Encoding actual observations would also require a specified
+precision and a lossless codec. \repolink{src/episynth/estimators/prequential.py}{Estimator source.}
+
+\clearpage
+\section{What did the forecaster learn?}\label{sec:methods}
+A falling loss on Waveform has several possible explanations. A model could
+learn the typical range of future values across the whole dataset, or it
+could use the phase of a particular wave to forecast its continuation.
+Both improvements contribute to the learning curve. Two further measurements
+let us ask more specific questions of the same generator.
+
+\texttt{episynth} implements prequential coding, requential coding, and
+predictive $\mathcal V$-information. All three can use the same synthetic
+generators, including Chaotic (Section~\ref{sec:data}).
+
+\subsection{How much does the observed past help?}\label{sec:pvi}
+Predictive $\mathcal V$-information measures how much access to the context
+can reduce forecast log-loss for a chosen family of predictors
+$\mathcal V$~\cite{xu2020}. We fit two models with the same initialization,
+training windows, and normalization estimated from training targets. One
+receives the context. The other sees neither its values nor its metadata.
+Validation selects the best context-free checkpoint and makes it eligible
+for the role with context as well. We score the selected predictors on
+the same $M$ fresh test windows. On window $j$, their losses in nats are
+$\ell_{\varnothing,j}$ and $\ell_{C,j}$, respectively. The paired gain is
+\begin{equation}
+ d_j=(\ell_{\varnothing,j}-\ell_{C,j})/\ln 2,\qquad
+ \widehat I_{\mathcal V}=\frac1M\sum_{j=1}^M d_j,\qquad
+ \widehat{\mathrm{SE}}=\frac{\operatorname{sd}(d_1,\ldots,d_M)}{\sqrt M}.
+ \label{eq:pvi}
+\end{equation}
+A gain of one bit per window means that access to the past saves one bit of
+forecast loss on average. The test estimate can be negative. Its standard
+error describes variation across test windows for these fitted models.
+In the CPU demo below, validation selected the context-free checkpoint for
+both roles. Their predictions were identical, giving exactly zero gain.
+\begin{lstlisting}
+python -m episynth.train --config experiments/demos/v_information.json --out build/report_demo/v_information
+\end{lstlisting}
+The run checks that training, validation, and test seeds are disjoint and
+records the selected checkpoints in \path{v_information.json}.
+\repolink{src/episynth/estimators/v_information.py}{Estimator source.}
+
+\subsection{How costly is it to teach a second predictor?}\label{sec:requential}
+Requential coding uses a \emph{teacher} trained on windows from the
+generator and a second model, the \emph{student}, that learns from the
+teacher's sampled forecasts~\cite{qiu2026}. Given the same context, how
+surprised is the student by a future the teacher draws? Direct mode scores
+that future under both models before updating the student. The expected
+log density ratio in bits is their Kullback--Leibler (KL) divergence.
+Summing these estimates over the run measures how much the student's
+predictions differed from the teacher's along the way.
+\begin{lstlisting}
+python -m episynth.train --config experiments/demos/requential.json --out build/report_demo/requential
+\end{lstlisting}
+The CPU demo used 32 real windows and 32 sampled horizons. It estimated a
+total KL of 7.66 bits per student (Monte Carlo standard error 5.62 bits).
+The estimated coding overhead was a separate 191.16 bits. Direct mode
+reports those estimates. The finite ordered random coding mode
+(\texttt{orc}) also writes the indices a decoder can replay.
+\repolink{doc/source/measurements.rst}{Measurement guide.}
+
+These quantities guide different follow-up experiments. For example, if a
+generator has a large prequential area but a small gain from context, check
+the context-free model's learning curve. Learning the overall distribution
+of future values could explain part of the area. To find out whether those
+predictions help on another dataset, we need forecasts on that dataset.
+
+\clearpage
+\section{Does the ranking predict transfer?}\label{sec:transfer}
+We trained the same six-layer Moirai forecaster~\cite{woo2024} separately
+on eleven generators, giving each about 2M or 40M windows. We then froze
+the final EMA weights and scored forecasts on 55 short-horizon GIFT-Eval
+tasks~\cite{aksu2024}. In this \emph{zero-shot transfer} setting the forecaster
+sees the recent history of each real series and forecasts its future
+without further training.
+
+Our main score is the continuous ranked probability score (CRPS), which
+assesses the whole forecast distribution. For each task we compare the
+model with a seasonal na\"ive forecast that repeats values from the previous
+season. We take the geometric mean of the 55 model-to-baseline CRPS ratios.
+Lower is better, and one is a tie. The archive also reports mean absolute
+scaled error (MASE) for the forecast median.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.84\linewidth]{../article/figures/transfer_results.pdf}
+\caption{Each dot pairs a generator's prequential excess ($S\ln 2$, in
+million nats) with its real-data CRPS ratio. If a larger area predicted
+better transfer, the dots would fall from upper left to lower right.
+The open marker repeats Waveform at 40M windows. Its CRPS ratio moves
+from 1.373 to 0.972 with nearly the same area.}
+\label{fig:transfer}
+\end{figure}
+
+At 2M windows, Waveform accumulated slightly more excess loss than
+KernelSynth (70.9 versus 68.4
+million nats). Both beat the seasonal baseline, but KernelSynth gave the
+better real forecasts by CRPS (0.678 versus 0.818 for Waveform).
+
+\begin{table}[H]
+\centering\small
+\caption{Agreement between each measurement's ranking and the CRPS ranking
+for the eleven primary runs at each budget. A negative Spearman $\rho$
+means larger measurements tend to accompany lower CRPS. The 95\% bootstrap intervals
+resample generators, keeping each measurement paired with its CRPS.}
+\label{tab:coding-transfer}
+\input{../article/data/coding_correlation_table.tex}
+\end{table}
+
+The follow-up fits match the original generator, budget, and initialization.
+The context gains use 100,000 paired test windows per run. At 2M windows,
+requential KL ranged from 8.65 to 13.49 million bits per student. At 40M,
+ETS and Chaotic gained almost equally from context (403 and 402 bits per window), yet their CRPS ratios
+were 0.717 and 1.285. All full-set intervals in Table~\ref{tab:coding-transfer}
+include zero. Removing Chaotic and Waveform after inspecting the data gave
+$\rho=-0.82$ for the 40M prequential area (interval $[-1.00,-0.28]$).
+That result describes the nine retained generators.
+\repolink{publications/article/main.pdf}{Companion analysis.}
+
+\clearpage
+\section{Generators and forecast windows}\label{sec:data}
+\subsection{What the generators produce}
+\texttt{episynth} implements eleven generator families for pretraining,
+including Waveform for periodic patterns, GARCH for changing volatility,
+and Chaotic for nonlinear dynamics.
+\repolink{doc/source/generators.rst}{Generator catalog.}
+
+Chaotic returns one coordinate of a Lorenz trajectory or a scalar
+Mackey--Glass trajectory. Small errors in the state inferred from past
+values can grow over the forecast horizon. To try Chaotic, add
+\texttt{--set data.generator=chaotic} to the command in
+Section~\ref{sec:waveform-example} and choose a fresh output directory.
+
+\subsection{Series and forecast windows}
+Each seed gives one series $x_{1:L}$, whether from a generator,
+\texttt{Corpus}, or \texttt{Mixture}. Fix the horizon $h$ and the distribution
+of context lengths across generators. The seed selects length $c$ and start $r$.
+\begin{equation}
+ C=x_{r:r+c-1}, \qquad Y=x_{r+c:r+c+h-1}.
+\end{equation}
+Window order and optional dequantization are reproducible across batch
+sizes and worker counts. \repolink{src/episynth/windows.py}{Window construction.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.90\linewidth]{figures/architecture.pdf}
+\caption{Waveform series from seed 0 before dequantization. Color marks the
+selected context and target within each generated series.}
 \label{fig:windows}
 \end{figure}
 
 \subsection{Model inputs and predictive density}
-The library implements a univariate forecasting configuration of
-Moirai~\cite{woo2024}. For patch size $P$ and maximum context length $c_{\max}$,
-a batch occupies a tensor of shape $B\times T\times P$ with
-$T=(c_{\max}+h)/P$. Contexts shorter than $c_{\max}$ are left-padded.
-The observed-value mask excludes padding. The prediction mask identifies the
-horizon patches and replaces their input embeddings with mask embeddings.
-The target values at those positions enter the loss.
+Moirai groups observations into patches of $P$ values. A batch has shape
+$B\times T\times P$, with $T=(c_{\max}+h)/P$ and maximum context length
+$c_{\max}$. Masks exclude left padding and hide the forecast patches.
+Only the target values enter the loss.
 
-In prequential runs, the context supplies the location $\mu_C$ and scale
-$\sigma_C$ for normalization. The density at each
-forecast step is a mixture of Student-$t$, Gaussian with fixed standard
-deviation, and log-normal densities in normalized coordinates. If $f_t$ is
-this mixture density, the joint conditional density in series units is
+In prequential runs, context determines the location $\mu_C$ and scale
+$\sigma_C$. The normalized forecast density $f_t$ mixes Student-$t$,
+fixed-variance Gaussian, and log-normal components.
 \begin{equation}
  q(Y\mid C)=\prod_{t=1}^{h}
  \frac{1}{\sigma_C}\, f_t\!\left(\frac{Y_t-\mu_C}{\sigma_C}\,\middle|\,C\right).
  \label{eq:model-density}
 \end{equation}
-The likelihood evaluator and sampler apply the same change of coordinates.
+The product treats future values as conditionally independent given the
+context. The likelihood and sampler use the same normalization.
 \repolink{src/episynth/model/moirai.py}{Model source.}
 
+
 \clearpage
-\section{Training and run artifacts}\label{sec:run}
-The training CLI validates the run configuration and selects the estimator
-using \texttt{estimator}. It passes the model, generator, window specification,
-training settings, and output directory. The key \texttt{estimator\_config}
-supplies constructor arguments. \repolink{src/episynth/train.py}{Training CLI.}
+\section{Reproducing a training comparison}\label{sec:run}
+Copy the configuration from Section~\ref{sec:waveform-example}, change
+\texttt{data.generator}, and train in a fresh output directory. Keep the
+model, initialization, windows per run, sampling rules, optimizer, and
+checkpoint variant fixed. Use \texttt{estimator} to select a measurement
+and \texttt{estimator\_config} for its options. \repolink{src/episynth/train.py}{Training CLI.}
 
 \subsection{Batch updates and checkpoint evaluation}
-Let $\mathcal B_k$ be the batch for optimizer step $k$. Before updating the
-model, \texttt{Trainer} computes the window negative log-likelihood (NLL)
-$\ell_i=-\ln q_{k-1}(Y_i\mid C_i)$ for each $i\in\mathcal B_k$. The optimizer
-uses the average over forecast points, $(Bh)^{-1}\sum_{i\in\mathcal B_k}\ell_i$.
-After the update the trainer advances the exponential moving average (EMA)
-of the weights and writes the pre-update losses in window order.
+For each window in batch $\mathcal B_k$, \texttt{Trainer} records the
+pre-update loss $\ell_i=-\ln q_{k-1}(Y_i\mid C_i)$ in window order. The
+optimizer takes a step on the mean loss per forecast point,
+$(Bh)^{-1}\sum_{i\in\mathcal B_k}\ell_i$. The trainer then updates the EMA weights.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{figures/execution.pdf}
+\includegraphics[width=.94\linewidth]{figures/execution.pdf}
 \caption{Losses used in the prequential estimate. Training batches are scored
 before their updates. The final EMA checkpoint is evaluated on separate
 held-out windows, and the mean is scaled to $N$ training windows.}
 \label{fig:execution}
 \end{figure}
 
-At each checkpoint, raw and EMA predictors are scored on the same held-out
-windows at training precision and any separately configured evaluation
-precision. A restart in the same directory restores the model, EMA, optimizer,
-and batch position from \texttt{last.pt}, then resumes the seed sequence.
+Raw and EMA checkpoints share the held-out windows and evaluation precision.
+Restarting restores both sets of weights, the optimizer, and the seed
+position from \texttt{last.pt}.
 \repolink{src/episynth/training.py}{Trainer implementation.}
 
-\subsection{Run-directory contract}
-The CLI writes the complete configuration to \texttt{run.json}. The
-prequential estimator can recompute its result from the two float32 loss
-vectors listed in Table~\ref{tab:artifacts}.
+\subsection{Which files reproduce the estimate?}
+The two \texttt{.f32} files in Table~\ref{tab:artifacts} suffice to recompute $S$.
 
 \begin{table}[H]
 \centering\small
@@ -210,191 +373,47 @@ File & Contents\\
 \end{tabularx}
 \end{table}
 
-The archived \path{train_curve.csv} contains pre-update batch means per
-forecast point. Multiplying each mean by $Bh$ recovers its contribution to
-$\sum_i\ell_i$ up to export precision.
+In the archive, each series has 1,024 points, each context has 13 to 512
+points, and the horizon is 64. The model (width 384, patch size 32,
+10,746,600 parameters) takes 1,953 or 39,062 steps of 1,024 windows.
+We score the final model on 100,000 fresh windows from its source. When
+only \path{train_curve.csv} is available, multiply each pre-update batch
+mean by $Bh$ to recover its contribution to $\sum_i\ell_i$ up to export
+precision. \repolink{experiments/episynth/README.md}{Run archive.}
 
 \clearpage
-\section{Measurement methods}\label{sec:methods}
-\subsection{Prequential coding}\label{sec:prequential}
-Let $\bar\ell_f$ be the mean NLL per window of the final raw or EMA predictor
-on held-out windows generated from the same source. Given $N$ training windows,
-the estimator reports
-\begin{equation}
- L=\frac{\sum_{i=1}^{N}\ell_i}{\ln 2},\qquad
- H=\frac{N\bar\ell_f}{\ln 2},\qquad
- S=L-H .
- \label{eq:area}
-\end{equation}
-The fields \path{total_bits}, \path{data_part_bits}, and \path{model_part_bits}
-correspond to $L$, $H$, and $S$. The sign of $S$ is retained. The area in nats is
-$A_N=S\ln 2$. It depends on the training procedure, the budget, and the final
-weight variant. A lossless binary representation at a declared precision
-would use probability masses for the quantized values and an entropy coding
-algorithm to encode and recover those values.
-\repolink{src/episynth/estimators/prequential.py}{Prequential estimator.}
-
-\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information}\label{sec:pvi}
-The estimator fits a context-free predictor and a predictor with access to
-context, using the same initialization, training windows, and normalization
-estimated from the training targets. The context-free predictor removes
-both context values and context metadata. The validation procedure selects
-the best context-free checkpoint and includes it among the candidates for
-the context-conditioned role. Training, validation, and test seed ranges
-are checked for overlap and source coverage.
-
-Let $d_j=(\ell_{\varnothing,j}-\ell_{C,j})/\ln 2$ on test window $j$,
-where both NLLs score the same target. The estimator reports
-\begin{equation}
- \widehat I_{\mathcal V}=\frac{1}{M}\sum_{j=1}^M d_j,\qquad
- \widehat{\mathrm{SE}}=\frac{\operatorname{sd}(d_1,\ldots,d_M)}{\sqrt{M}},
- \label{eq:pvi}
-\end{equation}
-in bits per window, together with each predictor's mean test loss.
-The standard error is conditional on the selected fits. The test estimate
-can be negative. The manifest \path{v_information.json} records the fitted
-checkpoints, splits, and artifact paths.
-\repolink{src/episynth/estimators/v_information.py}{V-information estimator.}
-
-\subsection{OU Bayes reference}\label{sec:ou}
-The Ornstein--Uhlenbeck (OU) generator is a stationary Gaussian AR(1) model
-with a known prior over the autoregressive coefficient. Quadrature gives
-the marginal likelihood $M(x)$ of a segment $x$. The joint reference is
-$M(C,Y)/M(C)$. The pointwise reference $\prod_t p(Y_t\mid C)$ uses the
-factorization in Eq.~\eqref{eq:model-density}.
-
-The joint reference attains lower mean NLL (Table~\ref{tab:example-results}).
-Both references use the same conditional marginals, so the gap estimates
-the log-loss penalty for omitting dependence among future observations
-given the context. The score changes under quadrature refinement are much
-smaller than the gap.
+\section{Checking the measurements}\label{sec:validation}
+\subsection{A forecast with a known answer}\label{sec:ou}
+In the Ornstein--Uhlenbeck (OU) generator, each series follows a stationary
+Gaussian AR(1) process with a coefficient drawn from a known prior.
+Integrating over the coefficient gives the marginal density $M(x)$ of a
+segment. The joint forecast $M(C,Y)/M(C)$ accounts for dependence among
+future values. The pointwise forecast $\prod_t p(Y_t\mid C)$ uses the
+same marginals and matches Moirai's factorization in Eq.~\eqref{eq:model-density}.
+Use the latter as a reference for a model with that factorization.
 \repolink{src/episynth/checks/ou_bayes.py}{Bayesian likelihood functions.}
 
-\subsection{Requential coding}\label{sec:requential}
-Requential coding reconstructs a student from updates on teacher-generated
-targets~\cite{qiu2026}. The \texttt{requential} estimator uses one horizon per
-message and updates once per batch. Direct mode samples from the EMA teacher
-and records the sum of teacher--student log ratios in bits and a separate
-plug-in overhead estimate. Finite ordered random coding (\texttt{orc}) also
-writes packed indices for decoder replay. Both modes record split seeds,
-message counts, and final losses.
-\testlink{requential}{Codec tests.}
-\repolink{doc/source/measurements.rst}{Measurement guide.}
-
-\clearpage
-\section{Worked measurements}\label{sec:examples}
-Run these commands from the repository root after installing the package.
-\repolink{publications/technical_report/data/example_results.json}{Recorded CPU results.}
-
-\subsection{Prequential loss from a run directory}\label{sec:waveform-example}
-\begin{lstlisting}
-python -m episynth.train --config publications/technical_report/examples/prequential.json --out build/report_demo/prequential
-\end{lstlisting}
-The CPU run has positive excess loss because its mean pre-update NLL exceeds
-the final held-out EMA mean (Table~\ref{tab:example-results}).
-Figure~\ref{fig:demo} shows that in the archived run, small per-point
-differences from the endpoint continue to accumulate over many windows.
-Recompute $S$ directly from the loss files with
-\begin{lstlisting}[language=Python]
-from episynth.estimators.prequential import PrequentialEstimator
-run = "build/report_demo/prequential"
-result = PrequentialEstimator(variant="ema").from_run_dir(run)
-print(result["model_part_bits"])
-\end{lstlisting}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\linewidth]{figures/demo_loss.pdf}
-\caption{Training loss and cumulative excess loss for the CPU and archived
-Waveform runs. The upper panels plot pre-update NLL per forecast point and
-the final held-out EMA mean. Archived batch losses are averaged in 80
-consecutive groups for display. The lower panels accumulate the signed
-differences over every batch, using the number of windows per batch and
-forecast observations per window.}
-\label{fig:demo}
-\end{figure}
-
-\subsection{Predictive \texorpdfstring{$\mathcal V$}{V}-information and requential coding}
-\begin{lstlisting}
-python -m episynth.train --config experiments/demos/v_information.json --out build/report_demo/v_information
-python -m episynth.train --config experiments/demos/requential.json --out build/report_demo/requential
-\end{lstlisting}
-The $\mathcal V$-information demo selects the context-free checkpoint for
-both roles. The requential demo uses 32 real windows and 32 teacher-generated
-horizons. Table~\ref{tab:example-results} reports both results.
-\repolink{publications/technical_report/run_examples.py}{Example runner.}
-
-\clearpage
-\section{Archived pretraining and transfer}\label{sec:transfer}
-We trained six-layer Moirai models (width 384, patch size 32, 10,746,600
-parameters) on eleven generators for 1,953 or 39,062 updates of 1,024 windows.
-Each 1,024-point series supplies a window with 13 to 512 context observations
-and a 64-point forecast target. Final EMA models were scored on 100,000 fresh
-windows per run. Waveform has a second initialization at 40M windows.
-
-\subsection{Zero-shot forecast evaluation}
-The original final EMA predictors were evaluated zero-shot on 55 short-term
-GIFT-Eval configurations~\cite{aksu2024}. CRPS uses forecast samples and MASE
-uses the sample median. Scores are scaled by the historical seasonal error,
-averaged within each configuration, and compared with the seasonal na\"ive
-forecast. We aggregate configuration ratios by geometric mean.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=.86\linewidth]{../article/figures/transfer_results.pdf}
-\caption{Excess prequential loss and downstream CRPS for eleven generators.
-A ratio below one indicates lower CRPS than the seasonal na\"ive forecast.
-The open marker shows the additional Waveform initialization.}
-\label{fig:transfer}
-\end{figure}
-
-\subsection{Requential coding and \texorpdfstring{$\mathcal V$}{V}-information}
-The follow-up runs use the same generator, real-window budget, and
-initialization as the archived comparisons. The CRPS scores are from the
-original pretrained predictors. Requential KL ranges from 8.65 to 13.49
-million bits per student at 2M windows. The comparison uses the KL sum
-from direct teacher draws. For $\mathcal V$-information, separate Moirai
-fits with and without context are scored on 100,000 paired test windows
-per run. Those results cover both budgets and the Waveform repeat.
+On 64 OU windows with dequantization disabled, the joint forecast scored
+14.3602 nats per window and the pointwise forecast scored 20.3312. Modeling
+dependence among future values saved 5.97 nats per window on average.
+Increasing the quadrature resolution from 512 to 1,024 nodes changed either
+score by at most $2.35\times10^{-5}$ nats on any window.
+\repolink{publications/technical_report/run_examples.py}{Example runner and checks.}
 
 \begin{table}[H]
 \centering\small
-\caption{Spearman correlations with archived CRPS across the 11 primary
-generators per budget. Intervals use a paired bootstrap of generators.}
-\label{tab:coding-transfer}
-\input{../article/data/coding_correlation_table.tex}
-\end{table}
-
-All full-set intervals include zero. The exploratory 40M prequential
-comparison excluding Chaotic and Waveform gave $\rho=-0.82$ with interval
-$[-1.00,\,-0.28]$. \repolink{experiments/episynth/README.md}{Sweep commands and artifacts.}
-
-\clearpage
-\section{Validation}\label{sec:validation}
-
-\begin{table}[H]
-\centering\small
-\caption{Recorded CPU measurements. Values are rounded independently.}
+\caption{CPU results for the worked examples in Sections~\ref{sec:waveform-example}
+and~\ref{sec:methods}. Values are rounded independently.}
 \label{tab:example-results}
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{38mm} >{\raggedright\arraybackslash}X r@{}}
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X r@{}}
 \toprule
-Measurement & Quantity & Value\\
+Measurement & Quantity & Result\\
 \midrule
-Prequential coding & Total loss $L$ (bits) & 14,828.66\\
- & Endpoint cost $H$ (bits) & 13,344.14\\
- & Excess loss $S$ (bits) & 1,484.53\\
-\addlinespace[3pt]
-Predictive $\mathcal V$-information & Mean test NLL in each role (bits per window) & 68.4402\\
- & Paired gain and standard error (bits per window) & 0\\
-\addlinespace[3pt]
-Requential coding & Cumulative KL (Monte Carlo SE), bits & 7.66 (5.62)\\
- & Plug-in coding overhead (bits) & 191.16\\
-\addlinespace[3pt]
-OU Bayes reference & Scored windows (dequantization disabled) & 64\\
- & Quadrature nodes (coarse / fine) & 512 / 1,024\\
- & Mean joint NLL at fine resolution (nats per window) & 14.3602\\
- & Mean pointwise NLL at fine resolution (nats per window) & 20.3312\\
- & Maximum window NLL change under refinement (nats) & $2.35\times10^{-5}$\\
+Prequential & Total / endpoint / excess (bits) & 14,828.66 / 13,344.14 / 1,484.53\\
+Predictive $\mathcal V$ & Test loss in each role (bits/window) & 68.4402\\
+ & Paired gain and its standard error (bits/window) & 0 and 0\\
+Requential & Cumulative KL (Monte Carlo SE), bits & 7.66 (5.62)\\
+ & Estimated coding overhead (bits) & 191.16\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -409,66 +428,68 @@ OU Bayes reference & Scored windows (dequantization disabled) & 64\\
 Component & Behavior verified and test modules & Passed & Skipped & Failed\\
 \midrule
 Data and windows &
-Series are reproducible by seed. Corpus reads recover stored rows.
-Window construction preserves context masks, target alignment, and seed order
-across worker counts.
+Series and windows are reproducible. Short trajectories check the
+Lorenz and Mackey--Glass integrators.
 \testlink{generators}{Generators},
+\testlink{chaotic}{Chaotic},
 \testlink{corpus}{Corpus},
 \testlink{windows}{Windows}. & \ChecksDataWindows\\
-\addlinespace[5pt]
+\addlinespace[3pt]
 Model and training &
-Mixture likelihoods agree with PyTorch distributions. Reopening a completed
-run preserves its step count and loss vector. The CLI validates and records
-run settings.
+Tests cover mixture likelihoods, training restarts, and configuration validation.
 \testlink{model}{Model},
 \testlink{training}{Training},
 \testlink{train_cli}{CLI}. & \ChecksModelTraining\\
-\addlinespace[5pt]
+\addlinespace[3pt]
 Prequential and OU &
 Saved losses reproduce the prequential decomposition. The OU reference
 agrees with the Gaussian conditional likelihood at a single prior node.
 \testlink{estimators}{Estimators},
 \testlink{ou_bayes}{OU}. & \ChecksPrequentialOU\\
-\addlinespace[5pt]
+\addlinespace[3pt]
+Requential &
+Tests cover codec replay, KL accounting, and resuming a sweep fit.
+\testlink{requential}{Estimator},
+\testlink{requential_transfer}{Sweep}. & \ChecksRequential\\
+\addlinespace[3pt]
 Predictive $\mathcal V$-information &
-The paired gain agrees with an analytical Gaussian example. Tests exercise
-context removal, split isolation, checkpoint selection, and recovery from
-interruption. \testlink{v_information}{V-information}. & \ChecksVInformation\\
-\addlinespace[5pt]
+Tests cover the Gaussian reference, split isolation, checkpoint selection,
+and sweep scheduling. \testlink{v_information}{Estimator},
+\testlink{v_information_transfer}{Sweep}. & \ChecksVInformation\\
+\addlinespace[3pt]
 Forecast evaluation &
-The sample-based CRPS, seasonal scaling, and aggregate forecast scores
-agree with reference calculations. Tests also cover area and score-ratio
-summaries. \testlink{evaluation}{Evaluation},
+Tests check CRPS, seasonal scaling, aggregation, learning-curve areas,
+and score ratios. \testlink{evaluation}{Evaluation},
 \testlink{analysis}{Analysis}. & \ChecksEvaluation\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsection{Integration checks with external artifacts}
-The recorded suite skips two checks that require external artifacts.
-\testlink{evaluation}{Window indexing} uses the GIFT-Eval snapshot at
-\texttt{GIFT\_EVAL\_DIR}. \testlink{model}{Likelihood evaluation} uses the
-published Moirai-Small checkpoint at \texttt{MOIRAI\_SMALL\_DIR}.
-\repolink{publications/technical_report/data/test_results.json}{Recorded test outcomes.}
+\subsection{Platform and artifact requirements}
+Tests that exercise sweep locking and publication of checkpoints need POSIX.
+Set \path{GIFT_EVAL_DIR} for the window-indexing check or
+\path{MOIRAI_SMALL_DIR} for the Moirai-Small likelihood check.
+\repolink{publications/technical_report/data/test_results.json}{Recorded platform and skip reasons.}
 \begin{lstlisting}
 python -m pytest tests/episynth -q -rs
 \end{lstlisting}
 
 \clearpage
-\section{Extending the library}\label{sec:extensions}
+\section{Evaluating your own generator}\label{sec:extensions}
+Train on each candidate as in Section~\ref{sec:run}. With a GIFT-Eval
+snapshot, score each final checkpoint using \texttt{episynth.evaluation.run}
+and compare its per-task \path{summary.csv} to the seasonal baseline.
+\repolink{src/episynth/README.md}{Checkpoint evaluation commands.}
 \lstset{basicstyle=\footnotesize\ttfamily,aboveskip=5pt,belowskip=5pt}
 \subsection{Register a generator}
-Subclass \texttt{Generator}, set its \texttt{name}, and implement
-\texttt{\_batch(seeds)}. Return one row of length \texttt{self.length} for
-each seed. The example generates a sinusoid with an independent phase
-for each seed.
+For a source outside the registry, implement \texttt{\_batch(seeds)} with
+one series per seed. Here each series has a 24-point period and its own phase.
 \begin{lstlisting}[language=Python]
 import numpy as np
 from episynth.generators import Generator
 
 class RandomPhaseSine(Generator):
     name = "random_phase_sine"
-
     def _batch(self, seeds):
         phases = np.array([
             np.random.default_rng(int(seed)).uniform(0, 2 * np.pi)
@@ -483,24 +504,22 @@ Import the class in \path{src/episynth/generators/__init__.py}, add it to
 generator instance directly.
 \repolink{src/episynth/generators/__init__.py}{Generator registry.}
 
-\subsection{Register an estimator}
+\subsection{Reporting an additional diagnostic}
 Implement \texttt{run(model, generator, spec, config, out\_dir)} and return a
-JSON-compatible result with declared units. This example reuses the trainer
-and reports the endpoint cost $H/N$ from Eq.~\eqref{eq:area}.
+JSON-compatible result with declared units. This example reports the final
+held-out loss $H/N$ in bits per window.
 \begin{lstlisting}[language=Python]
 from episynth.estimators import build, register
 
 @register("endpoint_nll")
 class EndpointNLL:
     def run(self, model, generator, spec, config, out_dir):
-        result = build("prequential").run(
-            model, generator, spec, config, out_dir
-        )
+        area = build("prequential")
+        result = area.run(model, generator, spec, config, out_dir)
         return {"bits_per_window": result["data_part_bits"] / result["n_windows"]}
 \end{lstlisting}
-Import the module before calling \texttt{build("endpoint\_nll")}.
-For the CLI, import the module through the built-in registry and set
-\texttt{estimator} to \texttt{endpoint\_nll}.
+Import this module before calling \texttt{build("endpoint\_nll")}. For CLI
+use, import it through the registry and set \texttt{estimator} to \texttt{endpoint\_nll}.
 \repolink{doc/source/extending.rst}{Extension guide.}
 
 \phantomsection

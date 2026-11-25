@@ -369,6 +369,11 @@ if __name__ == "__main__":
     if args.action == "prepare":
         prepare(args.root.resolve(), args.workers)
     elif args.action in {"warm", "measure", "fit-conditional"}:
+        if os.name != "posix":
+            parser.error(
+                "V-information sweep fits require POSIX file locking. "
+                "Use prepare or plot on this platform."
+            )
         if args.run not in {row["run"] for row in archive()}:
             parser.error("Select an archived run ID with --run")
         if args.action == "warm":

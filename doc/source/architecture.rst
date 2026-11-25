@@ -3,16 +3,19 @@
 Architecture
 ============
 
-The ``episynth`` package estimates epiplexity in synthetic time series. An observer model
-trains on a stream of windows from a synthetic generator. The estimator reports a
-decomposition of the code length in bits or the predictive value of the context in bits
-per window (V-information).
+The ``episynth`` package helps compare synthetic generators for forecast
+pretraining. A generator produces a seeded time series, and the window
+builder splits a segment into observed history and a forecast target. An
+estimator uses these windows to measure a training run. Downstream
+evaluation then scores the resulting forecaster on real series.
+See :doc:`generators` for the data sources and :doc:`measurements` for what
+each estimator measures.
 
 Layers
 ------
 
-The library has shared layers and an estimator plugin layer. The shared layers are
-independent of the estimation algorithm and serve all estimators in the same way.
+The data, model, training, and evaluation layers provide reusable
+components. Each estimator assembles the components its protocol needs.
 
 .. list-table::
    :widths: 25 75
@@ -21,9 +24,10 @@ independent of the estimation algorithm and serve all estimators in the same way
    * - Module
      - Purpose
    * - ``episynth.generators``
-     - Eleven univariate series generators from Mix, Don't Pick (including KernelSynth, ETS,
-       Waveform and SDE), plus an OU reference generator. Each series depends only on its
-       seed and length. ``generate(seeds)`` returns an array of shape ``(n, L)``.
+     - Eleven univariate generator families, including Waveform, KernelSynth,
+       and :ref:`Chaotic <chaotic-generator>`, plus the OU reference source.
+       For a fixed generator configuration, ``generate(seeds)`` returns
+       one series of length ``L`` per seed in an array of shape ``(n, L)``.
    * - ``episynth.windows``
      - Forecasting windows. ``WindowSpec`` defines the task shape, ``WindowBatch`` holds
        a batch of windows, and ``WindowStream`` streams batches in ascending seed order
@@ -89,10 +93,13 @@ Users can select an algorithm by name or add a custom algorithm in a single modu
 Built-in estimators
 -------------------
 
-* :class:`episynth.estimators.prequential.PrequentialEstimator` uses the shared ``Trainer``
-  to sum window losses before their training step (the area under the loss curve).
-* :class:`episynth.estimators.requential.RequentialEstimator` trains a student on synthetic horizons and estimates its code length from pre-update EMA predictions.
-  Its finite ORC mode transmits indices into the student's seeded proposal stream.
+* :class:`episynth.estimators.prequential.PrequentialEstimator` sums the
+  pre-update window losses and subtracts the cost of scoring the same
+  number of windows at the final model's held-out loss rate.
+* :class:`episynth.estimators.requential.RequentialEstimator` trains a
+  student on forecasts sampled from the teacher and estimates the
+  cumulative teacher–student KL before the student updates. Its finite
+  ORC mode transmits indices into the student's seeded proposal stream.
 * :class:`episynth.estimators.v_information.VInformationEstimator` trains two Moirai
   models with shared training-set normalization, selects checkpoints on the validation
   set, and compares paired losses on the test set. The conditional predictor can
@@ -107,15 +114,17 @@ The requential estimator owns separate teacher and student optimizers so that th
 CLI
 ---
 
-The :mod:`episynth.train` CLI selects an estimator and launches large experiment
-series. Pass the configuration file with ``--config``. It contains the ``data``,
-``spec``, ``model``, and ``train`` sections and the ``estimator`` field. Override
-any field with ``--set``.
+The :mod:`episynth.train` CLI reads the generator, window specification,
+model, and training settings from a JSON configuration. In the following
+CPU example, ``--set`` selects Chaotic as the data source and prequential
+coding as the estimator.
 
 .. code-block:: bash
 
-    python -m episynth.train --config configs/kernelsynth.json --out runs/epi \
-        --set train.lr=3e-4 --set estimator=prequential
+    python -m episynth.train \
+        --config publications/technical_report/examples/prequential.json \
+        --out build/report_demo/chaotic --set data.generator=chaotic \
+        --set estimator=prequential
 
 The ``estimator`` field selects an algorithm from the :mod:`episynth.estimators`
 registry and defaults to ``prequential``. The run writes standard ``Trainer`` artifacts

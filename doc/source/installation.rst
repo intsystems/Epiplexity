@@ -74,9 +74,10 @@ Automatic deployment is disabled as required by the course. Pushes and pull requ
 never publish; the existing online site stays available until the next manual deployment.
 Deployment uses Pages artifacts, without a
 ``gh-pages`` branch. The expected project URL is
-``https://intsystems.github.io/Epiplexity/``. After a deployment, check the URL
-reported by the deployment job and open its API page. A passing local build
-alone does not establish that the online site was published.
+``https://intsystems.github.io/Epiplexity/``. After a deployment, use the URL
+reported by the deployment job to check the Architecture and Generators
+pages. Verify that the published text matches the English Sphinx build
+and that the Chaotic section and its numerical checks are visible.
 
 If the site returns 404
 ~~~~~~~~~~~~~~~~~~~~~~~
