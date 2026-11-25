@@ -12,6 +12,7 @@ import copy
 import hashlib
 import json
 import math
+import os
 import shutil
 from pathlib import Path
 from typing import Any, Literal, TypedDict
@@ -154,13 +155,9 @@ class VInformationEstimator:
         self.test_first_seed = test_first_seed
         self.test_windows = test_windows
 
-    def run(self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
-            config: TrainConfig, out_dir: str | Path) -> VInformationResult:
-        """Train/resume, select using validation only, then evaluate on test.
-
-        The input model is left unchanged. Each fit receives the full n_windows
-        budget; the normalization pass is additional data preparation.
-        """
+    def prepare(self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+                config: TrainConfig, out_dir: str | Path) -> dict:
+        """Validate the measurement and persist train-only normalization on CPU."""
         splits = {
             "train": {"first_seed": config.first_seed, "n_windows": config.n_windows},
             "validation": {"first_seed": config.heldout_first_seed, "n_windows": config.heldout_windows},
@@ -195,6 +192,18 @@ class VInformationEstimator:
             manifest = {"schema_version": 1, "request": request,
                         "normalization": {"loc": loc, "scale": scale}, "complete": False}
             _write_json(manifest_path, manifest)
+        return manifest
+
+    def run(self, model: MoiraiModule, generator: Generator, spec: WindowSpec,
+            config: TrainConfig, out_dir: str | Path) -> VInformationResult:
+        """Train/resume, select using validation only, then evaluate on test.
+
+        The input model is left unchanged. Each fit receives the full n_windows
+        budget; the normalization pass is additional data preparation.
+        """
+        out = Path(out_dir)
+        manifest_path = out / _MANIFEST
+        manifest = self.prepare(model, generator, spec, config, out)
         normalization = manifest["normalization"]
         effective = {}
         for branch in ("unconditional", "conditional"):
@@ -212,6 +221,13 @@ class VInformationEstimator:
         _write_json(manifest_path, manifest)
         candidates = []
         for branch in ("unconditional", "conditional"):
+            reservation = out / f"{branch}.prepare.lock"
+            if os.name == "posix" and reservation.is_file():
+                import fcntl
+
+                # A cooperating worker holds this lock until its checkpoint directory is ready.
+                with reservation.open("rb") as handle:
+                    fcntl.flock(handle, fcntl.LOCK_SH)
             branch_model = copy.deepcopy(model)
             branch_model.config = MoiraiConfig.model_validate(effective[branch])
             trainer = Trainer(branch_model, generator, spec, config, out / branch)

@@ -51,6 +51,7 @@ from .model.moirai import (
 from .splits import source_description, validate_splits
 from .windows import WindowBatch, WindowSpec, WindowStream, collect_windows
 
+_STEP_COLUMNS = ["step", "windows_seen", "nats_per_point", "lr", "grad_norm", "seconds"]
 RESUME_RUNTIME_FIELDS = frozenset({"device", "compile", "eval_batch_size", "stream_workers", "log_every", "fused_adam"})
 
 
@@ -361,7 +362,8 @@ class Trainer:
         with open(steps_path, "a", newline="") as steps_file:
             writer = csv.writer(steps_file)
             if new_csv:
-                writer.writerow(["step", "windows_seen", "nats_per_point", "lr", "grad_norm", "seconds"])
+                writer.writerow(_STEP_COLUMNS)
+                steps_file.flush()
             self._train_loop(loss_log, scale_log, writer, steps_file)
         loss_log.flush()
         scale_log.flush()
@@ -374,8 +376,8 @@ class Trainer:
             return
         with path.open(newline="") as file:
             rows = list(csv.reader(file))
-        retained = rows[:1]
-        for row in rows[1:]:
+        retained = [_STEP_COLUMNS]
+        for row in rows:
             if row and row[0].isdigit() and int(row[0]) <= self.step:
                 retained.append(row)
         if rows != retained:

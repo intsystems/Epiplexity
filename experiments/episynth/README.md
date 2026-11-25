@@ -121,3 +121,33 @@ run prefix and defaults to `series_`.
 - Series 2, Waveform. The geometric-mean CRPS ratio is 1.373 because one
   `bitbrains_rnd` forecast diverged. For `s2_waveform_seed1` the ratio is
   0.972. The median and rank are robust.
+
+## V-information versus archived CRPS
+
+Each of the 23 measurements pairs two new Moirai fits with the published CRPS ratio for the same generator, budget, and initialization.
+The conditional and context-free predictors share training windows and target normalization.
+The CSV reports predictive V-information in bits per window and the paired test standard error conditional on the selected fits.
+
+From the repository root, run the sweep on the allocated GPUs with the remaining wall-time allowance:
+
+```bash
+export PYTHONPATH=src
+export ROOT=/home/jovyan/shares/SR008.fs2/kazachkovdi/side-projects/epiplexity-v-information
+python experiments/episynth/scripts/run_v_information_transfer.py --root "$ROOT" --gpus 0,1,2,3,4,5,6,7 --hours 12
+```
+
+The launcher prepares configs, builds the shared KernelSynth corpus, fits both branches per run, and writes the PDF, PNG, and source CSV to `$ROOT/results/`.
+When the CPU quota permits, up to two low-priority CPU jobs prepare train-only normalization for upcoming fits.
+During a fit’s CPU normalization pass, its GPU can generate a short KernelSynth shard.
+A shard that overlaps the start of training runs to completion.
+Once the queue drains, an idle GPU can fit the conditional 40M fBm branch alongside the context-free branch, including during another run’s CPU normalization pass.
+The runner publishes the completed branch under the run directory with an exclusive symlink and records its actual CPU worker count in the branch config.
+Run the same command with the remaining allocation to resume from completed shards and checkpoints.
+To regenerate the figure from the paired losses, run `python experiments/episynth/scripts/v_information_transfer.py plot --root "$ROOT"`.
+
+## Gotchas
+
+- **Triton loads compiled kernels by file path.**
+  Concurrent writers on the shared FUSE mount produced missing-file errors during compilation.
+  The launcher gives each GPU a compiler cache under `$XDG_CACHE_HOME/episynth-compile`, with `~/.cache` as the fallback.
+  Corpus shards and model checkpoints live under `$ROOT/data` and `$ROOT/runs`.

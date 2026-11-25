@@ -285,3 +285,17 @@ def test_resume_discards_step_rows_after_checkpoint(tmp_path):
     _tiny(tmp_path, config=config).run()
     with (trainer.out_dir / "steps.csv").open(newline="") as file:
         assert [int(r["step"]) for r in csv.DictReader(file)] == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize("headerless_rows", [[], [["1", "4", "0", "0", "0", "1"]]])
+def test_resume_restores_step_log_header(tmp_path, headerless_rows):
+    trainer = _tiny(tmp_path)
+    trainer.out_dir.mkdir(parents=True)
+    path = trainer.out_dir / "steps.csv"
+    with path.open("w", newline="") as handle:
+        csv.writer(handle).writerows(headerless_rows)
+    trainer.step = 1
+    trainer._truncate_steps()
+    with path.open(newline="") as handle:
+        rows = list(csv.reader(handle))
+    assert rows == [["step", "windows_seen", "nats_per_point", "lr", "grad_norm", "seconds"], *headerless_rows]

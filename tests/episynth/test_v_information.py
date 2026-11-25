@@ -447,3 +447,47 @@ def test_validation_can_select_either_trained_predictor(tmp_path, setup, monkeyp
     else:
         assert not np.array_equal(u, c)
     assert estimator.from_run_dir(tmp_path) == result
+
+
+def test_prepared_normalization_is_reused(setup, tmp_path, monkeypatch):
+    import episynth.estimators.v_information as module
+
+    model, generator, spec, train = setup
+    estimator = VInformationEstimator(test_first_seed=200, test_windows=4)
+    manifest = estimator.prepare(model, generator, spec, train, tmp_path)
+    assert manifest["complete"] is False
+    assert not (tmp_path / "conditional").exists()
+    monkeypatch.setattr(module, "_normalization", lambda *args: pytest.fail("repeated normalization"))
+    result = estimator.run(model, generator, spec, train, tmp_path)
+    assert result["metadata"]["normalization"] == manifest["normalization"]
+
+
+def test_wait_for_reserved_conditional_fit(setup, tmp_path, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from episynth.training import Trainer
+
+    fcntl = pytest.importorskip("fcntl")
+    unconditional_done = threading.Event()
+    conditional_started = threading.Event()
+    original = Trainer.run
+
+    def observe(trainer):
+        if trainer.out_dir.name == "conditional":
+            conditional_started.set()
+        original(trainer)
+        if trainer.out_dir.name == "unconditional":
+            unconditional_done.set()
+
+    monkeypatch.setattr(Trainer, "run", observe)
+    estimator = VInformationEstimator(test_first_seed=200, test_windows=4)
+    with ThreadPoolExecutor(1) as pool, (tmp_path / "conditional.prepare.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        future = pool.submit(estimator.run, *setup, tmp_path)
+        assert unconditional_done.wait(timeout=30)
+        try:
+            assert not conditional_started.wait(timeout=0.4)
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+        assert future.result(timeout=30)["n_test_windows"] == 4
